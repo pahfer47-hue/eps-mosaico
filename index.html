@@ -165,6 +165,38 @@ p { margin: 0; }
 .prog { height: 3px; background: var(--line); border-radius: 2px; margin-top: 8px; overflow: hidden; }
 .prog > div { height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
 @media (prefers-reduced-motion: reduce) { .prog > div { transition: none; } }
+
+.thumb { cursor: pointer; }
+.thumb:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.thumb .dot { position: absolute; left: 4px; bottom: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff; }
+
+/* Editor de foto: pantalla completa */
+.ed { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.ed-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.ed-top strong { flex: 1; min-width: 0; text-align: center; font-size: 0.9375rem; }
+.ed-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: #12181c; position: relative; }
+.ed-cw { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ed-cw canvas { width: 100%; height: 100%; display: block; }
+.ed-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
+.crop { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); cursor: move; touch-action: none; }
+.crop i { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; }
+.crop i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); }
+.crop i[data-h="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.crop i[data-h="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.crop i[data-h="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.crop i[data-h="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+.crop i[data-h="n"] { left: 50%; top: 0; cursor: ns-resize; }
+.crop i[data-h="s"] { left: 50%; top: 100%; cursor: ns-resize; }
+.crop i[data-h="w"] { left: 0; top: 50%; cursor: ew-resize; }
+.crop i[data-h="e"] { left: 100%; top: 50%; cursor: ew-resize; }
+.crop.locked i.edge { display: none; }
+.ed-panel { background: var(--surface); border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 46vh; overflow: auto; }
+.ed-panel .seg { margin-bottom: 12px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin-top: 10px; }
+.sl label { font-size: 0.875rem; }
+.sl output { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 3ch; text-align: right; font-size: 0.875rem; }
+.sl input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); min-height: 28px; }
 </style>
 
 <main>
@@ -186,6 +218,10 @@ p { margin: 0; }
           <button class="btn" id="clear" type="button">Quitar todas</button>
           <span class="muted count" id="count">Ninguna elegida</span>
         </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="filtersAll" type="button" hidden>Filtros para todas</button>
+        </div>
+        <p class="hint" id="editHint" hidden>Toca una foto para recortarla, girarla o ponerle filtros.</p>
         <div class="thumbs" id="thumbs"></div>
       </div>
 
@@ -300,6 +336,62 @@ p { margin: 0; }
     <button class="btn primary" id="make" type="button" disabled>Crear PDF</button>
   </div>
   <div class="prog" id="progWrap" hidden><div id="prog"></div></div>
+</div>
+
+<div class="ed" id="ed" role="dialog" aria-modal="true" aria-label="Editar foto" hidden>
+  <div class="ed-top">
+    <button class="btn" id="edCancel" type="button">Cancelar</button>
+    <strong id="edTitle">Editar foto</strong>
+    <button class="btn primary" id="edDone" type="button">Listo</button>
+  </div>
+  <div class="ed-stage" id="edStage">
+    <div class="ed-cw" id="edCW">
+      <canvas id="edCanvas" width="10" height="10"></canvas>
+      <div class="crop" id="edCrop" hidden>
+        <i data-h="nw"></i><i data-h="ne"></i><i data-h="se"></i><i data-h="sw"></i>
+        <i class="edge" data-h="n"></i><i class="edge" data-h="s"></i><i class="edge" data-h="w"></i><i class="edge" data-h="e"></i>
+      </div>
+    </div>
+    <div class="ed-loading" id="edLoading" hidden>Abriendo foto…</div>
+  </div>
+  <div class="ed-panel">
+    <div class="seg" id="edTabs" role="group" aria-label="Herramienta">
+      <button type="button" data-v="crop" aria-pressed="true">Recortar</button>
+      <button type="button" data-v="filters" aria-pressed="false">Filtros</button>
+    </div>
+
+    <div id="edCropPanel">
+      <div class="chips" id="edAspects" role="group" aria-label="Proporción del recorte" style="margin-top:0">
+        <button class="chip" type="button" data-a="free" aria-pressed="true">Libre</button>
+        <button class="chip" type="button" data-a="tile" id="edTileChip">Como el cuadro</button>
+        <button class="chip" type="button" data-a="orig" aria-pressed="false">Original</button>
+        <button class="chip" type="button" data-a="1:1" aria-pressed="false">1:1</button>
+        <button class="chip" type="button" data-a="4:3" aria-pressed="false">4:3</button>
+        <button class="chip" type="button" data-a="3:4" aria-pressed="false">3:4</button>
+        <button class="chip" type="button" data-a="3:2" aria-pressed="false">3:2</button>
+        <button class="chip" type="button" data-a="2:3" aria-pressed="false">2:3</button>
+        <button class="chip" type="button" data-a="16:9" aria-pressed="false">16:9</button>
+      </div>
+      <div class="tools">
+        <button class="btn" id="edRot" type="button">Girar ↻</button>
+        <button class="btn" id="edFlip" type="button">Voltear ⇋</button>
+        <button class="btn" id="edResetCrop" type="button">Quitar recorte</button>
+      </div>
+      <p class="hint">Arrastra el recuadro para moverlo y las esquinas para cambiar su tamaño. Con dos dedos lo ampliás o lo reducís.</p>
+    </div>
+
+    <div id="edFilterPanel" hidden>
+      <label class="check"><input type="checkbox" id="edBw"> Blanco y negro</label>
+      <div class="sl"><label for="edBr">Brillo</label><output id="edBrO">0</output><input type="range" id="edBr" min="-100" max="100" value="0"></div>
+      <div class="sl"><label for="edCo">Contraste</label><output id="edCoO">0</output><input type="range" id="edCo" min="-100" max="100" value="0"></div>
+      <div class="sl"><label for="edWh">Blancos</label><output id="edWhO">0</output><input type="range" id="edWh" min="-100" max="100" value="0"></div>
+      <div class="sl"><label for="edBl">Negros</label><output id="edBlO">0</output><input type="range" id="edBl" min="-100" max="100" value="0"></div>
+      <div class="sl"><label for="edSa">Saturación</label><output id="edSaO">0</output><input type="range" id="edSa" min="-100" max="100" value="0"></div>
+      <div class="sl"><label for="edDn">Reducir ruido</label><output id="edDnO">0</output><input type="range" id="edDn" min="0" max="100" value="0"></div>
+      <div class="tools"><button class="btn" id="edResetF" type="button">Quitar filtros</button></div>
+      <label class="check" id="edAllRow"><input type="checkbox" id="edAll"> Aplicar estos filtros a todas las fotos</label>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -471,6 +563,120 @@ p { margin: 0; }
       used: pages.length ? Math.min(1, area / (pages.length * usable)) : 0
     };
   }
+
+  // ---- Filtros de imagen (sobre datos RGBA) ----
+  const DEF_F = { bw: false, br: 0, co: 0, wh: 0, bl: 0, sa: 0, dn: 0 };
+  function filtersAreDefault(f) { return !f.bw && !f.br && !f.co && !f.wh && !f.bl && !f.sa && !f.dn; }
+
+  // Tabla de tonos: brillo, contraste, blancos y negros dependen solo del valor del canal.
+  function buildLut(f) {
+    const lut = new Uint8ClampedArray(256);
+    const C = f.co * 1.6, cf = (259 * (C + 255)) / (255 * (259 - C));
+    for (let i = 0; i < 256; i++) {
+      let v = i + f.br * 1.2;
+      v = cf * (v - 128) + 128;
+      const t = Math.min(1, Math.max(0, v / 255));
+      v += f.wh * 0.8 * t * t;
+      v += f.bl * 0.8 * (1 - t) * (1 - t);
+      lut[i] = v;
+    }
+    return lut;
+  }
+
+  // Reducción de ruido: promedio de vecinos 3x3 que pesa menos a los de color distinto (conserva bordes).
+  function denoise(d, w, h, amount) {
+    const sigma = 8 + amount * 0.5;
+    const inv = 1 / (2 * sigma * sigma);
+    const tbl = new Float32Array(65026);
+    for (let i = 0; i < tbl.length; i++) tbl[i] = Math.exp(-i * inv);
+    const mix = Math.min(1, amount / 100 * 1.15);
+    const passes = amount > 60 ? 2 : 1;
+    let src = new Uint8ClampedArray(d), dst = new Uint8ClampedArray(d.length);
+    for (let p = 0; p < passes; p++) {
+      dst.set(src);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const i = (y * w + x) * 4;
+          const r0 = src[i], g0 = src[i + 1], b0 = src[i + 2];
+          let sr = r0, sg = g0, sb = b0, sw = 1;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (!dx && !dy) continue;
+              const j = i + (dy * w + dx) * 4;
+              const dr = src[j] - r0, dg = src[j + 1] - g0, db = src[j + 2] - b0;
+              const wt = (dx && dy ? 0.7 : 1) * tbl[Math.round((dr * dr + dg * dg + db * db) / 3)];
+              sr += src[j] * wt; sg += src[j + 1] * wt; sb += src[j + 2] * wt; sw += wt;
+            }
+          }
+          dst[i] = r0 + mix * (sr / sw - r0);
+          dst[i + 1] = g0 + mix * (sg / sw - g0);
+          dst[i + 2] = b0 + mix * (sb / sw - b0);
+        }
+      }
+      const t = src; src = dst; dst = t;
+    }
+    d.set(src);
+  }
+
+  function applyFilters(d, w, h, f) {
+    if (filtersAreDefault(f)) return;
+    if (f.dn > 0) denoise(d, w, h, f.dn);
+    const tone = f.br || f.co || f.wh || f.bl;
+    const lut = tone ? buildLut(f) : null;
+    const k = 1 + f.sa / 100;
+    for (let i = 0; i < d.length; i += 4) {
+      let r = d[i], g = d[i + 1], b = d[i + 2];
+      if (lut) { r = lut[r]; g = lut[g]; b = lut[b]; }
+      if (f.bw) {
+        r = g = b = 0.299 * r + 0.587 * g + 0.114 * b;
+      } else if (f.sa) {
+        const y = 0.299 * r + 0.587 * g + 0.114 * b;
+        r = y + (r - y) * k; g = y + (g - y) * k; b = y + (b - y) * k;
+      }
+      d[i] = r; d[i + 1] = g; d[i + 2] = b;
+    }
+  }
+
+  // ---- Orientación y recorte (geometría) ----
+  function orientedDims(iw, ih, rot) { return rot % 2 ? { w: ih, h: iw } : { w: iw, h: ih }; }
+  // ow, oh: medidas ANTES de girar.
+  function rotateRectCW(r, ow, oh) { return { x: oh - (r.y + r.h), y: r.x, w: r.h, h: r.w }; }
+  function flipRectH(r, ow) { return { x: ow - (r.x + r.w), y: r.y, w: r.w, h: r.h }; }
+  function fitAspectRect(r, a) {
+    const w = Math.min(r.w, r.h * a), h = w / a;
+    return { x: r.x + (r.w - w) / 2, y: r.y + (r.h - h) / 2, w: w, h: h };
+  }
+  function scaleRect(r, s, ow, oh, min) {
+    let w = r.w * s, h = r.h * s;
+    const up = Math.max(1, min / w, min / h);
+    w *= up; h *= up;
+    const down = Math.min(1, ow / w, oh / h);
+    w *= down; h *= down;
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    return { x: Math.min(Math.max(cx - w / 2, 0), ow - w), y: Math.min(Math.max(cy - h / 2, 0), oh - h), w: w, h: h };
+  }
+  // h: 'nw','ne','sw','se' o 'n','s','e','w'. a: proporción fija (ancho/alto) o null.
+  function resizeCrop(h, r0, px, py, a, ow, oh, min) {
+    const left = h.indexOf('w') >= 0, right = h.indexOf('e') >= 0, top = h.indexOf('n') >= 0, bottom = h.indexOf('s') >= 0;
+    const clamp = function (v, lo, hi) { return Math.min(hi, Math.max(lo, v)); };
+    let x0 = r0.x, y0 = r0.y, x1 = r0.x + r0.w, y1 = r0.y + r0.h;
+    if (!a) {
+      if (left) x0 = clamp(px, 0, x1 - min);
+      if (right) x1 = clamp(px, x0 + min, ow);
+      if (top) y0 = clamp(py, 0, y1 - min);
+      if (bottom) y1 = clamp(py, y0 + min, oh);
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    }
+    if (!((left || right) && (top || bottom))) return r0;
+    const ax = left ? x1 : x0, ay = top ? y1 : y0;
+    const maxW = Math.min(left ? ax : ow - ax, (top ? ay : oh - ay) * a);
+    let w = Math.max(Math.abs(px - ax), Math.abs(py - ay) * a);
+    w = Math.min(Math.max(w, min, min * a), maxW);
+    const hh = w / a;
+    return { x: left ? ax - w : ax, y: top ? ay - hh : ay, w: w, h: hh };
+  }
+  function newEdit() { return { rot: 0, flip: false, crop: null, f: Object.assign({}, DEF_F) }; }
+  function editIsDefault(e) { return e.rot === 0 && !e.flip && !e.crop && filtersAreDefault(e.f); }
   // </pure>
 
   const $ = function (id) { return document.getElementById(id); };
@@ -680,18 +886,33 @@ p { margin: 0; }
     state.files.forEach(function (f) {
       const d = document.createElement('div');
       d.className = 'thumb';
+      d.tabIndex = 0;
+      d.setAttribute('role', 'button');
+      d.setAttribute('aria-label', 'Editar ' + f.name);
+      d.addEventListener('click', function () { openEditor(f, false); });
+      d.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditor(f, false); } });
       const cv = document.createElement('canvas');
       cv.width = 120; cv.height = 120;
       drawFit(cv.getContext('2d'), f.thumb, 0, 0, 120, 120, 'fill');
       const x = document.createElement('button');
       x.type = 'button'; x.className = 'x'; x.textContent = '×';
       x.setAttribute('aria-label', 'Quitar ' + f.name);
-      x.addEventListener('click', function () {
+      x.addEventListener('click', function (e) {
+        e.stopPropagation();
         state.files = state.files.filter(function (q) { return q.id !== f.id; });
         renderThumbs(); update();
       });
-      d.appendChild(cv); d.appendChild(x); box.appendChild(d);
+      d.appendChild(cv); d.appendChild(x);
+      if (!editIsDefault(f.edit)) {
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.title = 'Foto editada';
+        d.appendChild(dot);
+      }
+      box.appendChild(d);
     });
+    $('editHint').hidden = state.files.length === 0;
+    $('filtersAll').hidden = state.files.length === 0;
   }
 
   function loadImg(file) {
@@ -725,17 +946,19 @@ p { margin: 0; }
       try {
         const r = await loadImg(f);
         const iw = r.img.naturalWidth, ih = r.img.naturalHeight;
-        const s = Math.min(1, 360 / Math.max(iw, ih));
+        const s = Math.min(1, 800 / Math.max(iw, ih));
         const cv = document.createElement('canvas');
         cv.width = Math.max(1, Math.round(iw * s)); cv.height = Math.max(1, Math.round(ih * s));
         const cx = cv.getContext('2d');
         cx.imageSmoothingQuality = 'high';
         cx.drawImage(r.img, 0, 0, cv.width, cv.height);
         URL.revokeObjectURL(r.url);
-        state.files.push({
-          id: nextId++, key: f.name + '|' + f.size + '|' + f.lastModified, name: f.name, file: f, thumb: cv,
-          ar: iw / ih
-        });
+        const entry = {
+          id: nextId++, key: f.name + '|' + f.size + '|' + f.lastModified, name: f.name, file: f,
+          small: cv, sw: iw, sh: ih, edit: newEdit(), thumb: null, ar: iw / ih
+        };
+        refreshThumb(entry);
+        state.files.push(entry);
       } catch (e) { bad.push(f.name); }
       await yieldUI();
     }
@@ -745,19 +968,354 @@ p { margin: 0; }
     setNote(bad.length ? 'No se pudieron leer: ' + bad.join(', ') + '. Prueba con JPG o PNG.' : '', bad.length > 0);
   }
 
-  async function tileJpeg(entry, wPx, hPx, mode, rot) {
-    const r = await loadImg(entry.file);
+  // ---- Edición: recorte, giro y filtros ----
+  function renderCrop(src, edit, maxSide) {
+    const iw = src.naturalWidth || src.width, ih = src.naturalHeight || src.height;
+    const o = orientedDims(iw, ih, edit.rot);
+    const cr = edit.crop
+      ? { x: edit.crop.x * o.w, y: edit.crop.y * o.h, w: edit.crop.w * o.w, h: edit.crop.h * o.h }
+      : { x: 0, y: 0, w: o.w, h: o.h };
+    const s = Math.min(1, maxSide / Math.max(cr.w, cr.h));
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(cr.w * s));
+    cv.height = Math.max(1, Math.round(cr.h * s));
+    const cx = cv.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.translate(-cr.x * s, -cr.y * s);
+    cx.scale(s, s);
+    cx.translate(o.w / 2, o.h / 2);
+    cx.rotate(edit.rot * Math.PI / 2);
+    cx.scale(edit.flip ? -1 : 1, 1);
+    cx.drawImage(src, -iw / 2, -ih / 2, iw, ih);
+    return cv;
+  }
+
+  function filterCanvas(cv, f) {
+    if (filtersAreDefault(f)) return cv;
+    const cx = cv.getContext('2d');
+    const id = cx.getImageData(0, 0, cv.width, cv.height);
+    applyFilters(id.data, cv.width, cv.height, f);
+    cx.putImageData(id, 0, 0);
+    return cv;
+  }
+
+  function filteredCanvas(src, edit, maxSide) { return filterCanvas(renderCrop(src, edit, maxSide), edit.f); }
+
+  function cropAR(f) {
+    const o = orientedDims(f.sw, f.sh, f.edit.rot);
+    const c = f.edit.crop;
+    return c ? (c.w * o.w) / (c.h * o.h) : o.w / o.h;
+  }
+
+  function refreshThumb(f) {
+    f.thumb = filteredCanvas(f.small, f.edit, 360);
+    f.ar = cropAR(f);
+  }
+
+  async function tileJpeg(f, wPx, hPx, mode, rot) {
+    const k = Math.min(1, Math.sqrt(4.5e6 / (wPx * hPx)));
+    wPx = Math.max(32, Math.round(wPx * k));
+    hPx = Math.max(32, Math.round(hPx * k));
+    const r = await loadImg(f.file);
+    const tileAr = rot ? hPx / wPx : wPx / hPx;
+    const ratio = mode === 'fill' ? Math.max(f.ar / tileAr, tileAr / f.ar) : 1;
+    const need = Math.min(3000, Math.max(wPx, hPx) * ratio);
+    const crop = filteredCanvas(r.img, f.edit, need);
+    URL.revokeObjectURL(r.url);
     const cv = document.createElement('canvas');
     cv.width = wPx; cv.height = hPx;
     const cx = cv.getContext('2d');
     cx.fillStyle = '#ffffff';
     cx.fillRect(0, 0, wPx, hPx);
     cx.imageSmoothingQuality = 'high';
-    drawTile(cx, r.img, 0, 0, wPx, hPx, mode, rot);
-    URL.revokeObjectURL(r.url);
+    drawTile(cx, crop, 0, 0, wPx, hPx, mode, rot);
     const data = cv.toDataURL('image/jpeg', 0.92);
-    cv.width = 1; cv.height = 1;
+    cv.width = 1; cv.height = 1; crop.width = 1; crop.height = 1;
     return data;
+  }
+
+  // ---- Editor de foto ----
+  const ed = { open: false, f: null, all: false, work: null, orient: null, tmp: null, tab: 'crop', cr: null, aspect: null, key: 'free', k: 1, base: null, raf: 0 };
+  const ptrs = new Map();
+  let gesture = null, pinch = null;
+  const SL = [['edBr', 'br'], ['edCo', 'co'], ['edWh', 'wh'], ['edBl', 'bl'], ['edSa', 'sa'], ['edDn', 'dn']];
+
+  function minPx() { return Math.max(16, 0.04 * Math.max(ed.orient.width, ed.orient.height)); }
+
+  function fitStage(w, h) {
+    const st = $('edStage');
+    const aw = Math.max(50, st.clientWidth - 24), ah = Math.max(50, st.clientHeight - 24);
+    ed.k = Math.min(aw / w, ah / h, 2);
+    const cw = $('edCW');
+    cw.style.width = Math.round(w * ed.k) + 'px';
+    cw.style.height = Math.round(h * ed.k) + 'px';
+  }
+
+  function drawStage(src) {
+    const cv = $('edCanvas');
+    cv.width = src.width; cv.height = src.height;
+    cv.getContext('2d').drawImage(src, 0, 0);
+    fitStage(src.width, src.height);
+  }
+
+  function buildOrient() {
+    ed.orient = renderCrop(ed.work, { rot: ed.tmp.rot, flip: ed.tmp.flip, crop: null }, 1200);
+  }
+
+  function initCr() {
+    const ow = ed.orient.width, oh = ed.orient.height, c = ed.tmp.crop;
+    ed.cr = c ? { x: c.x * ow, y: c.y * oh, w: c.w * ow, h: c.h * oh } : { x: 0, y: 0, w: ow, h: oh };
+  }
+
+  function saveCrop() {
+    const ow = ed.orient.width, oh = ed.orient.height, c = ed.cr;
+    const full = c.x < 0.5 && c.y < 0.5 && c.x + c.w > ow - 0.5 && c.y + c.h > oh - 0.5;
+    ed.tmp.crop = full ? null : { x: c.x / ow, y: c.y / oh, w: c.w / ow, h: c.h / oh };
+  }
+
+  function placeCrop() {
+    const c = ed.cr, el = $('edCrop'), k = ed.k;
+    el.style.left = (c.x * k) + 'px';
+    el.style.top = (c.y * k) + 'px';
+    el.style.width = (c.w * k) + 'px';
+    el.style.height = (c.h * k) + 'px';
+    el.classList.toggle('locked', !!ed.aspect);
+  }
+
+  function updateAspectChips() {
+    document.querySelectorAll('#edAspects .chip').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.a === ed.key)); });
+  }
+
+  function aspectFor(key) {
+    if (key === 'free') return null;
+    if (key === 'orig') return ed.orient.width / ed.orient.height;
+    if (key === 'tile') { const c = cfg(); return c.tw > 0 && c.th > 0 ? c.tw / c.th : null; }
+    const p = key.split(':');
+    return p[0] / p[1];
+  }
+
+  function setAspect(key) {
+    ed.key = key;
+    ed.aspect = aspectFor(key);
+    if (ed.aspect) ed.cr = fitAspectRect(ed.cr, ed.aspect);
+    placeCrop(); updateAspectChips();
+  }
+
+  function afterOrient(rotated) {
+    const ow = ed.orient.width, oh = ed.orient.height;
+    if (rotated && ed.aspect && ed.key !== 'tile') ed.aspect = 1 / ed.aspect;
+    const r = ed.aspect ? fitAspectRect(ed.cr, ed.aspect) : ed.cr;
+    const w = Math.min(r.w, ow), h = Math.min(r.h, oh);
+    ed.cr = { x: clampN(r.x, 0, ow - w), y: clampN(r.y, 0, oh - h), w: w, h: h };
+    drawStage(ed.orient); placeCrop();
+  }
+
+  function drawFiltered() {
+    if (!ed.base) return;
+    const cv = $('edCanvas'), b = ed.base;
+    cv.width = b.width; cv.height = b.height;
+    const cx = cv.getContext('2d');
+    cx.drawImage(b, 0, 0);
+    filterCanvas(cv, ed.tmp.f);
+    fitStage(b.width, b.height);
+  }
+
+  function scheduleFiltered() {
+    if (ed.raf) return;
+    ed.raf = requestAnimationFrame(function () { ed.raf = 0; drawFiltered(); });
+  }
+
+  function syncSliders() {
+    const f = ed.tmp.f;
+    $('edBw').checked = !!f.bw;
+    SL.forEach(function (p) { $(p[0]).value = f[p[1]]; $(p[0] + 'O').textContent = f[p[1]]; });
+  }
+
+  function showTab(tab) {
+    ed.tab = tab;
+    $('edCropPanel').hidden = tab !== 'crop';
+    $('edFilterPanel').hidden = tab !== 'filters';
+    document.querySelectorAll('#edTabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === tab)); });
+    if (tab === 'crop') {
+      buildOrient(); initCr();
+      drawStage(ed.orient);
+      $('edCrop').hidden = false;
+      ed.aspect = null; ed.key = 'free';
+      placeCrop(); updateAspectChips();
+    } else {
+      if (ed.cr) saveCrop();
+      ed.base = renderCrop(ed.work, ed.tmp, 720);
+      $('edCrop').hidden = true;
+      drawFiltered();
+    }
+  }
+
+  async function openEditor(f, all) {
+    if (state.busy || ed.open) return;
+    ed.open = true; ed.f = f; ed.all = !!all; ed.cr = null;
+    document.body.style.overflow = 'hidden';
+    $('ed').hidden = false;
+    $('edTitle').textContent = all ? 'Filtros para todas las fotos' : 'Foto ' + (state.files.indexOf(f) + 1) + ' de ' + state.files.length;
+    $('edLoading').hidden = false;
+    $('edCrop').hidden = true;
+    try {
+      const r = await loadImg(f.file);
+      const iw = r.img.naturalWidth, ih = r.img.naturalHeight, s = Math.min(1, 1600 / Math.max(iw, ih));
+      const w = document.createElement('canvas');
+      w.width = Math.max(1, Math.round(iw * s)); w.height = Math.max(1, Math.round(ih * s));
+      const cx = w.getContext('2d');
+      cx.imageSmoothingQuality = 'high';
+      cx.drawImage(r.img, 0, 0, w.width, w.height);
+      URL.revokeObjectURL(r.url);
+      ed.work = w;
+    } catch (e) {
+      closeEditor();
+      setNote('No se pudo abrir la foto.', true);
+      return;
+    }
+    ed.tmp = {
+      rot: f.edit.rot, flip: f.edit.flip, crop: f.edit.crop ? Object.assign({}, f.edit.crop) : null,
+      f: Object.assign({}, all ? DEF_F : f.edit.f)   // "para todas" empieza sin filtros
+    };
+    $('edAll').checked = false;
+    $('edAllRow').hidden = !!all;
+    $('edTabs').hidden = !!all;
+    $('edTileChip').hidden = cfg().mode !== 'grid';
+    syncSliders();
+    $('edLoading').hidden = true;
+    showTab(all ? 'filters' : 'crop');
+    $('edDone').focus();
+  }
+
+  function closeEditor() {
+    ed.open = false; ed.work = null; ed.orient = null; ed.base = null; ed.cr = null;
+    ptrs.clear(); gesture = null; pinch = null;
+    document.body.style.overflow = '';
+    $('ed').hidden = true;
+  }
+
+  async function edDone() {
+    if (!ed.open || !ed.tmp) return;
+    if (ed.tab === 'crop' && ed.cr) saveCrop();
+    const f = ed.f, t = ed.tmp, onlyFilters = ed.all, toAll = ed.all || $('edAll').checked;
+    closeEditor();
+    const targets = toAll ? state.files.slice() : [f];
+    state.busy = true; update();
+    for (let i = 0; i < targets.length; i++) {
+      const g = targets[i];
+      if (g === f && !onlyFilters) g.edit = { rot: t.rot, flip: t.flip, crop: t.crop, f: Object.assign({}, t.f) };
+      else g.edit.f = Object.assign({}, t.f);
+      refreshThumb(g);
+      if (targets.length > 1) {
+        setNote('Aplicando… ' + (i + 1) + ' de ' + targets.length);
+        setProgress(i / targets.length);
+        await yieldUI();
+      }
+    }
+    setProgress(null); setNote('');
+    state.busy = false;
+    renderThumbs(); update();
+  }
+
+  function edPoint(e) {
+    const r = $('edCW').getBoundingClientRect();
+    return { x: (e.clientX - r.left) / ed.k, y: (e.clientY - r.top) / ed.k };
+  }
+  function ptrDist() {
+    const a = Array.from(ptrs.values());
+    return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+  }
+  function clampN(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+  function bindEditor() {
+    const cw = $('edCW');
+    cw.addEventListener('pointerdown', function (e) {
+      if (ed.tab !== 'crop' || !ed.cr) return;
+      try { cw.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 2) { pinch = { d0: ptrDist(), cr0: Object.assign({}, ed.cr) }; gesture = null; return; }
+      if (ptrs.size > 2) return;
+      const p = edPoint(e), c = ed.cr;
+      const h = e.target && e.target.dataset ? e.target.dataset.h : null;
+      if (h) gesture = { type: h, cr0: Object.assign({}, c) };
+      else if (p.x >= c.x && p.x <= c.x + c.w && p.y >= c.y && p.y <= c.y + c.h) gesture = { type: 'move', p0: p, cr0: Object.assign({}, c) };
+      e.preventDefault();
+    });
+    cw.addEventListener('pointermove', function (e) {
+      if (!ptrs.has(e.pointerId) || !ed.cr) return;
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const ow = ed.orient.width, oh = ed.orient.height;
+      if (pinch && ptrs.size >= 2) {
+        const s = clampN(pinch.d0 / ptrDist(), 0.1, 3);
+        ed.cr = scaleRect(pinch.cr0, s, ow, oh, minPx());
+        placeCrop();
+        return;
+      }
+      if (!gesture) return;
+      const p = edPoint(e), g = gesture;
+      if (g.type === 'move') {
+        ed.cr = { x: clampN(g.cr0.x + p.x - g.p0.x, 0, ow - g.cr0.w), y: clampN(g.cr0.y + p.y - g.p0.y, 0, oh - g.cr0.h), w: g.cr0.w, h: g.cr0.h };
+      } else {
+        ed.cr = resizeCrop(g.type, g.cr0, p.x, p.y, ed.aspect, ow, oh, minPx());
+      }
+      placeCrop();
+    });
+    function up(e) {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2) pinch = null;
+      if (ptrs.size === 0) gesture = null;
+    }
+    cw.addEventListener('pointerup', up);
+    cw.addEventListener('pointercancel', up);
+    cw.addEventListener('wheel', function (e) {
+      if (ed.tab !== 'crop' || !ed.cr) return;
+      e.preventDefault();
+      ed.cr = scaleRect(ed.cr, e.deltaY > 0 ? 1.06 : 1 / 1.06, ed.orient.width, ed.orient.height, minPx());
+      placeCrop();
+    }, { passive: false });
+
+    document.querySelectorAll('#edTabs button').forEach(function (b) {
+      b.addEventListener('click', function () { if (ed.open && b.dataset.v !== ed.tab) showTab(b.dataset.v); });
+    });
+    document.querySelectorAll('#edAspects .chip').forEach(function (b) { b.addEventListener('click', function () { if (ed.cr) setAspect(b.dataset.a); }); });
+    $('edRot').addEventListener('click', function () {
+      if (!ed.cr) return;
+      ed.cr = rotateRectCW(ed.cr, ed.orient.width, ed.orient.height);
+      ed.tmp.rot = (ed.tmp.rot + 1) % 4;
+      buildOrient(); afterOrient(true);
+    });
+    $('edFlip').addEventListener('click', function () {
+      if (!ed.cr) return;
+      ed.cr = flipRectH(ed.cr, ed.orient.width);
+      ed.tmp.rot = (4 - ed.tmp.rot) % 4;
+      ed.tmp.flip = !ed.tmp.flip;
+      buildOrient(); afterOrient(false);
+    });
+    $('edResetCrop').addEventListener('click', function () {
+      if (!ed.cr) return;
+      ed.tmp.rot = 0; ed.tmp.flip = false; ed.tmp.crop = null;
+      buildOrient(); initCr();
+      ed.aspect = null; ed.key = 'free';
+      drawStage(ed.orient); placeCrop(); updateAspectChips();
+    });
+    $('edBw').addEventListener('change', function () { ed.tmp.f.bw = $('edBw').checked; scheduleFiltered(); });
+    SL.forEach(function (p) {
+      $(p[0]).addEventListener('input', function () {
+        ed.tmp.f[p[1]] = Number($(p[0]).value);
+        $(p[0] + 'O').textContent = $(p[0]).value;
+        scheduleFiltered();
+      });
+    });
+    $('edResetF').addEventListener('click', function () { ed.tmp.f = Object.assign({}, DEF_F); syncSliders(); scheduleFiltered(); });
+    $('edCancel').addEventListener('click', closeEditor);
+    $('edDone').addEventListener('click', edDone);
+    $('filtersAll').addEventListener('click', function () { if (state.files.length) openEditor(state.files[0], true); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ed.open) closeEditor(); });
+    window.addEventListener('resize', function () {
+      if (!ed.open || !ed.work) return;
+      if (ed.tab === 'crop' && ed.orient) { fitStage(ed.orient.width, ed.orient.height); placeCrop(); }
+      else if (ed.base) fitStage(ed.base.width, ed.base.height);
+    });
   }
 
   async function makePdf() {
@@ -864,6 +1422,7 @@ p { margin: 0; }
     if (mq.addEventListener) mq.addEventListener('change', drawSheet);
   }
 
+  bindEditor();
   loadPrefs();
   renderThumbs();
   update();
