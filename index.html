@@ -233,6 +233,17 @@ p { margin: 0; }
 #docBody .docx-wrapper { background: transparent !important; padding: 0 !important; display: block !important; }
 #docBody section.docx { box-shadow: 0 1px 6px rgba(0,0,0,.4) !important; margin: 0 0 12px 0 !important; background: #fff; color: #000; }
 #docBody [contenteditable] { outline: none; }
+section.docx > article, section.docx > header, section.docx > footer { position: relative; z-index: 1; }
+.pgbreak { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #e5484d; pointer-events: none; z-index: 3; }
+.pgbreak::after { content: attr(data-l); position: absolute; right: 6px; top: -18px; font: 600 11px sans-serif; color: #e5484d; background: #fff; padding: 0 4px; }
+.docimg { position: absolute; pointer-events: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+.docimg img { width: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
+.docimg .dh { display: none; position: absolute; right: -10px; bottom: -10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+.docimg.back { z-index: 0; } .docimg.front { z-index: 2; }
+#docBody.imgmode .docimg { pointer-events: auto; outline: 1px dashed var(--accent); cursor: move; }
+#docBody.imgmode .docimg.sel { outline: 2px solid var(--accent); }
+#docBody.imgmode .docimg.sel .dh { display: block; }
+#docBody.imgmode section.docx > article { pointer-events: none; }
 .xl-table { border-collapse: collapse; font: 11pt Calibri, Carlito, Arial, sans-serif; color: #000; background: #fff; }
 .xl-table td, .xl-table th { border: 1px solid #9aa4ab; padding: 2px 6px; white-space: pre-wrap; vertical-align: top; }
 .xl-sheet { background: #fff; padding: 24px; display: inline-block; }
@@ -556,6 +567,24 @@ p { margin: 0; }
       <option value="1">PDF horizontal</option>
     </select>
   </div>
+  <div class="doc-tools" id="docFmt">
+    <button class="btn" type="button" data-cmd="justifyLeft" aria-label="Alinear a la izquierda">Izq.</button>
+    <button class="btn" type="button" data-cmd="justifyCenter" aria-label="Centrar">Centro</button>
+    <button class="btn" type="button" data-cmd="justifyRight" aria-label="Alinear a la derecha">Der.</button>
+    <button class="btn" type="button" data-cmd="justifyFull" aria-label="Justificar">Justif.</button>
+    <select id="docLH" aria-label="Interlineado"><option value="">Interlineado</option><option value="1">1</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2</option><option value="2.5">2.5</option></select>
+    <label class="check" style="min-height:38px;flex:none"><input type="checkbox" id="docLHAll"> a todo</label>
+    <select id="docMargin" aria-label="Margen de las hojas"><option value="">Margen</option><option value="orig">Original</option><option value="1">1 cm</option><option value="1.5">1.5 cm</option><option value="2">2 cm</option><option value="2.54">2.54 cm</option><option value="3">3 cm</option></select>
+    <button class="btn" type="button" id="docImgBtn">Agregar imagen</button>
+    <input id="docImgIn" type="file" accept="image/*" hidden>
+    <button class="btn" type="button" id="docImgMode" aria-pressed="false">Mover imágenes</button>
+  </div>
+  <div class="doc-tools" id="docImgTools" hidden>
+    <label class="sl-inline">Tamaño <input type="range" id="docImgSize" min="5" max="100" value="40"></label>
+    <label class="sl-inline">Transparencia <input type="range" id="docImgAlpha" min="0" max="90" value="0"></label>
+    <button class="btn" type="button" id="docImgZ">Detrás del texto</button>
+    <button class="btn" type="button" id="docImgDel">Quitar imagen</button>
+  </div>
   <div class="doc-tools">
     <input id="docFind" type="text" placeholder="Buscar" autocomplete="off">
     <input id="docRepl" type="text" placeholder="Cambiar por" autocomplete="off">
@@ -679,7 +708,19 @@ p { margin: 0; }
       <p class="hint">Para pintar con precisión: acerca con dos dedos (pellizcar) o con los botones. Con dos dedos también mueves la foto; o usa «Mover».</p>
       <div class="sl"><label for="edBrush">Tamaño del pincel</label><output id="edBrushO">30</output><input type="range" id="edBrush" min="6" max="120" value="30"></div>
       <div class="sl" id="edTolRow" hidden><label for="edTol">Sensibilidad de la varita</label><output id="edTolO">30</output><input type="range" id="edTol" min="5" max="120" value="30"></div>
-      <p class="hint" id="edAiHint" hidden>Objeto IA (experimental): toca un objeto y la IA lo marca entero, como en Borrador Mágico. La primera vez descarga un modelo de unos 15–50 MB y necesita internet. Si falla, usa pincel o lazo.</p>
+      <p class="hint" id="edAiHint" hidden>Objeto IA (experimental): toca un objeto y la IA lo marca. La primera vez descarga un modelo de unos 15–50 MB y necesita internet. Si marca de más (por ejemplo el pie entero en vez de la media), elige «Pequeña», o toca con «Excluir» sobre lo que NO quieres quitar.</p>
+      <div id="edAiOpts" hidden>
+        <div class="seg" id="edAiLvl" role="group" aria-label="Tamaño de la selección">
+          <button type="button" data-v="0" aria-pressed="false">Pequeña</button>
+          <button type="button" data-v="1" aria-pressed="true">Media</button>
+          <button type="button" data-v="2" aria-pressed="false">Grande</button>
+        </div>
+        <div class="seg" id="edAiSign" role="group" aria-label="Qué hace cada toque" style="margin-top:8px">
+          <button type="button" data-v="1" aria-pressed="true">＋ Incluir</button>
+          <button type="button" data-v="0" aria-pressed="false">－ Excluir</button>
+        </div>
+        <div class="tools"><button class="btn" id="edAiNew" type="button">Objeto nuevo (sumar a lo marcado)</button></div>
+      </div>
       <p class="hint" id="edWandHint" hidden>Varita: toca una zona y se marca todo lo que tenga un color parecido y esté pegado. Sirve para marcar restos de fondo. Sube la sensibilidad para marcar más.</p>
       <div class="tools">
         <button class="btn primary" id="edErase" type="button">Eliminar objeto (rellenar)</button>
@@ -1867,7 +1908,7 @@ p { margin: 0; }
     const mk = $('edMask');
     resetZoom();
     drawStage(ed.work);
-    er.wand = null; er.samCtx = null;
+    er.wand = null; er.samCtx = null; er.aiPts = []; er.aiBase = null; er.aiRes = null;
     if (mk.width !== ed.work.width || mk.height !== ed.work.height) { mk.width = ed.work.width; mk.height = ed.work.height; er.stack = []; }
   }
 
@@ -2138,7 +2179,7 @@ p { margin: 0; }
         f.file = file; f.bgTouched = true;
         await reloadWork(f);
         mk.getContext('2d').clearRect(0, 0, mk.width, mk.height);
-        er.stack = []; er.wand = null; er.samCtx = null;
+        er.stack = []; er.wand = null; er.samCtx = null; er.aiPts = []; er.aiBase = null; er.aiRes = null;
         drawStage(ed.work);
         $('edEUndo').hidden = false;
         msg.textContent = 'Listo. Puedes seguir borrando o tocar «Listo» arriba para guardar.';
@@ -2210,7 +2251,7 @@ p { margin: 0; }
         f.file = file; f.bgTouched = true; f.cut = true;
         await reloadWork(f);
         mk.getContext('2d').clearRect(0, 0, W, H);
-        er.stack = []; er.wand = null; er.samCtx = null;
+        er.stack = []; er.wand = null; er.samCtx = null; er.aiPts = []; er.aiBase = null; er.aiRes = null;
         drawStage(ed.work);
         $('edEUndo').hidden = false;
         msg.textContent = 'Listo: lo marcado quedó transparente.';
@@ -2241,16 +2282,16 @@ p { margin: 0; }
             const emb = await model.get_image_embeddings(inputs);
             return { inputs: inputs, emb: emb };
           },
-          pick: async function (ctx, nx, ny) {
-            const rs = ctx.inputs.reshaped_input_sizes[0];
-            const pts = new T.Tensor('float32', [nx * rs[1], ny * rs[0]], [1, 1, 1, 2]);
-            const lbl = new T.Tensor('int64', [BigInt(1)], [1, 1, 1]);
+          pick: async function (ctx, points) {
+            const rs = ctx.inputs.reshaped_input_sizes[0], n = points.length, xy = [], lb = [];
+            points.forEach(function (q) { xy.push(q.x * rs[1], q.y * rs[0]); lb.push(BigInt(q.l)); });
+            const pts = new T.Tensor('float32', xy, [1, 1, n, 2]);
+            const lbl = new T.Tensor('int64', lb, [1, 1, n]);
             const out = await model(Object.assign({}, ctx.emb, { input_points: pts, input_labels: lbl }));
             const masks = await processor.post_process_masks(out.pred_masks, ctx.inputs.original_sizes, ctx.inputs.reshaped_input_sizes);
-            const m = masks[0], H = m.dims[2], W = m.dims[3], sc = out.iou_scores.data;
-            let best = 0;
-            for (let k = 1; k < sc.length; k++) if (sc[k] > sc[best]) best = k;
-            return { w: W, h: H, mask: m.data.slice(best * H * W, (best + 1) * H * W) };
+            const m = masks[0], H = m.dims[2], W = m.dims[3], list = [];
+            for (let k = 0; k < m.dims[1]; k++) list.push(m.data.slice(k * H * W, (k + 1) * H * W));
+            return { w: W, h: H, masks: list };
           }
         };
       })().catch(function (e) { samP = null; throw e; });
@@ -2372,6 +2413,27 @@ p { margin: 0; }
     return out;
   }
 
+  function aiDraw(res) {
+    const W = ed.work.width, H = ed.work.height, mc = $('edMask').getContext('2d');
+    if (!er.aiBase) er.aiBase = mc.getImageData(0, 0, W, H);
+    const md = new ImageData(new Uint8ClampedArray(er.aiBase.data), W, H), d = md.data;
+    const list = res.masks || [res.mask];
+    let lv = parseInt(segVal('edAiLvl') || '1', 10);
+    if (lv >= list.length) lv = list.length - 1;
+    const mask = list[lv];
+    let cnt = 0;
+    for (let y = 0; y < H; y++) {
+      const sy = Math.min(res.h - 1, Math.floor(y * res.h / H));
+      for (let x = 0; x < W; x++) {
+        const sx = Math.min(res.w - 1, Math.floor(x * res.w / W));
+        if (mask[sy * res.w + sx]) { const k = (y * W + x) * 4; d[k] = 255; d[k + 1] = 45; d[k + 2] = 85; d[k + 3] = 255; cnt++; }
+      }
+    }
+    mc.putImageData(md, 0, 0);
+    return cnt;
+  }
+  function aiNewObject() { er.aiPts = []; er.aiBase = null; er.aiRes = null; }
+
   async function aiPick(p) {
     if (er.busy) return;
     er.busy = true;
@@ -2381,18 +2443,15 @@ p { margin: 0; }
       const W = ed.work.width, H = ed.work.height;
       if (!er.samCtx) { aiMsg('Analizando la foto… (puede tardar unos segundos)'); er.samCtx = await sam.prepare(ed.work); await yieldUI(); }
       aiMsg('Buscando el objeto…');
-      const res = await sam.pick(er.samCtx, p.x / W, p.y / H);
-      const mc = $('edMask').getContext('2d'), md = mc.getImageData(0, 0, W, H), d = md.data;
-      let cnt = 0;
-      for (let y = 0; y < H; y++) {
-        const sy = Math.min(res.h - 1, Math.floor(y * res.h / H));
-        for (let x = 0; x < W; x++) {
-          const sx = Math.min(res.w - 1, Math.floor(x * res.w / W));
-          if (res.mask[sy * res.w + sx]) { const k = (y * W + x) * 4; d[k] = 255; d[k + 1] = 45; d[k + 2] = 85; d[k + 3] = 255; cnt++; }
-        }
-      }
-      mc.putImageData(md, 0, 0);
-      aiMsg(cnt ? 'Objeto marcado. Toca otro para sumar, o pulsa «Eliminar con IA».' : 'No encontré un objeto ahí; toca en otro punto.');
+      if (!er.aiPts) er.aiPts = [];
+      const sign = parseInt(segVal('edAiSign') || '1', 10);
+      if (!er.aiPts.length) er.aiBase = null;
+      er.aiPts.push({ x: p.x / W, y: p.y / H, l: sign });
+      if (!er.aiBase) { const mc0 = $('edMask').getContext('2d'); er.aiBase = mc0.getImageData(0, 0, W, H); }
+      const res = await sam.pick(er.samCtx, er.aiPts);
+      er.aiRes = res;
+      const cnt = aiDraw(res);
+      aiMsg(cnt ? 'Marcado. ¿Marcó demasiado? Elige «Pequeña» o toca con «Excluir» lo que no quieres quitar. Luego pulsa «Eliminar con IA».' : 'No encontré un objeto ahí; toca en otro punto.');
     } catch (e) {
       aiMsg('No se pudo usar la IA (' + (e && e.message ? e.message : 'error') + '). Revisa tu conexión a internet; mientras tanto usa pincel o lazo.');
     }
@@ -2420,7 +2479,7 @@ p { margin: 0; }
         f.file = file; f.bgTouched = true;
         await reloadWork(f);
         mk.getContext('2d').clearRect(0, 0, mk.width, mk.height);
-        er.stack = []; er.wand = null; er.samCtx = null;
+        er.stack = []; er.wand = null; er.samCtx = null; er.aiPts = []; er.aiBase = null; er.aiRes = null;
         drawStage(ed.work);
         $('edEUndo').hidden = false;
         aiMsg('Listo. Puedes seguir o tocar «Listo» arriba para guardar.');
@@ -2490,6 +2549,7 @@ p { margin: 0; }
       er.stack.push(c.getImageData(0, 0, mk.width, mk.height));
       if (er.stack.length > 8) er.stack.shift();
       const p = edPoint(e);
+      if (tool !== 'ai') aiNewObject();
       if (tool === 'wand') { wandAt(p); return; }
       if (tool === 'ai') { aiPick(p); return; }
       paint = { last: p, pts: [p], id: e.pointerId };
@@ -2544,16 +2604,22 @@ p { margin: 0; }
     $('edZfit').addEventListener('click', resetZoom);
     document.querySelectorAll('#edTool button').forEach(function (b) { b.addEventListener('click', function () {
       segSet('edTool', b.dataset.v);
-      $('edTolRow').hidden = b.dataset.v !== 'wand'; $('edWandHint').hidden = b.dataset.v !== 'wand'; $('edAiHint').hidden = b.dataset.v !== 'ai';
+      $('edTolRow').hidden = b.dataset.v !== 'wand'; $('edWandHint').hidden = b.dataset.v !== 'wand'; $('edAiHint').hidden = b.dataset.v !== 'ai'; $('edAiOpts').hidden = b.dataset.v !== 'ai';
     }); });
+    document.querySelectorAll('#edAiLvl button').forEach(function (b) { b.addEventListener('click', function () {
+      segSet('edAiLvl', b.dataset.v);
+      if (er.aiRes && !er.busy) { aiDraw(er.aiRes); }
+    }); });
+    document.querySelectorAll('#edAiSign button').forEach(function (b) { b.addEventListener('click', function () { segSet('edAiSign', b.dataset.v); }); });
+    $('edAiNew').addEventListener('click', function () { aiNewObject(); aiMsg('Listo: toca el siguiente objeto.'); });
     $('edTol').addEventListener('input', function () { $('edTolO').textContent = $('edTol').value; });
     $('edTrans').addEventListener('click', eraseTrans);
     $('edEraseAI').addEventListener('click', eraseAI);
     $('edSavePng').addEventListener('click', saveOnePng);
     $('pngAll').addEventListener('click', saveAllPng);
     $('edBrush').addEventListener('input', function () { $('edBrushO').textContent = $('edBrush').value; });
-    $('edMUndo').addEventListener('click', function () { const s = er.stack.pop(); if (s) ctx2().putImageData(s, 0, 0); });
-    $('edMClear').addEventListener('click', function () { ctx2().clearRect(0, 0, mk.width, mk.height); er.stack = []; });
+    $('edMUndo').addEventListener('click', function () { const s = er.stack.pop(); if (s) ctx2().putImageData(s, 0, 0); aiNewObject(); });
+    $('edMClear').addEventListener('click', function () { ctx2().clearRect(0, 0, mk.width, mk.height); er.stack = []; aiNewObject(); });
     $('edErase').addEventListener('click', eraseGo);
     $('edEUndo').addEventListener('click', bgUndo);
   }
@@ -3834,9 +3900,10 @@ p { margin: 0; }
         await loadLib('jszip'); await loadLib('docx'); await loadLib('h2c');
         await window.docx.renderAsync(buf, $('docBody'), null, {
           className: 'docx', inWrapper: true, ignoreWidth: false, ignoreHeight: false, breakPages: true,
-          ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, useBase64URL: true
+          ignoreLastRenderedPageBreak: false, renderHeaders: true, renderFooters: true, useBase64URL: true
         });
         $('docBody').querySelectorAll('section.docx > article').forEach(function (a) { a.setAttribute('contenteditable', 'true'); });
+        $('docBody').querySelectorAll('section.docx').forEach(function (sec) { sec.dataset.pad0 = sec.style.padding || ''; });
       } else {
         await loadLib('xlsx'); await loadLib('h2c');
         const wb = window.XLSX.read(buf, { type: 'array' });
@@ -3844,6 +3911,9 @@ p { margin: 0; }
         $('docOrient').value = '0';
       }
       fitDoc();
+      $('docFmt').hidden = dc.kind !== 'docx';
+      $('docImgTools').hidden = true; $('docBody').classList.remove('imgmode'); $('docImgMode').setAttribute('aria-pressed', 'false');
+      if (dc.kind === 'docx') markPages();
       if (dc.kind === 'xlsx') {
         const t = $('docBody').querySelector('.xl-sheet:not([hidden]) table');
         const p = PAPERS[state.paper];
@@ -4055,6 +4125,167 @@ p { margin: 0; }
   function mm2px(mm) { return mm * 96 / 25.4; }
 
   // Arma las hojas del Excel: cada página lleva las filas que caben, escalada al ancho de la hoja de papel.
+  // ---- Hojas del documento: dónde corta cada página ----
+  function docNomH(sec) { return Math.max(parseFloat(getComputedStyle(sec).minHeight) || 1056, 200); }
+
+  function computeCuts(sec, nomH) {
+    const H = sec.offsetHeight;
+    if (H <= nomH * 1.12) return [];
+    const cs = getComputedStyle(sec), mt = parseFloat(cs.paddingTop) || 0, mb = parseFloat(cs.paddingBottom) || 0;
+    const sr = sec.getBoundingClientRect(), k = sr.width / (sec.offsetWidth || 1) || 1;
+    const bots = [];
+    sec.querySelectorAll('article p, article li, article h1, article h2, article h3, article h4, article h5, article h6, article tr, article img').forEach(function (el) {
+      if ((el.tagName === 'P' || el.tagName === 'LI') && el.closest('tr')) return;
+      bots.push((el.getBoundingClientRect().bottom - sr.top) / k);
+    });
+    bots.sort(function (a, b) { return a - b; });
+    const cuts = [];
+    let start = 0;
+    for (let g = 0; g < 300; g++) {
+      const cap = start === 0 ? nomH : nomH - mt;
+      if (H - start <= cap + 1) break;
+      const limit = start + cap - mb, minC = start + 0.3 * (cap - mb);
+      let c = -1;
+      for (let i = 0; i < bots.length; i++) if (bots[i] <= limit + 0.5 && bots[i] > minC) c = bots[i];
+      if (c < 0) c = limit;
+      cuts.push(c); start = c;
+    }
+    return cuts;
+  }
+
+  let markT = 0;
+  function markPages() {
+    if (dc.kind !== 'docx') return;
+    $('docBody').querySelectorAll('section.docx').forEach(function (sec) {
+      sec.querySelectorAll(':scope > .pgbreak').forEach(function (e) { e.remove(); });
+      computeCuts(sec, docNomH(sec)).forEach(function (c, i) {
+        const d = document.createElement('div');
+        d.className = 'pgbreak'; d.setAttribute('contenteditable', 'false'); d.dataset.l = 'Aquí empieza la hoja ' + (i + 2);
+        d.style.top = c + 'px';
+        sec.appendChild(d);
+      });
+    });
+    fitDoc();
+  }
+  function markSoon() { clearTimeout(markT); markT = setTimeout(markPages, 500); }
+
+  // ---- Imágenes flotantes dentro de la hoja ----
+  function docSecAtCursor() {
+    const sel = window.getSelection();
+    let n = dc.lastRange ? dc.lastRange.commonAncestorContainer : (sel && sel.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null);
+    while (n && !(n.nodeType === 1 && n.matches && n.matches('section.docx'))) n = n.parentNode;
+    return n || $('docBody').querySelector('section.docx');
+  }
+  function docScale() { const b = $('docBody'); return b.getBoundingClientRect().width / (b.offsetWidth || 1) || 1; }
+
+  function selectDocImg(el) {
+    $('docBody').querySelectorAll('.docimg.sel').forEach(function (e) { e.classList.remove('sel'); });
+    dc.img = el || null;
+    if (el) {
+      el.classList.add('sel');
+      const sec = el.parentNode;
+      $('docImgSize').value = Math.round(el.offsetWidth / sec.offsetWidth * 100);
+      $('docImgAlpha').value = Math.round((1 - (parseFloat(el.style.opacity) || 1)) * 100);
+      $('docImgZ').textContent = el.classList.contains('back') ? 'Detrás del texto' : 'Delante del texto';
+    }
+  }
+
+  function setImgMode(on) {
+    $('docBody').classList.toggle('imgmode', on);
+    $('docImgMode').setAttribute('aria-pressed', String(on));
+    $('docImgTools').hidden = !on;
+    if (!on) selectDocImg(null);
+  }
+
+  function addDocImage(file) {
+    const rd = new FileReader();
+    rd.onload = function () {
+      const im = new Image();
+      im.onload = function () {
+        const sec = docSecAtCursor();
+        if (!sec) { docNote('Primero abre un documento de Word.', true); return; }
+        const w = Math.min(sec.offsetWidth * 0.5, im.naturalWidth);
+        const wrap = document.createElement('div');
+        wrap.className = 'docimg back';
+        wrap.setAttribute('contenteditable', 'false');
+        wrap.style.cssText = 'left:' + Math.round((sec.offsetWidth - w) / 2) + 'px;top:' + Math.round(Math.min(sec.offsetHeight - 80, 140)) + 'px;width:' + Math.round(w) + 'px;';
+        const g = document.createElement('img'); g.src = rd.result; g.alt = '';
+        const h = document.createElement('i'); h.className = 'dh';
+        wrap.appendChild(g); wrap.appendChild(h);
+        sec.appendChild(wrap);
+        setImgMode(true); selectDocImg(wrap);
+        docHideResult();
+        docNote('Arrastra la imagen para moverla y el círculo para cambiar su tamaño. Cuando termines pulsa «Mover imágenes» para volver al texto.');
+      };
+      im.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  }
+
+  function bindDocFmt() {
+    $('docImgBtn').addEventListener('click', function () { $('docImgIn').click(); });
+    $('docImgIn').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; if (f) addDocImage(f); setTimeout(function () { e.target.value = ''; }, 0); });
+    $('docImgMode').addEventListener('click', function () { setImgMode($('docBody').classList.contains('imgmode') ? false : true); });
+    $('docImgSize').addEventListener('input', function () { if (dc.img) { dc.img.style.width = Math.round(dc.img.parentNode.offsetWidth * $('docImgSize').value / 100) + 'px'; docHideResult(); } });
+    $('docImgAlpha').addEventListener('input', function () { if (dc.img) { dc.img.style.opacity = String(1 - $('docImgAlpha').value / 100); docHideResult(); } });
+    $('docImgZ').addEventListener('click', function () {
+      if (!dc.img) return;
+      const back = dc.img.classList.contains('back');
+      dc.img.classList.toggle('back', !back); dc.img.classList.toggle('front', back);
+      $('docImgZ').textContent = back ? 'Delante del texto' : 'Detrás del texto';
+      docHideResult();
+    });
+    $('docImgDel').addEventListener('click', function () { if (dc.img) { dc.img.remove(); dc.img = null; docHideResult(); } });
+    let drag = null;
+    const body = $('docBody');
+    body.addEventListener('pointerdown', function (e) {
+      if (!body.classList.contains('imgmode')) return;
+      const el = e.target.closest && e.target.closest('.docimg');
+      if (!el) return;
+      e.preventDefault();
+      selectDocImg(el);
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+      const k = docScale();
+      drag = { el: el, id: e.pointerId, resize: e.target.classList && e.target.classList.contains('dh'), x: e.clientX, y: e.clientY, l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, k: k };
+    });
+    body.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = (e.clientX - drag.x) / drag.k, dy = (e.clientY - drag.y) / drag.k;
+      if (drag.resize) {
+        const w = Math.max(24, drag.w + dx);
+        drag.el.style.width = Math.round(w) + 'px';
+        $('docImgSize').value = Math.round(w / drag.el.parentNode.offsetWidth * 100);
+      } else { drag.el.style.left = Math.round(drag.l + dx) + 'px'; drag.el.style.top = Math.round(drag.t + dy) + 'px'; }
+      docHideResult();
+    });
+    function up(e) { if (drag && e.pointerId === drag.id) drag = null; }
+    body.addEventListener('pointerup', up); body.addEventListener('pointercancel', up);
+    // recordar la selección de texto (los menús la pueden perder)
+    document.addEventListener('selectionchange', function () {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && $('docBody').contains(sel.anchorNode)) dc.lastRange = sel.getRangeAt(0).cloneRange();
+    });
+    $('docLH').addEventListener('change', function () {
+      const v = $('docLH').value;
+      if (!v) return;
+      const sel = 'article p, article li, article h1, article h2, article h3, article h4, article h5, article h6';
+      let els = [];
+      if ($('docLHAll').checked) els = Array.from($('docBody').querySelectorAll(sel));
+      else if (dc.lastRange) { const r = dc.lastRange; els = Array.from($('docBody').querySelectorAll(sel)).filter(function (el) { try { return r.intersectsNode(el); } catch (e) { return false; } }); }
+      if (!els.length) docNote('Pon el cursor en el párrafo (o marca «a todo») y vuelve a elegir el interlineado.', true);
+      else { els.forEach(function (el) { el.style.lineHeight = v; }); docNote(''); docHideResult(); markPages(); }
+      $('docLH').value = '';
+    });
+    $('docMargin').addEventListener('change', function () {
+      const v = $('docMargin').value;
+      if (!v) return;
+      $('docBody').querySelectorAll('section.docx').forEach(function (sec) { sec.style.padding = v === 'orig' ? (sec.dataset.pad0 || '') : v + 'cm'; });
+      $('docMargin').value = '';
+      docHideResult(); markPages();
+    });
+    $('docBody').addEventListener('input', markSoon);
+  }
+
   function buildXlPages(holder) {
     const src = $('docBody').querySelector('.xl-sheet:not([hidden]) table');
     if (!src) return [];
@@ -4116,39 +4347,63 @@ p { margin: 0; }
           const cs = getComputedStyle(sec);
           const clone = sec.cloneNode(true);
           clone.style.boxShadow = 'none'; clone.style.margin = '0';
+          clone.querySelectorAll('.pgbreak, .dh').forEach(function (e) { e.remove(); });
+          clone.querySelectorAll('.docimg').forEach(function (e) { e.classList.remove('sel'); e.style.outline = 'none'; });
           holder.appendChild(clone);
-          const w = sec.offsetWidth, h = Math.max(sec.offsetHeight, 1);
+          const w = sec.offsetWidth, h = Math.max(clone.offsetHeight, 1);
           const nomH = Math.max(parseFloat(cs.minHeight) || h, 1);
-          pages.push({ el: clone, w: w, h: h, nomH: nomH, pwMM: w * 25.4 / 96, phMM: nomH * 25.4 / 96, fill: false });
+          pages.push({ el: clone, w: w, h: h, nomH: nomH, pwMM: w * 25.4 / 96, phMM: nomH * 25.4 / 96, fill: false, cuts: computeCuts(clone, nomH), mt: parseFloat(cs.paddingTop) || 0 });
         });
       } else {
         pages = buildXlPages(holder);
       }
       if (!pages.length) throw new Error('El documento está vacío');
       const jsPDF = window.jspdf.jsPDF;
-      let doc = null;
+      let doc = null, outPages = 0;
       for (let i = 0; i < pages.length; i++) {
         const pg = pages[i];
         docNote('Creando página ' + (i + 1) + ' de ' + pages.length + '…');
         $('docProgWrap').hidden = false; $('docProg').style.width = Math.round(i / pages.length * 100) + '%';
         await yieldUI();
-        const cv = await window.html2canvas(pg.el, { scale: Math.min(2.5, Math.max(0.6, 2200 / pg.w)), backgroundColor: '#ffffff', logging: false, useCORS: true });
-        const data = cv.toDataURL('image/jpeg', 0.92);
-        cv.width = 1; cv.height = 1;
+        const sc0 = Math.min(2.5, Math.max(0.6, 2200 / pg.w), Math.sqrt(25e6 / (pg.w * pg.h)), 15000 / pg.h);
+        const cv = await window.html2canvas(pg.el, { scale: sc0, backgroundColor: '#ffffff', logging: false, useCORS: true });
         const short = Math.min(pg.pwMM, pg.phMM), long = Math.max(pg.pwMM, pg.phMM);
         const orient = pg.pwMM > pg.phMM ? 'landscape' : 'portrait';
-        if (!doc) doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
-        else doc.addPage([short, long], orient);
-        let dw = pg.pwMM, dh = pg.fill ? pg.phMM : pg.h * 25.4 / 96;
-        if (!pg.fill && pg.h > pg.nomH) { const k = pg.nomH / pg.h; dw *= k; dh *= k; }
-        doc.addImage(data, 'JPEG', 0, 0, dw, dh, undefined, 'FAST');
+        const ks = cv.height / pg.h;
+        const slices = !pg.fill && pg.cuts && pg.cuts.length ? [0].concat(pg.cuts, [pg.h]) : null;
+        if (slices) {
+          for (let j = 0; j < slices.length - 1; j++) {
+            const pc = document.createElement('canvas');
+            pc.width = cv.width; pc.height = Math.round(pg.nomH * ks);
+            const px2 = pc.getContext('2d');
+            px2.fillStyle = '#fff'; px2.fillRect(0, 0, pc.width, pc.height);
+            const sy = Math.round(slices[j] * ks), sh = Math.max(1, Math.min(cv.height - sy, Math.round((slices[j + 1] - slices[j]) * ks)));
+            px2.drawImage(cv, 0, sy, cv.width, sh, 0, j > 0 ? Math.round(pg.mt * ks) : 0, cv.width, sh);
+            const d2 = pc.toDataURL('image/jpeg', 0.92);
+            pc.width = 1; pc.height = 1;
+            if (!doc) doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
+            else doc.addPage([short, long], orient);
+            doc.addImage(d2, 'JPEG', 0, 0, pg.pwMM, pg.phMM, undefined, 'FAST');
+            outPages++;
+          }
+          cv.width = 1; cv.height = 1;
+        } else {
+          const data = cv.toDataURL('image/jpeg', 0.92);
+          cv.width = 1; cv.height = 1;
+          if (!doc) doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
+          else doc.addPage([short, long], orient);
+          let dw = pg.pwMM, dh = pg.fill ? pg.phMM : pg.h * 25.4 / 96;
+          if (!pg.fill && pg.h > pg.nomH) { const k = pg.nomH / pg.h; dw *= k; dh *= k; }
+          doc.addImage(data, 'JPEG', 0, 0, dw, dh, undefined, 'FAST');
+          outPages++;
+        }
       }
       const blob = doc.output('blob');
       dc.blob = blob; dc.url = URL.createObjectURL(blob);
       dc.pdfName = dc.name.replace(/\.[^.]+$/, '') + '.pdf';
       $('docName').value = dc.pdfName.replace(/\.pdf$/i, '');
       $('docOpen').href = dc.url;
-      $('docResultText').textContent = 'PDF listo · ' + pages.length + (pages.length === 1 ? ' hoja' : ' hojas') + ' · ' + (blob.size / 1048576).toFixed(1) + ' MB';
+      $('docResultText').textContent = 'PDF listo · ' + outPages + (outPages === 1 ? ' hoja' : ' hojas') + ' · ' + (blob.size / 1048576).toFixed(1) + ' MB';
       $('docResult').hidden = false;
       docNote('');
     } catch (e) {
@@ -4251,6 +4506,7 @@ p { margin: 0; }
   bindText();
   bindMini();
   bindDoc();
+  bindDocFmt();
   bindPx();
   loadPrefs();
   renderThumbs();
