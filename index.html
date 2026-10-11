@@ -236,6 +236,13 @@ p { margin: 0; }
 .xl-table { border-collapse: collapse; font: 11pt Calibri, Carlito, Arial, sans-serif; color: #000; background: #fff; }
 .xl-table td, .xl-table th { border: 1px solid #9aa4ab; padding: 2px 6px; white-space: pre-wrap; vertical-align: top; }
 .xl-sheet { background: #fff; padding: 24px; display: inline-block; }
+.pxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.pxt { position: relative; padding: 0; border: 3px solid transparent; border-radius: 10px; background: #fff; overflow: hidden; cursor: pointer; aspect-ratio: 1; display: grid; place-items: center; }
+.pxt img { max-width: 100%; max-height: 100%; display: block; }
+.pxt[aria-pressed="true"] { border-color: var(--accent); }
+.pxt .tick { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); color: var(--accent); font-weight: 800; display: grid; place-items: center; font-size: 14px; }
+.pxt[aria-pressed="false"] .tick { color: transparent; }
+.pxt .cap { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; padding: 2px 4px; text-align: center; }
 .doc-bar { background: var(--surface); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
 .doc-bar p { font-weight: 600; margin-bottom: 8px; }
 .sl-inline { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; font-size: 0.875rem; color: var(--muted); }
@@ -400,6 +407,12 @@ p { margin: 0; }
           <div class="field"><label for="txStrokeColor">Color del borde</label><input type="color" id="txStrokeColor" value="#15212b"></div>
           <div class="field"><label for="txStrokeW">Grosor del borde</label><input type="range" id="txStrokeW" min="1" max="20" value="6"></div>
         </div>
+        <label class="check"><input type="checkbox" id="tx3d"> Efecto 3D</label>
+        <div class="fields" id="tx3dRow" hidden>
+          <div class="field"><label for="tx3dDir">Hacia dónde</label><select id="tx3dDir"><option value="se">↘ abajo a la derecha</option><option value="sw">↙ abajo a la izquierda</option><option value="ne">↗ arriba a la derecha</option><option value="nw">↖ arriba a la izquierda</option></select></div>
+          <div class="field"><label for="tx3dD">Profundidad</label><input type="range" id="tx3dD" min="5" max="100" value="40"></div>
+          <div class="field"><label for="tx3dColor">Color del lado</label><input type="color" id="tx3dColor" value="#7a1642"></div>
+        </div>
         <label class="check tx-gap"><input type="checkbox" id="txPoster"> Repartir en varias hojas (póster gigante)</label>
         <div class="field" id="txPosterRow" hidden><label for="txPosterW">Ancho total del texto (cm)</label><input type="number" id="txPosterW" min="10" max="600" step="1" value="60" inputmode="numeric">
           <p class="hint">El tamaño de letra sale de este ancho. Se reparte en las hojas que hagan falta; recórtalas por los márgenes y únelas en orden (de izquierda a derecha, fila por fila).</p></div>
@@ -412,13 +425,13 @@ p { margin: 0; }
       </details>
 
       <details class="group">
-        <summary>Documentos Word o Excel</summary>
+        <summary>Documentos Word, Excel o PDF</summary>
         <div class="gbody">
         <div class="row">
-          <label class="btn" for="docFile">Abrir Word o Excel</label>
-          <input id="docFile" type="file" accept=".docx,.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+          <label class="btn" for="docFile">Abrir Word, Excel o PDF</label>
+          <input id="docFile" type="file" hidden>
         </div>
-        <p class="hint">Abre un .docx o .xlsx, corrige lo que haga falta con el dedo y guárdalo en PDF para imprimir. Es independiente de las fotos de arriba. Puede verse un poco distinto al original.</p>
+        <p class="hint">Abre un .docx o .xlsx, corrige lo que haga falta con el dedo y guárdalo en PDF para imprimir. Es independiente de las fotos de arriba. Puede verse un poco distinto al original. Si eliges un PDF, saca las imágenes que trae dentro para guardarlas o agregarlas a tus fotos.</p>
         </div>
       </details>
 
@@ -459,6 +472,8 @@ p { margin: 0; }
           <button class="btn" id="selReset" type="button">Quitar encuadre</button>
           <button class="btn" id="selSmaller" type="button" aria-label="Más chica">− Chica</button>
           <button class="btn" id="selBigger" type="button" aria-label="Más grande">+ Grande</button>
+          <button class="btn" id="selPrevPg" type="button">← A la hoja anterior</button>
+          <button class="btn" id="selNextPg" type="button">A la hoja siguiente →</button>
           <button class="btn" id="selDup" type="button">Duplicar</button>
           <button class="btn" id="selDel" type="button">Eliminar</button>
           <button class="btn" id="selEdit" type="button">Editar foto</button>
@@ -478,6 +493,11 @@ p { margin: 0; }
         <div class="row">
           <button class="btn primary" id="saveBtn" type="button">Guardar PDF</button>
           <a class="btn" id="openBtn" target="_blank" rel="noopener">Abrir PDF</a>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <select id="imgFmt" aria-label="Formato de imagen"><option value="png">PNG</option><option value="jpg">JPG</option></select>
+          <select id="imgDpi" aria-label="Calidad de la imagen"><option value="150">150 dpi (liviana)</option><option value="200" selected>200 dpi</option><option value="300">300 dpi (grande)</option></select>
+          <button class="btn" id="imgSave" type="button">Guardar como imagen</button>
         </div>
       </div>
     </section>
@@ -533,6 +553,29 @@ p { margin: 0; }
   </div>
 </div>
 
+<div class="ed" id="px" role="dialog" aria-modal="true" aria-label="Imágenes del PDF" hidden>
+  <div class="ed-top">
+    <button class="btn" id="pxClose" type="button">Cerrar</button>
+    <strong id="pxTitle">PDF</strong>
+    <span style="width:64px"></span>
+  </div>
+  <div class="doc-tools">
+    <button class="btn" id="pxAll" type="button">Todas</button>
+    <button class="btn" id="pxNone" type="button">Ninguna</button>
+    <select id="pxFmt" aria-label="Formato"><option value="jpg">JPG</option><option value="png">PNG</option></select>
+  </div>
+  <div class="doc-scroll"><div class="pxgrid" id="pxGrid"></div></div>
+  <div class="doc-bar">
+    <div id="pxNote" class="note" role="status" aria-live="polite" style="margin:0 0 6px"></div>
+    <div class="row">
+      <button class="btn primary" id="pxSave" type="button" disabled>Guardar imágenes</button>
+      <button class="btn" id="pxAdd" type="button" disabled>Agregar a mis fotos</button>
+      <button class="btn" id="pxPages" type="button" disabled>Hojas como imagen</button>
+    </div>
+    <div class="prog" id="pxProgWrap" hidden><div id="pxProg"></div></div>
+  </div>
+</div>
+
 <div class="ed" id="ed" role="dialog" aria-modal="true" aria-label="Editar foto" hidden>
   <div class="ed-top">
     <button class="btn" id="edCancel" type="button">Cancelar</button>
@@ -553,6 +596,7 @@ p { margin: 0; }
     <div class="seg" id="edTabs" role="group" aria-label="Herramienta">
       <button type="button" data-v="crop" aria-pressed="true">Recortar</button>
       <button type="button" data-v="filters" aria-pressed="false">Filtros</button>
+      <button type="button" data-v="bg" aria-pressed="false">Fondo</button>
     </div>
 
     <div id="edCropPanel">
@@ -573,6 +617,15 @@ p { margin: 0; }
         <button class="btn" id="edResetCrop" type="button">Quitar recorte</button>
       </div>
       <p class="hint">Arrastra el recuadro para moverlo y las esquinas para cambiar su tamaño. Con dos dedos lo ampliás o lo reducís.</p>
+    </div>
+
+    <div id="edBgPanel" hidden>
+      <p class="hint" style="margin-top:0">Quita el fondo de la foto con inteligencia artificial. La primera vez descarga un modelo (unos 40 MB), necesita internet y puede tardar en el celular. La foto queda con fondo transparente (se ve blanco al imprimir).</p>
+      <div class="tools">
+        <button class="btn primary" id="edBgGo" type="button">Quitar fondo</button>
+        <button class="btn" id="edBgUndo" type="button" hidden>Volver al original</button>
+      </div>
+      <p class="hint" id="edBgMsg" role="status"></p>
     </div>
 
     <div id="edFilterPanel" hidden>
@@ -1390,11 +1443,10 @@ p { margin: 0; }
     const cv = document.createElement('canvas');
     cv.width = wPx; cv.height = hPx;
     const cx = cv.getContext('2d');
-    cx.fillStyle = '#ffffff';
-    cx.fillRect(0, 0, wPx, hPx);
+    if (!f.origFile) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, wPx, hPx); }
     cx.imageSmoothingQuality = 'high';
     drawTile(cx, crop, 0, 0, wPx, hPx, view ? 'view' : mode, rot, view);
-    const data = cv.toDataURL('image/jpeg', 0.92);
+    const data = f.origFile ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.92);
     cv.width = 1; cv.height = 1; crop.width = 1; crop.height = 1;
     return data;
   }
@@ -1500,6 +1552,7 @@ p { margin: 0; }
     ed.tab = tab;
     $('edCropPanel').hidden = tab !== 'crop';
     $('edFilterPanel').hidden = tab !== 'filters';
+    $('edBgPanel').hidden = tab !== 'bg';
     document.querySelectorAll('#edTabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === tab)); });
     if (tab === 'crop') {
       buildOrient(); initCr();
@@ -1509,6 +1562,7 @@ p { margin: 0; }
       placeCrop(); updateAspectChips();
     } else {
       if (ed.cr) saveCrop();
+      if (tab === 'bg') $('edBgUndo').hidden = !ed.f.origFile;
       ed.base = renderCrop(ed.work, ed.tmp, 720);
       $('edCrop').hidden = true;
       drawFiltered();
@@ -1594,8 +1648,87 @@ p { margin: 0; }
   }
   function clampN(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
+  // ---- Quitar fondo (IA en el propio dispositivo) ----
+  let bgLib = null;
+  async function getRemover() {
+    if (window.__removeBg) return window.__removeBg;
+    if (!bgLib) bgLib = import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/+esm');
+    const m = await bgLib;
+    return function (blob, progress) {
+      return m.removeBackground(blob, { model: 'isnet_quint8', output: { format: 'image/png' }, progress: progress });
+    };
+  }
+
+  function smallOf(img, w, h) {
+    const s = Math.min(1, 800 / Math.max(w, h));
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(w * s)); cv.height = Math.max(1, Math.round(h * s));
+    const cx = cv.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(img, 0, 0, cv.width, cv.height);
+    return cv;
+  }
+
+  async function reloadWork(f) {
+    const r = await loadImg(f.file);
+    const iw = r.img.naturalWidth, ih = r.img.naturalHeight;
+    const w = document.createElement('canvas');
+    const s = Math.min(1, 1600 / Math.max(iw, ih));
+    w.width = Math.max(1, Math.round(iw * s)); w.height = Math.max(1, Math.round(ih * s));
+    w.getContext('2d').drawImage(r.img, 0, 0, w.width, w.height);
+    ed.work = w;
+    f.small = smallOf(r.img, iw, ih); f.sw = iw; f.sh = ih;
+    URL.revokeObjectURL(r.url);
+  }
+
+  async function bgRemove() {
+    const f = ed.f, msg = $('edBgMsg'), go = $('edBgGo');
+    if (!f || go.disabled) return;
+    go.disabled = true; $('edBgUndo').disabled = true;
+    msg.textContent = 'Preparando…';
+    try {
+      const remove = await getRemover();
+      // reducir la foto para que el celular aguante
+      const r0 = await loadImg(f.file);
+      const iw = r0.img.naturalWidth, ih = r0.img.naturalHeight, s = Math.min(1, 2000 / Math.max(iw, ih));
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(iw * s)); cv.height = Math.max(1, Math.round(ih * s));
+      cv.getContext('2d').drawImage(r0.img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(r0.url);
+      const inBlob = await new Promise(function (res) { cv.toBlob(res, 'image/png'); });
+      const out = await remove(inBlob, function (key, cur, tot) {
+        msg.textContent = (String(key).indexOf('fetch') === 0 ? 'Descargando modelo… ' : 'Procesando… ') + (tot ? Math.round(cur / tot * 100) + '%' : '');
+      });
+      const file = new File([out], f.name.replace(/\.[^.]+$/, '') + '-sinfondo.png', { type: 'image/png' });
+      if (!f.origFile) { f.origFile = f.file; f.origSmall = f.small; f.origSw = f.sw; f.origSh = f.sh; }
+      f.file = file; f.bgTouched = true;
+      await reloadWork(f);
+      ed.base = renderCrop(ed.work, ed.tmp, 720);
+      drawFiltered();
+      $('edBgUndo').hidden = false;
+      msg.textContent = 'Listo. Toca "Listo" abajo para guardar el cambio.';
+    } catch (e) {
+      msg.textContent = 'No se pudo quitar el fondo (' + (e && e.message ? e.message : 'error') + '). Revisa tu conexión a internet e inténtalo de nuevo.';
+    }
+    go.disabled = false; $('edBgUndo').disabled = false;
+  }
+
+  async function bgUndo() {
+    const f = ed.f;
+    if (!f || !f.origFile) return;
+    f.file = f.origFile; f.small = f.origSmall; f.sw = f.origSw; f.sh = f.origSh;
+    f.origFile = f.origSmall = null; f.bgTouched = true;
+    await reloadWork(f);
+    ed.base = renderCrop(ed.work, ed.tmp, 720);
+    drawFiltered();
+    $('edBgUndo').hidden = true;
+    $('edBgMsg').textContent = 'Fondo original restaurado.';
+  }
+
   function bindEditor() {
     const cw = $('edCW');
+    $('edBgGo').addEventListener('click', bgRemove);
+    $('edBgUndo').addEventListener('click', bgUndo);
     cw.addEventListener('pointerdown', function (e) {
       if (ed.tab !== 'crop' || !ed.cr) return;
       try { cw.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
@@ -1674,7 +1807,11 @@ p { margin: 0; }
       });
     });
     $('edResetF').addEventListener('click', function () { ed.tmp.f = Object.assign({}, DEF_F); syncSliders(); scheduleFiltered(); });
-    $('edCancel').addEventListener('click', closeEditor);
+    $('edCancel').addEventListener('click', function () {
+      const f = ed.f;
+      closeEditor();
+      if (f && f.bgTouched) { f.bgTouched = false; refreshThumb(f); renderThumbs(); update(); }
+    });
     $('edDone').addEventListener('click', edDone);
     $('bwAll').addEventListener('click', function () {
       if (!state.files.length || state.busy) return;
@@ -1732,7 +1869,7 @@ p { margin: 0; }
           if (!data) { data = await tileJpeg(r.f, wPx, hPx, tileMode, r.rot, v); cache.set(key, data); }
           const op = opacityOf(r);
           if (op < 1) pdfAlpha(doc, op);
-          doc.addImage(data, 'JPEG', r.x, r.y, r.w, r.h, 'img' + key, 'FAST');
+          doc.addImage(data, data.indexOf('data:image/png') === 0 ? 'PNG' : 'JPEG', r.x, r.y, r.w, r.h, 'img' + key, 'FAST');
           if (op < 1) pdfAlpha(doc, 1);
           if (c.guides) {
             doc.setDrawColor(150, 155, 160);
@@ -1772,24 +1909,118 @@ p { margin: 0; }
     return n.slice(0, 80) + '.pdf';
   }
 
-  async function savePdf() {
-    if (!state.blob) return;
-    const fname = cleanName($('pdfName').value, state.name);
+  // Guarda un archivo: con la capacidad de descargas si existe, o con un enlace de descarga.
+  async function saveFile(blob, fname) {
     let dl = null;
     try { if (window.claude && window.claude.use) dl = await window.claude.use('downloads'); } catch (e) { dl = null; }
     if (dl) {
-      try {
-        await dl.save({ filename: fname, data: state.blob });
-        setNote('PDF guardado. Ábrelo y usa Imprimir para mandarlo a la Epson.');
-      } catch (e) {
-        setNote(e && e.code === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí. Prueba con “Abrir PDF”.', !(e && e.code === 'declined'));
-      }
-      return;
+      try { await dl.save({ filename: fname, data: blob }); return 'ok'; }
+      catch (e) { return e && e.code === 'declined' ? 'declined' : 'fail'; }
     }
+    const u = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = state.url; a.download = fname;
+    a.href = u; a.download = fname;
     document.body.appendChild(a); a.click(); a.remove();
-    setNote('Descarga iniciada. Búscala en Descargas, ábrela y usa Imprimir.');
+    setTimeout(function () { URL.revokeObjectURL(u); }, 60000);
+    return 'ok';
+  }
+
+  async function savePdf() {
+    if (!state.blob) return;
+    const fname = cleanName($('pdfName').value, state.name);
+    const r = await saveFile(state.blob, fname);
+    if (r === 'ok') setNote('PDF guardado. Ábrelo y usa Imprimir para mandarlo a la Epson.');
+    else if (r === 'declined') setNote('Guardado cancelado.');
+    else setNote('No se pudo guardar desde aquí. Prueba con “Abrir PDF”.', true);
+  }
+
+  async function makeZip(files) {
+    await loadLib('jszip');
+    const z = new window.JSZip();
+    files.forEach(function (f) { z.file(f.name, f.blob); });
+    return z.generateAsync({ type: 'blob', compression: 'STORE' });
+  }
+
+  // Guarda varios archivos: uno solo directo, varios en un ZIP.
+  async function saveMany(files, zipName) {
+    if (files.length === 1) return saveFile(files[0].blob, files[0].name);
+    return saveFile(await makeZip(files), zipName);
+  }
+
+  // ---- PDF -> imágenes (usa pdf.js, se carga solo cuando hace falta) ----
+  let pdfjsP = null;
+  function loadPdfJs() {
+    if (!pdfjsP) {
+      pdfjsP = loadLib('pdfjs').then(function () {
+        const lib = window.pdfjsLib;
+        if (!lib) throw new Error('No cargó pdf.js');
+        // Intenta un worker propio (rápido); si el navegador no lo permite, usa el modo sin worker.
+        return new Promise(function (res) {
+          let w = null, bu = null, done = false;
+          function fin(ok) {
+            if (done) return; done = true;
+            try { if (w) w.terminate(); } catch (e) { /* ok */ }
+            lib.GlobalWorkerOptions.workerSrc = ok ? bu : LIBS.pdfWorker;
+            res(lib);
+          }
+          try {
+            bu = URL.createObjectURL(new Blob(["postMessage(typeof importScripts === 'function' ? (importScripts('" + LIBS.pdfWorker + "'), 1) : 0);"], { type: 'application/javascript' }));
+            w = new Worker(bu);
+            w.onmessage = function (e) { fin(e.data === 1); };
+            w.onerror = function () { fin(false); };
+            setTimeout(function () { fin(false); }, 4000);
+          } catch (e) { fin(false); }
+        });
+      }).catch(function (e) { pdfjsP = null; throw e; });
+    }
+    return pdfjsP;
+  }
+
+  function canvasBlob(cv, fmt, q) {
+    return new Promise(function (res) { cv.toBlob(res, fmt === 'png' ? 'image/png' : 'image/jpeg', q || 0.93); });
+  }
+
+  async function pdfPagesToFiles(pdf, fmt, dpi, base, onProg) {
+    const out = [];
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (onProg) onProg(n - 1, pdf.numPages);
+      const page = await pdf.getPage(n);
+      let vp = page.getViewport({ scale: dpi / 72 });
+      const k = Math.min(1, 4000 / Math.max(vp.width, vp.height));
+      if (k < 1) vp = page.getViewport({ scale: dpi / 72 * k });
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      const cx = cv.getContext('2d');
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: cx, viewport: vp }).promise;
+      const blob = await canvasBlob(cv, fmt);
+      cv.width = 1; cv.height = 1;
+      out.push({ name: base + '-hoja' + (pdf.numPages > 1 ? String(n).padStart(2, '0') : '') + '.' + (fmt === 'png' ? 'png' : 'jpg'), blob: blob });
+      page.cleanup();
+      await yieldUI();
+    }
+    if (onProg) onProg(pdf.numPages, pdf.numPages);
+    return out;
+  }
+
+  async function saveSheetImages() {
+    if (!state.blob || state.busy) return;
+    const fmt = $('imgFmt').value, dpi = parseInt($('imgDpi').value, 10) || 200;
+    const base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
+    const srcBlob = state.blob;
+    state.busy = true; $('imgSave').disabled = true;
+    try {
+      const lib = await loadPdfJs();
+      const pdf = await lib.getDocument({ data: new Uint8Array(await srcBlob.arrayBuffer()) }).promise;
+      const files = await pdfPagesToFiles(pdf, fmt, dpi, base, function (i, n) { setNote('Creando imágenes… ' + i + ' de ' + n); setProgress(i / n); });
+      setProgress(null);
+      const r = await saveMany(files, base + '-imagenes.zip');
+      setNote(r === 'ok' ? (files.length === 1 ? 'Imagen guardada.' : 'Imágenes guardadas en un ZIP (' + files.length + ' hojas).') : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.', r === 'fail');
+    } catch (e) {
+      setProgress(null);
+      setNote('No se pudieron crear las imágenes (' + (e && e.message ? e.message : 'error') + '). Revisa tu conexión a internet.', true);
+    }
+    state.busy = false; $('imgSave').disabled = false;
   }
 
   // ---- Interacción con la hoja (elegir, mover, ampliar, encuadrar) ----
@@ -1845,10 +2076,10 @@ p { margin: 0; }
     const r = selRect(), isFree = state.mode === 'free';
     $('selTools').hidden = !r;
     $('selFrame').setAttribute('aria-pressed', String(sh.frame));
-    ['selSmaller', 'selBigger', 'selDup', 'selDel'].forEach(function (id) { $(id).hidden = !isFree; });
+    ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg'].forEach(function (id) { $(id).hidden = !isFree; });
     const isTxt = !!r && r.type === 'text';
     $('selFrame').hidden = isTxt; $('selReset').hidden = isTxt;
-    if (r && r.poster) ['selSmaller', 'selBigger', 'selDup'].forEach(function (id) { $(id).hidden = true; });
+    if (r && r.poster) ['selSmaller', 'selBigger', 'selDup', 'selPrevPg', 'selNextPg'].forEach(function (id) { $(id).hidden = true; });
     if (r) { const al = Math.round((1 - opacityOf(r)) * 100); $('selAlpha').value = String(al); $('selAlphaO').textContent = al + '%'; }
     $('selEdit').textContent = isTxt ? 'Editar texto' : 'Editar foto';
     if (isTxt) sh.frame = false;
@@ -2020,6 +2251,22 @@ p { margin: 0; }
       sh.sel = { page: state.page, idx: arr.length - 1 };
       update();
     });
+    function movePg(dir) {
+      const r = selRect(); if (!r || state.mode !== 'free' || r.poster) return;
+      const pi = sh.sel.page, arr = free.pages[pi];
+      let ti = pi + dir;
+      if (ti < 0) { setNote('Esta ya es la primera hoja.', true); return; }
+      setNote('');
+      arr.splice(sh.sel.idx, 1);
+      if (ti >= free.pages.length) free.pages.push([]);
+      free.pages[ti].push(r);
+      if (!arr.length) { free.pages.splice(pi, 1); if (ti > pi) ti--; }
+      state.page = ti;
+      sh.sel = { page: ti, idx: free.pages[ti].length - 1 };
+      hideResult(); update();
+    }
+    $('selPrevPg').addEventListener('click', function () { movePg(-1); });
+    $('selNextPg').addEventListener('click', function () { movePg(1); });
     $('selDel').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
       if (r.poster) {
@@ -2147,7 +2394,7 @@ p { margin: 0; }
     return o;
   }
 
-  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm'];
+  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color'];
   function styleOf(o) { const r = {}; STYLE_KEYS.forEach(function (k) { r[k] = o[k]; }); return r; }
 
   // Reparte un texto largo en cuadros: si no cabe en la hoja sigue en la siguiente.
@@ -2271,6 +2518,37 @@ p { margin: 0; }
 
   // Dibuja el texto en un canvas w×h (px) con fondo transparente.
   function renderText(o, w, h, fill) {
+    const front = renderText0(o, w, h, fill);
+    if (!(o.d3 > 0) || o.poster) return front;
+    return extrude(o, front, w, h);
+  }
+
+  // Efecto 3D: copia el contorno de las letras en un color oscuro, corrido paso a paso, y pone el frente encima.
+  function extrude(o, front, w, h) {
+    const D = Math.max(1, Math.round(o.d3 / 100 * 0.2 * Math.min(w, h)));
+    const sc = Math.min((w - D) / w, (h - D) / h), fw = w * sc, fh = h * sc;
+    const dir = o.d3dir || 'se', ux = dir.charAt(1) === 'e' ? 1 : -1, uy = dir.charAt(0) === 's' ? 1 : -1;
+    const ox = (w - (fw + D)) / 2, oy = (h - (fh + D)) / 2;
+    const fx = ox + (ux > 0 ? 0 : D), fy = oy + (uy > 0 ? 0 : D);
+    const side = document.createElement('canvas');
+    side.width = w; side.height = h;
+    const sx = side.getContext('2d');
+    sx.drawImage(front, 0, 0);
+    sx.globalCompositeOperation = 'source-in';
+    sx.fillStyle = o.d3color || '#555';
+    sx.fillRect(0, 0, w, h);
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const cx = out.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    const step = Math.max(1, D / 160);
+    for (let i = D; i > 0; i -= step) cx.drawImage(side, fx + ux * i, fy + uy * i, fw, fh);
+    cx.drawImage(front, fx, fy, fw, fh);
+    side.width = 1; side.height = 1; front.width = 1; front.height = 1;
+    return out;
+  }
+
+  function renderText0(o, w, h, fill) {
     const cv = document.createElement('canvas');
     cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d');
@@ -2346,7 +2624,7 @@ p { margin: 0; }
 
   function textKey(o) {
     return [o.fit ? 'F' + o.text + '|' + o.capMM + '|' + o.asc0 : (o.lines || []).join('\u0001'), o.font, o.size, o.align, o.bold ? 1 : 0, o.italic ? 1 : 0,
-      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0,
+      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0,
       o.poster ? [o.poster.W, o.poster.H, o.poster.ix, o.poster.iy].join(',') : ''].join('|');
   }
 
@@ -2414,7 +2692,8 @@ p { margin: 0; }
       bold: $('txBold').checked, italic: $('txItalic').checked, spacing: cl(parseFloat($('txSpacing').value) || 0, -20, 100),
       lhm: cl(parseFloat($('txLH').value) || 1.18, 0.6, 3),
       fillMode: segVal('txFillMode') || 'color', fillFit: segVal('txFillFit') || 'cover', color: $('txColor').value, fillImg: parseInt($('txFill').value, 10) || 0,
-      stroke: $('txStroke').checked, strokeColor: $('txStrokeColor').value, strokeW: parseInt($('txStrokeW').value, 10) || 6
+      stroke: $('txStroke').checked, strokeColor: $('txStrokeColor').value, strokeW: parseInt($('txStrokeW').value, 10) || 6,
+      d3: $('tx3d').checked ? (parseInt($('tx3dD').value, 10) || 40) : 0, d3dir: $('tx3dDir').value, d3color: $('tx3dColor').value
     };
   }
 
@@ -2424,6 +2703,7 @@ p { margin: 0; }
     $('txImgRow').hidden = m !== 'image';
     $('txFillFit').hidden = m !== 'image';
     $('txStrokeRow').hidden = !$('txStroke').checked;
+    $('tx3dRow').hidden = !$('tx3d').checked;
     $('txPosterRow').hidden = !$('txPoster').checked;
     $('txSizeO').textContent = String(Math.round(parseFloat($('txSize').value) || 0));
   }
@@ -2435,6 +2715,7 @@ p { margin: 0; }
     $('txSpacing').value = o.spacing || 0; $('txLH').value = (o.lhm || LH).toFixed(2).replace(/0$/, '');
     segSet('txAlign', o.align || 'center'); segSet('txFillMode', o.fillMode || 'color'); segSet('txFillFit', o.fillFit || 'cover');
     $('txStroke').checked = !!o.stroke; $('txStrokeColor').value = o.strokeColor; $('txStrokeW').value = o.strokeW;
+    $('tx3d').checked = !!o.d3; if (o.d3) $('tx3dD').value = o.d3; $('tx3dDir').value = o.d3dir || 'se'; $('tx3dColor').value = o.d3color || '#7a1642';
     $('txPoster').checked = !!o.poster;
     if (o.poster) $('txPosterW').value = Math.round(o.poster.W / 10);
     fillOptions(o.fillImg || '');
@@ -2544,7 +2825,7 @@ p { margin: 0; }
       op.value = f.k; op.textContent = f.n;
       fs.appendChild(op);
     });
-    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterW'].forEach(function (id) {
+    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterW'].forEach(function (id) {
       $(id).addEventListener('input', live);
       $(id).addEventListener('change', live);
     });
@@ -2612,8 +2893,10 @@ p { margin: 0; }
     jszip: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js',
     docx: 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',
     h2c: 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
-    xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+    xlsx: 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    pdfjs: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
   };
+  LIBS.pdfWorker = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const libP = {};
   function loadLib(key) {
     if (!libP[key]) {
@@ -2679,8 +2962,9 @@ p { margin: 0; }
   async function openDoc(file) {
     if (dc.busy || ed.open) return;
     const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (ext === 'pdf' || file.type === 'application/pdf') { openPdf(file); return; }
     if (['docx', 'xlsx', 'xls', 'csv'].indexOf(ext) < 0) {
-      toast(ext === 'doc' ? 'Los .doc antiguos no se pueden abrir. Desde Word, guárdalo como .docx.' : 'Ese archivo no es de Word ni de Excel. Elige un .docx o .xlsx.');
+      toast(ext === 'doc' ? 'Los .doc antiguos no se pueden abrir. Desde Word, guárdalo como .docx.' : 'Ese archivo no es de Word, Excel ni PDF. Elige un .docx, .xlsx o .pdf.');
       return;
     }
     setNote('');
@@ -2722,6 +3006,177 @@ p { margin: 0; }
     } finally {
       dc.busy = false;
     }
+  }
+
+  // ---- PDF: sacar sus imágenes ----
+  const px = { open: false, busy: false, items: [], pdf: null, base: 'pdf' };
+
+  function pxNote(msg, err) { const n = $('pxNote'); n.textContent = msg || ''; n.className = 'note' + (err ? ' err' : ''); n.style.margin = '0 0 6px'; }
+  function pxProg(f) { $('pxProgWrap').hidden = f == null; if (f != null) $('pxProg').style.width = Math.round(f * 100) + '%'; }
+  function pxSyncBtns() {
+    const n = px.items.filter(function (i) { return i.sel; }).length;
+    $('pxSave').disabled = px.busy || !n; $('pxAdd').disabled = px.busy || !n; $('pxPages').disabled = px.busy || !px.pdf;
+    $('pxSave').textContent = n ? 'Guardar ' + n + (n === 1 ? ' imagen' : ' imágenes') : 'Guardar imágenes';
+  }
+  function closePx() {
+    px.open = false; px.pdf = null;
+    px.items.forEach(function (i) { if (i.url) URL.revokeObjectURL(i.url); });
+    px.items = []; $('pxGrid').textContent = '';
+    $('px').hidden = true; document.body.style.overflow = '';
+  }
+
+  function imgToCanvas(im) {
+    if (im.bitmap) {
+      const c = document.createElement('canvas'); c.width = im.bitmap.width; c.height = im.bitmap.height;
+      c.getContext('2d').drawImage(im.bitmap, 0, 0); return c;
+    }
+    const w = im.width, h = im.height, d = im.data;
+    if (!w || !h || !d) return null;
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const cx = c.getContext('2d'), id = cx.createImageData(w, h), o = id.data, n = w * h;
+    if (d.length === n * 4) { o.set(d); for (let i = 3; i < o.length; i += 4) o[i] = 255; }
+    else if (d.length === n * 3) { for (let i = 0, j = 0; i < n; i++, j += 3) { o[i * 4] = d[j]; o[i * 4 + 1] = d[j + 1]; o[i * 4 + 2] = d[j + 2]; o[i * 4 + 3] = 255; } }
+    else if (d.length === n) { for (let i = 0; i < n; i++) { o[i * 4] = o[i * 4 + 1] = o[i * 4 + 2] = d[i]; o[i * 4 + 3] = 255; } }
+    else if (d.length >= Math.ceil(w / 8) * h) {
+      const rb = Math.ceil(w / 8);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = (d[y * rb + (x >> 3)] >> (7 - (x & 7))) & 1 ? 255 : 0, k = (y * w + x) * 4; o[k] = o[k + 1] = o[k + 2] = v; o[k + 3] = 255; }
+    } else return null;
+    cx.putImageData(id, 0, 0);
+    return c;
+  }
+
+  function getObj(page, name) {
+    const store = String(name).indexOf('g_') === 0 ? page.commonObjs : page.objs;
+    return new Promise(function (res) {
+      let done = false;
+      const t = setTimeout(function () { if (!done) { done = true; res(null); } }, 6000);
+      try { store.get(name, function (o) { if (!done) { done = true; clearTimeout(t); res(o); } }); } catch (e) { clearTimeout(t); res(null); }
+    });
+  }
+
+  async function extractPdfImages(pdf) {
+    const OPS = window.pdfjsLib.OPS, seen = new Set();
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (!px.open) return;
+      pxNote('Buscando imágenes… hoja ' + n + ' de ' + pdf.numPages); pxProg((n - 1) / pdf.numPages);
+      const page = await pdf.getPage(n);
+      const ops = await page.getOperatorList();
+      for (let i = 0; i < ops.fnArray.length; i++) {
+        const fn = ops.fnArray[i];
+        let im = null, key;
+        if (fn === OPS.paintImageXObject || (OPS.paintJpegXObject && fn === OPS.paintJpegXObject)) {
+          key = ops.argsArray[i][0];
+          if (seen.has(key)) continue;
+          seen.add(key);
+          im = await getObj(page, key);
+        } else if (fn === OPS.paintInlineImageXObject) im = ops.argsArray[i][0];
+        else continue;
+        if (!im) continue;
+        const cv = imgToCanvas(im);
+        if (!cv || cv.width < 48 || cv.height < 48) continue;
+        const blob = await canvasBlob(cv, 'jpg', 0.95);
+        const th = document.createElement('canvas'), s = Math.min(1, 240 / Math.max(cv.width, cv.height));
+        th.width = Math.max(1, Math.round(cv.width * s)); th.height = Math.max(1, Math.round(cv.height * s));
+        th.getContext('2d').drawImage(cv, 0, 0, th.width, th.height);
+        const item = { blob: blob, w: cv.width, h: cv.height, page: n, sel: true, url: URL.createObjectURL(await canvasBlob(th, 'jpg', 0.8)) };
+        cv.width = 1; cv.height = 1;
+        px.items.push(item);
+        addPxTile(item);
+        pxSyncBtns();
+        await yieldUI();
+      }
+      page.cleanup();
+    }
+    pxProg(null);
+  }
+
+  function addPxTile(item) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pxt'; b.setAttribute('aria-pressed', 'true');
+    const im = document.createElement('img'); im.src = item.url; im.alt = '';
+    const t = document.createElement('span'); t.className = 'tick'; t.textContent = '✓';
+    const c = document.createElement('span'); c.className = 'cap'; c.textContent = 'Hoja ' + item.page + ' · ' + item.w + '×' + item.h;
+    b.appendChild(im); b.appendChild(t); b.appendChild(c);
+    b.addEventListener('click', function () { item.sel = !item.sel; b.setAttribute('aria-pressed', String(item.sel)); pxSyncBtns(); });
+    item.el = b;
+    $('pxGrid').appendChild(b);
+  }
+
+  async function openPdf(file) {
+    if (px.busy || ed.open || dc.open) return;
+    px.busy = true; px.open = true; px.items = []; px.pdf = null;
+    px.base = file.name.replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, ' ').trim() || 'pdf';
+    document.body.style.overflow = 'hidden';
+    $('px').hidden = false; $('pxTitle').textContent = file.name; $('pxGrid').textContent = '';
+    pxNote('Abriendo PDF…'); pxSyncBtns();
+    try {
+      const lib = await loadPdfJs();
+      const pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+      px.pdf = pdf;
+      await extractPdfImages(pdf);
+      if (px.open) pxNote(px.items.length ? 'Encontré ' + px.items.length + (px.items.length === 1 ? ' imagen.' : ' imágenes.') + ' Toca para quitar o poner la marca.' : 'No encontré imágenes dentro de este PDF (puede ser solo texto o un escaneo). Puedes usar «Hojas como imagen».');
+    } catch (e) {
+      pxProg(null);
+      pxNote('No se pudo abrir el PDF (' + (e && e.message ? e.message : 'error') + '). Revisa tu conexión a internet, o prueba con otro archivo.', true);
+    } finally {
+      px.busy = false; pxSyncBtns();
+    }
+  }
+
+  async function pxFiles() {
+    const fmt = $('pxFmt').value, out = [];
+    const sel = px.items.filter(function (i) { return i.sel; });
+    for (let k = 0; k < sel.length; k++) {
+      let blob = sel[k].blob;
+      if (fmt === 'png') {
+        const r = await loadImg(blob);
+        const c = document.createElement('canvas'); c.width = r.img.naturalWidth; c.height = r.img.naturalHeight;
+        c.getContext('2d').drawImage(r.img, 0, 0); URL.revokeObjectURL(r.url);
+        blob = await canvasBlob(c, 'png'); c.width = 1; c.height = 1;
+      }
+      out.push({ name: px.base + '-imagen' + String(k + 1).padStart(2, '0') + '.' + fmt, blob: blob });
+    }
+    return out;
+  }
+
+  function bindPx() {
+    $('pxClose').addEventListener('click', closePx);
+    $('pxAll').addEventListener('click', function () { px.items.forEach(function (i) { i.sel = true; i.el.setAttribute('aria-pressed', 'true'); }); pxSyncBtns(); });
+    $('pxNone').addEventListener('click', function () { px.items.forEach(function (i) { i.sel = false; i.el.setAttribute('aria-pressed', 'false'); }); pxSyncBtns(); });
+    $('pxSave').addEventListener('click', async function () {
+      if (px.busy) return;
+      px.busy = true; pxSyncBtns(); pxNote('Preparando…');
+      try {
+        const files = await pxFiles();
+        const r = await saveMany(files, px.base + '-imagenes.zip');
+        pxNote(r === 'ok' ? (files.length === 1 ? 'Imagen guardada.' : 'Guardadas en un ZIP (' + files.length + ' imágenes).') : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.', r === 'fail');
+      } catch (e) { pxNote('No se pudo guardar (' + (e && e.message ? e.message : 'error') + ').', true); }
+      px.busy = false; pxSyncBtns();
+    });
+    $('pxAdd').addEventListener('click', async function () {
+      if (px.busy || state.busy) return;
+      px.busy = true; pxSyncBtns();
+      try {
+        const files = (await pxFiles()).map(function (f) { return new File([f.blob], f.name, { type: f.blob.type, lastModified: Date.now() }); });
+        closePx();
+        await addFiles(files);
+        toast('Imágenes agregadas a tus fotos.');
+      } catch (e) { px.busy = false; pxNote('No se pudieron agregar (' + (e && e.message ? e.message : 'error') + ').', true); pxSyncBtns(); return; }
+      px.busy = false;
+    });
+    $('pxPages').addEventListener('click', async function () {
+      if (px.busy || !px.pdf) return;
+      px.busy = true; pxSyncBtns();
+      try {
+        const fmt = $('pxFmt').value;
+        const files = await pdfPagesToFiles(px.pdf, fmt, 200, px.base, function (i, n) { pxNote('Creando imágenes… ' + i + ' de ' + n); pxProg(i / n); });
+        pxProg(null);
+        const r = await saveMany(files, px.base + '-hojas.zip');
+        pxNote(r === 'ok' ? 'Hojas guardadas.' : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.', r === 'fail');
+      } catch (e) { pxProg(null); pxNote('No se pudo (' + (e && e.message ? e.message : 'error') + ').', true); }
+      px.busy = false; pxSyncBtns();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && px.open && !px.busy) closePx(); });
   }
 
   // Cambia todas las coincidencias dentro del texto editable.
@@ -2923,6 +3378,7 @@ p { margin: 0; }
   $('next').addEventListener('click', function () { state.page++; update(); });
   $('make').addEventListener('click', makePdf);
   $('saveBtn').addEventListener('click', savePdf);
+  $('imgSave').addEventListener('click', saveSheetImages);
   window.addEventListener('resize', drawSheet);
   if (window.matchMedia) {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -2934,10 +3390,9 @@ p { margin: 0; }
   bindText();
   bindMini();
   bindDoc();
+  bindPx();
   loadPrefs();
   renderThumbs();
   update();
 })();
 </script>
-
-</body></html>
