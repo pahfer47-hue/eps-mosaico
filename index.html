@@ -278,6 +278,7 @@ p { margin: 0; }
         <div class="row" style="margin-top:10px">
           <button class="btn" id="bwAll" type="button" hidden aria-pressed="false">Todas en blanco y negro</button>
           <button class="btn" id="filtersAll" type="button" hidden>Más filtros para todas</button>
+          <button class="btn" id="pngAll" type="button" hidden>Guardar mis fotos en PNG</button>
         </div>
         <p class="hint" id="editHint" hidden>Toca una foto para recortarla, girarla o ponerle filtros.</p>
         <div class="thumbs" id="thumbs"></div>
@@ -644,19 +645,24 @@ p { margin: 0; }
         <div class="field"><label for="edStkW">Grosor del borde</label><input type="range" id="edStkW" min="5" max="100" value="40"></div>
         <div class="field"><label for="edStkC">Color del borde</label><input type="color" id="edStkC" value="#ffffff"></div>
       </div>
-      <p class="hint">El borde solo se ve en fotos a las que ya les quitaste el fondo.</p>
+      <p class="hint">El borde solo se ve en fotos a las que ya les quitaste el fondo. Si quedaron restos del fondo, usa la pestaña «Borrar» con «Dejar transparente».</p>
+      <div class="tools"><button class="btn" id="edSavePng" type="button">Guardar esta foto en PNG</button></div>
     </div>
 
     <div id="edErasePanel" hidden>
-      <p class="hint" style="margin-top:0">Pinta con el dedo lo que quieras quitar (se ve en rojo) y pulsa «Eliminar objeto». Funciona sin internet, dentro de tu teléfono. Va mejor con objetos pequeños sobre fondos parecidos; en zonas grandes o con dibujos complicados puede verse repetido.</p>
+      <p class="hint" style="margin-top:0">Pinta con el dedo lo que quieras quitar (se ve en rojo) y pulsa «Eliminar objeto». «Eliminar objeto» rellena el hueco con la propia foto (mejor en objetos pequeños sobre fondos parecidos). «Dejar transparente» borra lo marcado para quitar restos de fondo en fotos recortadas. Todo funciona sin internet.</p>
       <div class="seg" id="edTool" role="group" aria-label="Herramienta de selección">
         <button type="button" data-v="brush" aria-pressed="true">Pincel</button>
         <button type="button" data-v="lasso" aria-pressed="false">Lazo</button>
-        <button type="button" data-v="rub" aria-pressed="false">Borrar marca</button>
+        <button type="button" data-v="wand" aria-pressed="false">Varita</button>
+        <button type="button" data-v="rub" aria-pressed="false">Quitar marca</button>
       </div>
       <div class="sl"><label for="edBrush">Tamaño del pincel</label><output id="edBrushO">30</output><input type="range" id="edBrush" min="6" max="120" value="30"></div>
+      <div class="sl" id="edTolRow" hidden><label for="edTol">Sensibilidad de la varita</label><output id="edTolO">30</output><input type="range" id="edTol" min="5" max="120" value="30"></div>
+      <p class="hint" id="edWandHint" hidden>Varita: toca una zona y se marca todo lo que tenga un color parecido y esté pegado. Sirve para marcar restos de fondo. Sube la sensibilidad para marcar más.</p>
       <div class="tools">
-        <button class="btn primary" id="edErase" type="button">Eliminar objeto</button>
+        <button class="btn primary" id="edErase" type="button">Eliminar objeto (rellenar)</button>
+        <button class="btn primary" id="edTrans" type="button">Dejar transparente</button>
         <button class="btn" id="edMUndo" type="button">Deshacer marca</button>
         <button class="btn" id="edMClear" type="button">Limpiar marcas</button>
         <button class="btn" id="edEUndo" type="button" hidden>Volver al original</button>
@@ -1363,6 +1369,7 @@ p { margin: 0; }
     $('editHint').hidden = state.files.length === 0;
     $('filtersAll').hidden = state.files.length === 0;
     $('bwAll').hidden = state.files.length === 0;
+    $('pngAll').hidden = state.files.length === 0;
     const allBw = state.files.length > 0 && state.files.every(function (f) { return f.edit.f.bw; });
     $('bwAll').setAttribute('aria-pressed', String(allBw));
     $('bwAll').textContent = allBw ? 'Quitar blanco y negro a todas' : 'Todas en blanco y negro';
@@ -1812,6 +1819,7 @@ p { margin: 0; }
   function eraseStage() {
     const mk = $('edMask');
     drawStage(ed.work);
+    er.wand = null;
     if (mk.width !== ed.work.width || mk.height !== ed.work.height) { mk.width = ed.work.width; mk.height = ed.work.height; er.stack = []; }
   }
 
@@ -1968,7 +1976,7 @@ p { margin: 0; }
         f.file = file; f.bgTouched = true;
         await reloadWork(f);
         mk.getContext('2d').clearRect(0, 0, mk.width, mk.height);
-        er.stack = [];
+        er.stack = []; er.wand = null;
         drawStage(ed.work);
         $('edEUndo').hidden = false;
         msg.textContent = 'Listo. Puedes seguir borrando o tocar «Listo» arriba para guardar.';
@@ -1977,6 +1985,99 @@ p { margin: 0; }
       msg.textContent = 'No se pudo borrar (' + (e && e.message ? e.message : 'error') + ').';
     }
     er.busy = false; $('edErase').disabled = false;
+  }
+
+  async function photoPngBlob(f, edit, stk, stkC) {
+    const r = await loadImg(f.file);
+    let cv = filteredCanvas(r.img, edit, 4096);
+    URL.revokeObjectURL(r.url);
+    if (f.cut && stk > 0) cv = stickerize(cv, stickerR(stk, cv.width, cv.height, 0.06), stkC);
+    const blob = await canvasBlob(cv, 'png');
+    cv.width = 1; cv.height = 1;
+    return blob;
+  }
+  function pngName(f) { return f.name.replace(/\.[^.]+$/, '').replace(/-(sinfondo|borrado|editada)$/, '') + (f.cut ? '-sinfondo' : '-editada') + '.png'; }
+
+  async function saveOnePng() {
+    const f = ed.f, msg = $('edBgMsg');
+    if (!f) return;
+    if (ed.tab === 'crop' && ed.cr) saveCrop();
+    msg.textContent = 'Preparando PNG…';
+    try {
+      const blob = await photoPngBlob(f, { rot: ed.tmp.rot, flip: ed.tmp.flip, crop: ed.tmp.crop, f: ed.tmp.f }, ed.tmp.stk, ed.tmp.stkC);
+      const r = await saveFile(blob, pngName(f));
+      msg.textContent = r === 'ok' ? 'PNG guardado.' : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.';
+    } catch (e) { msg.textContent = 'No se pudo crear el PNG (' + (e && e.message ? e.message : 'error') + ').'; }
+  }
+
+  async function saveAllPng() {
+    if (!state.files.length || state.busy) return;
+    state.busy = true; update();
+    try {
+      const files = [];
+      for (let i = 0; i < state.files.length; i++) {
+        const f = state.files[i];
+        setNote('Creando PNG… ' + (i + 1) + ' de ' + state.files.length); setProgress(i / state.files.length);
+        files.push({ name: String(i + 1).padStart(2, '0') + '-' + pngName(f), blob: await photoPngBlob(f, f.edit, f.stk || 0, f.stkC) });
+        await yieldUI();
+      }
+      setProgress(null);
+      const r = await saveMany(files, 'mis-fotos-png.zip');
+      setNote(r === 'ok' ? (files.length === 1 ? 'PNG guardado.' : 'Guardadas ' + files.length + ' fotos en un ZIP.') : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.', r === 'fail');
+    } catch (e) { setProgress(null); setNote('No se pudieron crear los PNG (' + (e && e.message ? e.message : 'error') + ').', true); }
+    state.busy = false; update();
+  }
+
+  // Dejar transparente lo marcado (para limpiar restos de fondo).
+  async function eraseTrans() {
+    const f = ed.f, msg = $('edEMsg');
+    if (!f || er.busy) return;
+    er.busy = true; $('edTrans').disabled = true;
+    try {
+      const mk = $('edMask'), W = mk.width, H = mk.height;
+      const has = mk.getContext('2d').getImageData(0, 0, W, H).data.some(function (v, i) { return i % 4 === 3 && v > 40; });
+      if (!has) { msg.textContent = 'Primero marca lo que quieres borrar.'; }
+      else {
+        const wc = ed.work.getContext('2d');
+        wc.globalCompositeOperation = 'destination-out';
+        wc.drawImage(mk, 0, 0);
+        wc.globalCompositeOperation = 'source-over';
+        const blob = await canvasBlob(ed.work, 'png');
+        const file = new File([blob], f.name.replace(/\.[^.]+$/, '') + '-sinfondo.png', { type: 'image/png' });
+        if (!f.origFile) { f.origFile = f.file; f.origSmall = f.small; f.origSw = f.sw; f.origSh = f.sh; }
+        f.file = file; f.bgTouched = true; f.cut = true;
+        await reloadWork(f);
+        mk.getContext('2d').clearRect(0, 0, W, H);
+        er.stack = []; er.wand = null;
+        drawStage(ed.work);
+        $('edEUndo').hidden = false;
+        msg.textContent = 'Listo: lo marcado quedó transparente.';
+      }
+    } catch (e) { msg.textContent = 'No se pudo (' + (e && e.message ? e.message : 'error') + ').'; }
+    er.busy = false; $('edTrans').disabled = false;
+  }
+
+  // Varita mágica: marca la zona pegada de color parecido.
+  function wandAt(p) {
+    const W = ed.work.width, H = ed.work.height, x0 = Math.floor(p.x), y0 = Math.floor(p.y);
+    if (x0 < 0 || y0 < 0 || x0 >= W || y0 >= H) return;
+    if (!er.wand) er.wand = ed.work.getContext('2d').getImageData(0, 0, W, H).data;
+    const d = er.wand, tol = (parseInt($('edTol').value, 10) || 30), t2 = tol * tol * 3 / 3;
+    const si = (y0 * W + x0) * 4, sr = d[si], sg = d[si + 1], sb = d[si + 2], sa = d[si + 3];
+    const mc = $('edMask').getContext('2d'), md = mc.getImageData(0, 0, W, H), m = md.data;
+    const seen = new Uint8Array(W * H), st = [y0 * W + x0];
+    seen[y0 * W + x0] = 1;
+    while (st.length) {
+      const i = st.pop(), k = i * 4, x = i % W, y = (i / W) | 0;
+      const a = d[k] - sr, b = d[k + 1] - sg, c = d[k + 2] - sb;
+      if (a * a + b * b + c * c > t2 || Math.abs(d[k + 3] - sa) > 60) continue;
+      m[k] = 255; m[k + 1] = 45; m[k + 2] = 85; m[k + 3] = 255;
+      if (x > 0 && !seen[i - 1]) { seen[i - 1] = 1; st.push(i - 1); }
+      if (x < W - 1 && !seen[i + 1]) { seen[i + 1] = 1; st.push(i + 1); }
+      if (y > 0 && !seen[i - W]) { seen[i - W] = 1; st.push(i - W); }
+      if (y < H - 1 && !seen[i + W]) { seen[i + W] = 1; st.push(i + W); }
+    }
+    mc.putImageData(md, 0, 0);
   }
 
   function bindErase() {
@@ -1998,6 +2099,7 @@ p { margin: 0; }
       er.stack.push(c.getImageData(0, 0, mk.width, mk.height));
       if (er.stack.length > 8) er.stack.shift();
       const p = edPoint(e);
+      if ((segVal('edTool') || 'brush') === 'wand') { wandAt(p); e.preventDefault(); return; }
       paint = { last: p, pts: [p], id: e.pointerId };
       seg(p, p);
       e.preventDefault();
@@ -2020,7 +2122,14 @@ p { margin: 0; }
     }
     cw.addEventListener('pointerup', up);
     cw.addEventListener('pointercancel', up);
-    document.querySelectorAll('#edTool button').forEach(function (b) { b.addEventListener('click', function () { segSet('edTool', b.dataset.v); }); });
+    document.querySelectorAll('#edTool button').forEach(function (b) { b.addEventListener('click', function () {
+      segSet('edTool', b.dataset.v);
+      $('edTolRow').hidden = b.dataset.v !== 'wand'; $('edWandHint').hidden = b.dataset.v !== 'wand';
+    }); });
+    $('edTol').addEventListener('input', function () { $('edTolO').textContent = $('edTol').value; });
+    $('edTrans').addEventListener('click', eraseTrans);
+    $('edSavePng').addEventListener('click', saveOnePng);
+    $('pngAll').addEventListener('click', saveAllPng);
     $('edBrush').addEventListener('input', function () { $('edBrushO').textContent = $('edBrush').value; });
     $('edMUndo').addEventListener('click', function () { const s = er.stack.pop(); if (s) ctx2().putImageData(s, 0, 0); });
     $('edMClear').addEventListener('click', function () { ctx2().clearRect(0, 0, mk.width, mk.height); er.stack = []; });
