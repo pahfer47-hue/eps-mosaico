@@ -236,6 +236,10 @@ p { margin: 0; }
 .xl-table { border-collapse: collapse; font: 11pt Calibri, Carlito, Arial, sans-serif; color: #000; background: #fff; }
 .xl-table td, .xl-table th { border: 1px solid #9aa4ab; padding: 2px 6px; white-space: pre-wrap; vertical-align: top; }
 .xl-sheet { background: #fff; padding: 24px; display: inline-block; }
+.ed-stage { overflow: hidden; }
+#edCW { transform-origin: 0 0; }
+.docnative { width: 100%; font: inherit; padding: 8px 0; }
+.fallback { margin-top: 8px; }
 .docin { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
 .pxgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
 .pxt { position: relative; padding: 0; border: 3px solid transparent; border-radius: 10px; background: #fff; overflow: hidden; cursor: pointer; aspect-ratio: 1; display: grid; place-items: center; }
@@ -419,6 +423,7 @@ p { margin: 0; }
         <div class="fields" id="txStkRow" hidden>
           <div class="field"><label for="txStkW">Grosor del borde</label><input type="range" id="txStkW" min="5" max="100" value="35"></div>
           <div class="field"><label for="txStkC">Color del borde</label><input type="color" id="txStkC" value="#ffffff"></div>
+          <label class="check"><input type="checkbox" id="txStkG" checked> Línea fina gris por fuera, como guía para la tijera</label>
         </div>
         <label class="check tx-gap"><input type="checkbox" id="txPoster"> Repartir en varias hojas (póster gigante)</label>
         <div class="field" id="txPosterRow" hidden><label for="txPosterW">Ancho total del texto (cm)</label><input type="number" id="txPosterW" min="10" max="600" step="1" value="60" inputmode="numeric">
@@ -443,6 +448,10 @@ p { margin: 0; }
           <input id="docFileP" class="docin" type="file" accept=".pdf,application/pdf">
         </div>
         <p class="note" id="docPick" role="status"></p>
+        <details class="fallback"><summary>¿No se abre el explorador de archivos?</summary>
+          <p class="hint">Prueba con este selector. Si tampoco abre, abre esta misma página en Chrome (no dentro de otra app) y vuelve a intentar.</p>
+          <input id="docFileN" class="docnative" type="file" accept="application/*,text/*">
+        </details>
         <p class="hint">Abre un .docx o .xlsx, corrige lo que haga falta con el dedo y guárdalo en PDF para imprimir. Es independiente de las fotos de arriba. Puede verse un poco distinto al original. Si eliges un PDF, saca las imágenes que trae dentro para guardarlas o agregarlas a tus fotos.</p>
         </div>
       </details>
@@ -644,6 +653,7 @@ p { margin: 0; }
       <div class="fields" id="edStkRow" hidden>
         <div class="field"><label for="edStkW">Grosor del borde</label><input type="range" id="edStkW" min="5" max="100" value="40"></div>
         <div class="field"><label for="edStkC">Color del borde</label><input type="color" id="edStkC" value="#ffffff"></div>
+        <label class="check"><input type="checkbox" id="edStkG" checked> Línea fina gris por fuera, como guía para la tijera</label>
       </div>
       <p class="hint">El borde solo se ve en fotos a las que ya les quitaste el fondo. Si quedaron restos del fondo, usa la pestaña «Borrar» con «Dejar transparente».</p>
       <div class="tools"><button class="btn" id="edSavePng" type="button">Guardar esta foto en PNG</button></div>
@@ -656,7 +666,14 @@ p { margin: 0; }
         <button type="button" data-v="lasso" aria-pressed="false">Lazo</button>
         <button type="button" data-v="wand" aria-pressed="false">Varita</button>
         <button type="button" data-v="rub" aria-pressed="false">Quitar marca</button>
+        <button type="button" data-v="hand" aria-pressed="false">Mover ✋</button>
       </div>
+      <div class="tools">
+        <button class="btn" id="edZin" type="button">＋ Acercar</button>
+        <button class="btn" id="edZout" type="button">－ Alejar</button>
+        <button class="btn" id="edZfit" type="button">Ver toda</button>
+      </div>
+      <p class="hint">Para pintar con precisión: acerca con dos dedos (pellizcar) o con los botones. Con dos dedos también mueves la foto; o usa «Mover».</p>
       <div class="sl"><label for="edBrush">Tamaño del pincel</label><output id="edBrushO">30</output><input type="range" id="edBrush" min="6" max="120" value="30"></div>
       <div class="sl" id="edTolRow" hidden><label for="edTol">Sensibilidad de la varita</label><output id="edTolO">30</output><input type="range" id="edTol" min="5" max="120" value="30"></div>
       <p class="hint" id="edWandHint" hidden>Varita: toca una zona y se marca todo lo que tenga un color parecido y esté pegado. Sirve para marcar restos de fondo. Sube la sensibilidad para marcar más.</p>
@@ -1451,10 +1468,12 @@ p { margin: 0; }
   }
 
   // Borde de sticker: contorno de color (blanco) alrededor de lo que no es transparente.
-  function stickerize(src, rpx, color) {
+  function stickerize(src, rpx, color, guide) {
     const w = src.width, h = src.height;
     rpx = Math.max(1, rpx);
-    const sc = Math.min((w - 2 * rpx) / w, (h - 2 * rpx) / h);
+    guide = guide > 0 ? guide : 0;
+    const tot = rpx + guide;
+    const sc = Math.min((w - 2 * tot) / w, (h - 2 * tot) / h);
     if (!(sc > 0.2)) return src;
     const fw = w * sc, fh = h * sc, ox = (w - fw) / 2, oy = (h - fh) / 2;
     const sil = document.createElement('canvas');
@@ -1464,18 +1483,35 @@ p { margin: 0; }
     sx.globalCompositeOperation = 'source-in';
     sx.fillStyle = color || '#ffffff';
     sx.fillRect(0, 0, w, h);
+    const B = document.createElement('canvas');
+    B.width = w; B.height = h;
+    const bx = B.getContext('2d');
+    [1, 0.75, 0.5, 0.25].forEach(function (k) {
+      const R = rpx * k, n = Math.min(72, Math.max(16, Math.ceil(2 * Math.PI * R / 1.5)));
+      for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI; bx.drawImage(sil, Math.cos(a) * R, Math.sin(a) * R); }
+    });
+    bx.drawImage(sil, 0, 0);
     const out = document.createElement('canvas');
     out.width = w; out.height = h;
     const cx = out.getContext('2d');
-    [1, 0.75, 0.5, 0.25].forEach(function (k) {
-      const R = rpx * k, n = Math.min(72, Math.max(16, Math.ceil(2 * Math.PI * R / 1.5)));
-      for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI; cx.drawImage(sil, Math.cos(a) * R, Math.sin(a) * R); }
-    });
-    cx.drawImage(sil, 0, 0);
+    if (guide > 0) {
+      const G = document.createElement('canvas');
+      G.width = w; G.height = h;
+      const gx = G.getContext('2d');
+      gx.drawImage(B, 0, 0);
+      gx.globalCompositeOperation = 'source-in';
+      gx.fillStyle = '#6b7280';
+      gx.fillRect(0, 0, w, h);
+      const n = 28;
+      for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI; cx.drawImage(G, Math.cos(a) * guide, Math.sin(a) * guide); }
+      G.width = 1; G.height = 1;
+    }
+    cx.drawImage(B, 0, 0);
     cx.drawImage(src, ox, oy, fw, fh);
-    sil.width = 1; sil.height = 1;
+    sil.width = 1; sil.height = 1; B.width = 1; B.height = 1;
     return out;
   }
+  function stickerG(on, w, h) { return on === false ? 0 : Math.max(1, Math.round(0.004 * Math.min(w, h))); }
   function stickerR(stk, w, h, k) { return (stk / 100) * k * Math.min(w, h); }
 
   function filterCanvas(cv, f) {
@@ -1497,7 +1533,7 @@ p { margin: 0; }
 
   function refreshThumb(f) {
     f.thumb = filteredCanvas(f.small, f.edit, 360);
-    if (f.cut && f.stk > 0) f.thumb = stickerize(f.thumb, stickerR(f.stk, f.thumb.width, f.thumb.height, 0.06), f.stkC);
+    if (f.cut && f.stk > 0) f.thumb = stickerize(f.thumb, stickerR(f.stk, f.thumb.width, f.thumb.height, 0.06), f.stkC, stickerG(f.stkG, f.thumb.width, f.thumb.height));
     f.ar = cropAR(f);
   }
 
@@ -1518,7 +1554,7 @@ p { margin: 0; }
     if (!f.cut) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, wPx, hPx); }
     cx.imageSmoothingQuality = 'high';
     drawTile(cx, crop, 0, 0, wPx, hPx, view ? 'view' : mode, rot, view);
-    const cvOut = f.cut && f.stk > 0 ? stickerize(cv, stickerR(f.stk, wPx, hPx, 0.06), f.stkC) : cv;
+    const cvOut = f.cut && f.stk > 0 ? stickerize(cv, stickerR(f.stk, wPx, hPx, 0.06), f.stkC, stickerG(f.stkG, wPx, hPx)) : cv;
     const data = f.cut ? cvOut.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.92);
     cv.width = 1; cv.height = 1; crop.width = 1; crop.height = 1;
     if (cvOut !== cv) { cvOut.width = 1; cvOut.height = 1; }
@@ -1609,7 +1645,7 @@ p { margin: 0; }
     cx.drawImage(b, 0, 0);
     filterCanvas(cv, ed.tmp.f);
     if (ed.tab === 'bg' && ed.f.cut && ed.tmp.stk > 0) {
-      const so = stickerize(cv, stickerR(ed.tmp.stk, cv.width, cv.height, 0.06), ed.tmp.stkC);
+      const so = stickerize(cv, stickerR(ed.tmp.stk, cv.width, cv.height, 0.06), ed.tmp.stkC, stickerG(ed.tmp.stkG, cv.width, cv.height));
       if (so !== cv) { const c2 = cv.getContext('2d'); c2.clearRect(0, 0, cv.width, cv.height); c2.drawImage(so, 0, 0); }
     }
     fitStage(b.width, b.height);
@@ -1633,6 +1669,7 @@ p { margin: 0; }
     $('edBgPanel').hidden = tab !== 'bg';
     $('edErasePanel').hidden = tab !== 'erase';
     $('edMask').hidden = tab !== 'erase';
+    if (tab !== 'erase') resetZoom();
     document.querySelectorAll('#edTabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === tab)); });
     if (tab === 'crop') {
       buildOrient(); initCr();
@@ -1647,7 +1684,7 @@ p { margin: 0; }
       eraseStage();
     } else {
       if (ed.cr) saveCrop();
-      if (tab === 'bg') { $('edBgUndo').hidden = !ed.f.origFile; $('edStk').checked = ed.tmp.stk > 0; $('edStkW').value = ed.tmp.stk || 40; $('edStkC').value = ed.tmp.stkC; $('edStkRow').hidden = !(ed.tmp.stk > 0); }
+      if (tab === 'bg') { $('edBgUndo').hidden = !ed.f.origFile; $('edStk').checked = ed.tmp.stk > 0; $('edStkW').value = ed.tmp.stk || 40; $('edStkC').value = ed.tmp.stkC; $('edStkG').checked = ed.tmp.stkG !== false; $('edStkRow').hidden = !(ed.tmp.stk > 0); }
       ed.base = renderCrop(ed.work, ed.tmp, 720);
       $('edCrop').hidden = true;
       drawFiltered();
@@ -1678,7 +1715,7 @@ p { margin: 0; }
       return;
     }
     ed.tmp = {
-      stk: f.stk || 0, stkC: f.stkC || '#ffffff',
+      stk: f.stk || 0, stkC: f.stkC || '#ffffff', stkG: f.stkG !== false,
       rot: f.edit.rot, flip: f.edit.flip, crop: f.edit.crop ? Object.assign({}, f.edit.crop) : null,
       f: Object.assign({}, all ? DEF_F : f.edit.f)   // "para todas" empieza sin filtros
     };
@@ -1709,7 +1746,7 @@ p { margin: 0; }
     for (let i = 0; i < targets.length; i++) {
       const g = targets[i];
       const oldAr = g.ar;
-      if (g === f && !onlyFilters) { g.stk = t.stk; g.stkC = t.stkC; }
+      if (g === f && !onlyFilters) { g.stk = t.stk; g.stkC = t.stkC; g.stkG = t.stkG; }
       if (g === f && !onlyFilters) g.edit = { rot: t.rot, flip: t.flip, crop: t.crop, f: Object.assign({}, t.f) };
       else g.edit.f = Object.assign({}, t.f);
       refreshThumb(g);
@@ -1727,7 +1764,8 @@ p { margin: 0; }
 
   function edPoint(e) {
     const r = $('edCW').getBoundingClientRect();
-    return { x: (e.clientX - r.left) / ed.k, y: (e.clientY - r.top) / ed.k };
+    const c = $('edCanvas');
+    return { x: (e.clientX - r.left) / r.width * c.width, y: (e.clientY - r.top) / r.height * c.height };
   }
   function ptrDist() {
     const a = Array.from(ptrs.values());
@@ -1815,9 +1853,13 @@ p { margin: 0; }
 
   // ---- Borrar objetos (relleno con parches de la propia foto, sin internet) ----
   const er = { stack: [], busy: false };
+  const ez = { z: 1, tx: 0, ty: 0 };
+  function edApplyZoom() { $('edCW').style.transform = ez.z === 1 && !ez.tx && !ez.ty ? '' : 'translate(' + ez.tx + 'px,' + ez.ty + 'px) scale(' + ez.z + ')'; }
+  function resetZoom() { ez.z = 1; ez.tx = 0; ez.ty = 0; edApplyZoom(); }
 
   function eraseStage() {
     const mk = $('edMask');
+    resetZoom();
     drawStage(ed.work);
     er.wand = null;
     if (mk.width !== ed.work.width || mk.height !== ed.work.height) { mk.width = ed.work.width; mk.height = ed.work.height; er.stack = []; }
@@ -1835,6 +1877,187 @@ p { margin: 0; }
     return o;
   }
 
+  // Relleno suave por pirámide (push-pull): continúa luz y color desde los bordes del hueco.
+  function diffuseFill(c0, known, w0, h0) {
+    const n = w0 * h0, a0 = new Float32Array(n), cc = new Float32Array(c0);
+    for (let i = 0; i < n; i++) a0[i] = known[i];
+    const lv = [{ w: w0, h: h0, c: cc, a: a0 }];
+    for (;;) {
+      const P = lv[lv.length - 1];
+      if (P.w === 1 && P.h === 1) break;
+      const nw = Math.max(1, (P.w + 1) >> 1), nh = Math.max(1, (P.h + 1) >> 1);
+      const nc = new Float32Array(nw * nh * 3), na = new Float32Array(nw * nh);
+      for (let y = 0; y < P.h; y++) for (let x = 0; x < P.w; x++) {
+        const pi = y * P.w + x, ni = (y >> 1) * nw + (x >> 1), a = P.a[pi];
+        if (a > 0) { na[ni] += a; for (let k = 0; k < 3; k++) nc[ni * 3 + k] += P.c[pi * 3 + k] * a; }
+      }
+      for (let i = 0; i < nw * nh; i++) { if (na[i] > 0) for (let k = 0; k < 3; k++) nc[i * 3 + k] /= na[i]; na[i] = Math.min(1, na[i]); }
+      lv.push({ w: nw, h: nh, c: nc, a: na });
+    }
+    for (let l = lv.length - 2; l >= 0; l--) {
+      const P = lv[l], Q = lv[l + 1];
+      for (let y = 0; y < P.h; y++) for (let x = 0; x < P.w; x++) {
+        const i = y * P.w + x, a = P.a[i];
+        if (a >= 1) continue;
+        const u = Math.min(Q.w - 1, Math.max(0, (x + 0.5) / 2 - 0.5)), v = Math.min(Q.h - 1, Math.max(0, (y + 0.5) / 2 - 0.5));
+        const u0 = Math.floor(u), v0 = Math.floor(v), u1 = Math.min(Q.w - 1, u0 + 1), v1 = Math.min(Q.h - 1, v0 + 1), fu = u - u0, fv = v - v0;
+        for (let k = 0; k < 3; k++) {
+          const up = (Q.c[(v0 * Q.w + u0) * 3 + k] * (1 - fu) + Q.c[(v0 * Q.w + u1) * 3 + k] * fu) * (1 - fv) + (Q.c[(v1 * Q.w + u0) * 3 + k] * (1 - fu) + Q.c[(v1 * Q.w + u1) * 3 + k] * fu) * fv;
+          P.c[i * 3 + k] = a * P.c[i * 3 + k] + (1 - a) * up;
+        }
+        P.a[i] = 1;
+      }
+    }
+    return lv[0].c;
+  }
+
+  function dilateSq(m, w, h, r) {
+    const t = new Uint8Array(w * h), o = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      let last = -1e9;
+      for (let x = 0; x < w; x++) if (m[y * w + x]) last = x, t[y * w + x] = 1; else if (x - last <= r) t[y * w + x] = 1;
+      last = 1e9;
+      for (let x = w - 1; x >= 0; x--) { if (m[y * w + x]) last = x; if (last - x <= r) t[y * w + x] = 1; }
+    }
+    for (let x = 0; x < w; x++) {
+      let last = -1e9;
+      for (let y = 0; y < h; y++) { if (t[y * w + x]) last = y; if (y - last <= r) o[y * w + x] = 1; }
+      last = 1e9;
+      for (let y = h - 1; y >= 0; y--) { if (t[y * w + x]) last = y; if (last - y <= r) o[y * w + x] = 1; }
+    }
+    return o;
+  }
+
+  // Relleno con parches (PatchMatch) de grueso a fino: copia texturas reales de la propia foto.
+  async function patchInpaint(img0, hole0, w0, h0, onProg) {
+    const r = 3;
+    const L = [{ w: w0, h: h0, img: img0, hole: hole0 }];
+    while (L.length < 4 && Math.min(L[L.length - 1].w, L[L.length - 1].h) >= 64) {
+      const P = L[L.length - 1], w = P.w >> 1, h = P.h >> 1, img = new Float32Array(w * h * 3), hole = new Uint8Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x, j0 = (2 * y) * P.w + 2 * x, js = [j0, j0 + 1, j0 + P.w, j0 + P.w + 1];
+        let any = 0;
+        for (let q = 0; q < 4; q++) if (P.hole[js[q]]) any = 1;
+        hole[i] = any;
+        if (!any) for (let k = 0; k < 3; k++) img[i * 3 + k] = (P.img[js[0] * 3 + k] + P.img[js[1] * 3 + k] + P.img[js[2] * 3 + k] + P.img[js[3] * 3 + k]) / 4;
+      }
+      L.push({ w: w, h: h, img: img, hole: hole });
+    }
+    let prev = null, totalSteps = 0, step = 0;
+    const iters = function (l) { return l === 0 ? 4 : l === 1 ? 5 : 6; };
+    for (let l = 0; l < L.length; l++) totalSteps += iters(l);
+    for (let l = L.length - 1; l >= 0; l--) {
+      const V = L[l], w = V.w, h = V.h, img = V.img, hole = V.hole, n = w * h;
+      // valores iniciales del hueco
+      if (l === L.length - 1) {
+        const known = new Uint8Array(n);
+        for (let i = 0; i < n; i++) known[i] = hole[i] ? 0 : 1;
+        const F = diffuseFill(img, known, w, h);
+        for (let i = 0; i < n; i++) if (hole[i]) for (let k = 0; k < 3; k++) img[i * 3 + k] = F[i * 3 + k];
+      } else {
+        const C = L[l + 1];
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const i = y * w + x;
+          if (!hole[i]) continue;
+          const j = Math.min(C.h - 1, y >> 1) * C.w + Math.min(C.w - 1, x >> 1);
+          for (let k = 0; k < 3; k++) img[i * 3 + k] = C.img[j * 3 + k];
+        }
+      }
+      const dil = dilateSq(hole, w, h, r);
+      const valid = new Uint8Array(n), vlist = [], act = [];
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (dil[i]) act.push(i);
+        else if (x >= r && y >= r && x < w - r && y < h - r) { valid[i] = 1; vlist.push(i); }
+      }
+      if (!vlist.length || !act.length) { prev = null; continue; }
+      const nnx = new Int32Array(n).fill(-1), nny = new Int32Array(n).fill(-1);
+      for (let q = 0; q < act.length; q++) {
+        const i = act[q], x = i % w, y = (i / w) | 0;
+        let sx = -1, sy = -1;
+        if (prev) {
+          const pi = Math.min(prev.h - 1, y >> 1) * prev.w + Math.min(prev.w - 1, x >> 1);
+          if (prev.nnx[pi] >= 0) { sx = prev.nnx[pi] * 2 + (x & 1); sy = prev.nny[pi] * 2 + (y & 1); }
+          if (sx < 0 || sy < 0 || sx >= w || sy >= h || !valid[sy * w + sx]) sx = -1;
+        }
+        if (sx < 0) { const v = vlist[(Math.random() * vlist.length) | 0]; sx = v % w; sy = (v / w) | 0; }
+        nnx[i] = sx; nny[i] = sy;
+      }
+      function dist(px, py, sx, sy, lim) {
+        let d = 0;
+        for (let dy = -r; dy <= r; dy++) {
+          const ty = py + dy; if (ty < 0 || ty >= h) continue;
+          for (let dx = -r; dx <= r; dx++) {
+            const tx = px + dx; if (tx < 0 || tx >= w) continue;
+            const a = (ty * w + tx) * 3, b = ((sy + dy) * w + sx + dx) * 3;
+            const e0 = img[a] - img[b], e1 = img[a + 1] - img[b + 1], e2 = img[a + 2] - img[b + 2];
+            d += e0 * e0 + e1 * e1 + e2 * e2;
+          }
+          if (d > lim) return d;
+        }
+        return d;
+      }
+      const cost = new Float32Array(n);
+      const maxR = Math.max(w, h);
+      const sums = new Float32Array(n * 3), cnt = new Uint16Array(n);
+      for (let it = 0; it < iters(l); it++) {
+        for (let q = 0; q < act.length; q++) { const i = act[q]; cost[i] = dist(i % w, (i / w) | 0, nnx[i], nny[i], Infinity); }
+        const fwd = it % 2 === 0;
+        for (let qq = 0; qq < act.length; qq++) {
+          const i = act[fwd ? qq : act.length - 1 - qq], x = i % w, y = (i / w) | 0;
+          let bx = nnx[i], by = nny[i], bc = cost[i];
+          const sgn = fwd ? -1 : 1;
+          // propagación desde los vecinos
+          for (let t = 0; t < 2; t++) {
+            const nx = t === 0 ? x + sgn : x, ny = t === 0 ? y : y + sgn;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const ni = ny * w + nx;
+            if (nnx[ni] < 0) continue;
+            const cx = nnx[ni] - sgn * (t === 0 ? 1 : 0), cy = nny[ni] - sgn * (t === 1 ? 1 : 0);
+            if (cx < r || cy < r || cx >= w - r || cy >= h - r || !valid[cy * w + cx]) continue;
+            const c = dist(x, y, cx, cy, bc);
+            if (c < bc) { bc = c; bx = cx; by = cy; }
+          }
+          // búsqueda al azar con radio decreciente
+          for (let R = maxR; R >= 1; R = R >> 1) {
+            const cx = bx + Math.round((Math.random() * 2 - 1) * R), cy = by + Math.round((Math.random() * 2 - 1) * R);
+            if (cx < r || cy < r || cx >= w - r || cy >= h - r || !valid[cy * w + cx]) continue;
+            const c = dist(x, y, cx, cy, bc);
+            if (c < bc) { bc = c; bx = cx; by = cy; }
+          }
+          nnx[i] = bx; nny[i] = by; cost[i] = bc;
+          if ((qq & 2047) === 2047) await yieldUI();
+        }
+        // votación: cada pixel del hueco = promedio de lo que dicen los parches que lo cubren
+        sums.fill(0); cnt.fill(0);
+        for (let q = 0; q < act.length; q++) {
+          const i = act[q], x = i % w, y = (i / w) | 0, sx = nnx[i], sy = nny[i];
+          for (let dy = -r; dy <= r; dy++) {
+            const ty = y + dy; if (ty < 0 || ty >= h) continue;
+            for (let dx = -r; dx <= r; dx++) {
+              const tx = x + dx; if (tx < 0 || tx >= w) continue;
+              const ti = ty * w + tx;
+              if (!hole[ti]) continue;
+              const si = ((sy + dy) * w + sx + dx) * 3;
+              sums[ti * 3] += img[si]; sums[ti * 3 + 1] += img[si + 1]; sums[ti * 3 + 2] += img[si + 2]; cnt[ti]++;
+            }
+          }
+        }
+        const sharp = l === 0 && it === iters(l) - 1;   // última vuelta: copia directa del centro (más nítido)
+        for (let q = 0; q < act.length; q++) {
+          const i = act[q];
+          if (sharp && hole[i]) { const si = (nny[i] * w + nnx[i]) * 3; img[i * 3] = img[si]; img[i * 3 + 1] = img[si + 1]; img[i * 3 + 2] = img[si + 2]; continue; }
+          if (hole[i] && cnt[i]) { img[i * 3] = sums[i * 3] / cnt[i]; img[i * 3 + 1] = sums[i * 3 + 1] / cnt[i]; img[i * 3 + 2] = sums[i * 3 + 2] / cnt[i]; }
+        }
+        step++;
+        if (onProg) onProg(step / totalSteps);
+        await yieldUI();
+      }
+      prev = { w: w, h: h, nnx: nnx, nny: nny };
+    }
+    return L[0].img;
+  }
+
   async function inpaintRegion(src, mask, onProg) {
     const W = src.width, H = src.height;
     const mx = mask.getContext('2d').getImageData(0, 0, W, H).data;
@@ -1843,9 +2066,9 @@ p { margin: 0; }
     m = dilate(dilate(m, W, H), W, H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (m[y * W + x]) { N++; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
     if (!N) return null;
-    const M = 40, x0 = Math.max(0, bx0 - M), y0 = Math.max(0, by0 - M), x1 = Math.min(W, bx1 + 1 + M), y1 = Math.min(H, by1 + 1 + M);
+    const M = Math.min(160, Math.max(48, Math.round(0.5 * Math.max(bx1 - bx0, by1 - by0)))), x0 = Math.max(0, bx0 - M), y0 = Math.max(0, by0 - M), x1 = Math.min(W, bx1 + 1 + M), y1 = Math.min(H, by1 + 1 + M);
     const cw = x1 - x0, ch = y1 - y0;
-    const s = Math.min(1, Math.sqrt(90000 / N), 1);
+    const s = Math.min(1, Math.sqrt(50000 / N));
     const sw = Math.max(12, Math.round(cw * s)), sh2 = Math.max(12, Math.round(ch * s));
     // máscara del recorte
     const mc = document.createElement('canvas'); mc.width = cw; mc.height = ch;
@@ -1862,80 +2085,13 @@ p { margin: 0; }
     const n = sw * sh2;
     const kn0 = new Uint8Array(n);
     for (let i = 0; i < n; i++) kn0[i] = sa[i * 4 + 3] > 20 ? 0 : 1;
-    // 1) Relleno suave por pirámide (push-pull): continúa luz y color desde los bordes.
-    const lv = [];
-    let cw0 = sw, ch0 = sh2, c0 = new Float32Array(n * 3), w0 = new Float32Array(n);
-    for (let i = 0; i < n; i++) { w0[i] = kn0[i]; for (let k = 0; k < 3; k++) c0[i * 3 + k] = D[i * 4 + k]; }
-    lv.push({ w: cw0, h: ch0, c: c0, a: w0 });
-    while (lv[lv.length - 1].w > 1 || lv[lv.length - 1].h > 1) {
-      const P = lv[lv.length - 1], nw = Math.max(1, (P.w + 1) >> 1), nh = Math.max(1, (P.h + 1) >> 1);
-      const nc = new Float32Array(nw * nh * 3), na = new Float32Array(nw * nh);
-      for (let y = 0; y < P.h; y++) for (let x = 0; x < P.w; x++) {
-        const pi = y * P.w + x, ni = (y >> 1) * nw + (x >> 1), a = P.a[pi];
-        if (a > 0) { na[ni] += a; for (let k = 0; k < 3; k++) nc[ni * 3 + k] += P.c[pi * 3 + k] * a; }
-      }
-      for (let i = 0; i < nw * nh; i++) { if (na[i] > 0) for (let k = 0; k < 3; k++) nc[i * 3 + k] /= na[i]; na[i] = Math.min(1, na[i]); }
-      lv.push({ w: nw, h: nh, c: nc, a: na });
-      if (nw === 1 && nh === 1) break;
-    }
-    for (let l = lv.length - 2; l >= 0; l--) {
-      const P = lv[l], Q = lv[l + 1];
-      for (let y = 0; y < P.h; y++) for (let x = 0; x < P.w; x++) {
-        const i = y * P.w + x, a = P.a[i];
-        if (a >= 1) continue;
-        const u = Math.min(Q.w - 1, Math.max(0, (x + 0.5) / 2 - 0.5)), v = Math.min(Q.h - 1, Math.max(0, (y + 0.5) / 2 - 0.5));
-        const u0 = Math.floor(u), v0 = Math.floor(v), u1 = Math.min(Q.w - 1, u0 + 1), v1 = Math.min(Q.h - 1, v0 + 1), fu = u - u0, fv = v - v0;
-        for (let k = 0; k < 3; k++) {
-          const up = (Q.c[(v0 * Q.w + u0) * 3 + k] * (1 - fu) + Q.c[(v0 * Q.w + u1) * 3 + k] * fu) * (1 - fv) + (Q.c[(v1 * Q.w + u0) * 3 + k] * (1 - fu) + Q.c[(v1 * Q.w + u1) * 3 + k] * fu) * fv;
-          P.c[i * 3 + k] = a * P.c[i * 3 + k] + (1 - a) * up;
-        }
-        P.a[i] = 1;
-      }
-    }
-    const F = lv[0].c;
-    // 2) Parte suave L (desenfoque de F) y detalle fino = original - L.
-    function boxBlur(src, rad) {
-      const t = new Float32Array(src.length), o = new Float32Array(src.length);
-      for (let y = 0; y < sh2; y++) for (let x = 0; x < sw; x++) for (let k = 0; k < 3; k++) {
-        let sum = 0, cnt = 0;
-        for (let d = -rad; d <= rad; d++) { const xx = x + d; if (xx >= 0 && xx < sw) { sum += src[(y * sw + xx) * 3 + k]; cnt++; } }
-        t[(y * sw + x) * 3 + k] = sum / cnt;
-      }
-      for (let y = 0; y < sh2; y++) for (let x = 0; x < sw; x++) for (let k = 0; k < 3; k++) {
-        let sum = 0, cnt = 0;
-        for (let d = -rad; d <= rad; d++) { const yy = y + d; if (yy >= 0 && yy < sh2) { sum += t[(yy * sw + x) * 3 + k]; cnt++; } }
-        o[(y * sw + x) * 3 + k] = sum / cnt;
-      }
-      return o;
-    }
-    const L = boxBlur(boxBlur(F, 3), 3);
-    // 3) En el hueco: luz de L + detalle fino tomado de un lugar parecido de la propia foto.
-    const known = [];
-    for (let i = 0; i < n; i++) if (kn0[i]) known.push(i);
-    if (!known.length) return null;
-    const RW = 70, TRY = 60;
-    for (let y = 0; y < sh2; y++) {
-      for (let x = 0; x < sw; x++) {
-        const i = y * sw + x;
-        if (kn0[i]) continue;
-        let best = Infinity, bi = -1;
-        for (let t = 0; t < TRY; t++) {
-          const xx = Math.round(x + (Math.random() * 2 - 1) * RW), yy = Math.round(y + (Math.random() * 2 - 1) * RW);
-          if (xx < 0 || yy < 0 || xx >= sw || yy >= sh2) continue;
-          const j = yy * sw + xx;
-          if (!kn0[j]) continue;
-          const a = L[j * 3] - L[i * 3], b = L[j * 3 + 1] - L[i * 3 + 1], c = L[j * 3 + 2] - L[i * 3 + 2];
-          const e = a * a + b * b + c * c;
-          if (e < best) { best = e; bi = j; }
-        }
-        if (bi < 0) bi = known[(Math.random() * known.length) | 0];
-        for (let k = 0; k < 3; k++) {
-          const v = L[i * 3 + k] + (D[bi * 4 + k] - L[bi * 3 + k]);
-          D[i * 4 + k] = v < 0 ? 0 : v > 255 ? 255 : v;
-        }
-        D[i * 4 + 3] = 255;
-      }
-      if ((y & 15) === 0) { if (onProg) onProg(y / sh2); await yieldUI(); }
+    const f0 = new Float32Array(n * 3), hole0 = new Uint8Array(n);
+    for (let i = 0; i < n; i++) { hole0[i] = kn0[i] ? 0 : 1; for (let k = 0; k < 3; k++) f0[i * 3 + k] = D[i * 4 + k]; }
+    const filled = await patchInpaint(f0, hole0, sw, sh2, onProg);
+    for (let i = 0; i < n; i++) {
+      if (kn0[i]) continue;
+      for (let k = 0; k < 3; k++) { const v = filled[i * 3 + k]; D[i * 4 + k] = v < 0 ? 0 : v > 255 ? 255 : v; }
+      D[i * 4 + 3] = 255;
     }
     scx.putImageData(img, 0, 0);
     // relleno a tamaño real, recortado por la máscara suavizada
@@ -1991,7 +2147,7 @@ p { margin: 0; }
     const r = await loadImg(f.file);
     let cv = filteredCanvas(r.img, edit, 4096);
     URL.revokeObjectURL(r.url);
-    if (f.cut && stk > 0) cv = stickerize(cv, stickerR(stk, cv.width, cv.height, 0.06), stkC);
+    if (f.cut && stk > 0) cv = stickerize(cv, stickerR(stk, cv.width, cv.height, 0.06), stkC, stickerG(f.stkG, cv.width, cv.height));
     const blob = await canvasBlob(cv, 'png');
     cv.width = 1; cv.height = 1;
     return blob;
@@ -2089,28 +2245,56 @@ p { margin: 0; }
       c.lineCap = 'round'; c.lineJoin = 'round';
       c.globalCompositeOperation = tool === 'rub' ? 'destination-out' : 'source-over';
       c.strokeStyle = c.fillStyle = '#ff2d55';
-      c.lineWidth = tool === 'lasso' ? Math.max(1, 3 / ed.k) : Math.max(1, (parseInt($('edBrush').value, 10) || 30) / ed.k);
+      const sc = mk.width / cw.getBoundingClientRect().width;
+      c.lineWidth = tool === 'lasso' ? Math.max(1, 3 * sc) : Math.max(1, (parseInt($('edBrush').value, 10) || 30) * sc);
       c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x + 0.01, b.y); c.stroke();
     }
+    const ptr = new Map();
+    let pinch = null, pan = null;
+    function pdist() { const a = Array.from(ptr.values()); return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1; }
+    function pmid() { const a = Array.from(ptr.values()); return { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 }; }
     cw.addEventListener('pointerdown', function (e) {
-      if (ed.tab !== 'erase' || er.busy || !e.isPrimary) return;
+      if (ed.tab !== 'erase' || er.busy) return;
       try { cw.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      e.preventDefault();
+      if (ptr.size === 2) {
+        if (paint) { const s0 = er.stack.pop(); if (s0) ctx2().putImageData(s0, 0, 0); paint = null; }
+        pan = null;
+        const r = cw.getBoundingClientRect(), m = pmid();
+        pinch = { d0: pdist(), z0: ez.z, u: { x: (m.x - r.left) / ez.z, y: (m.y - r.top) / ez.z }, L0: r.left - ez.tx, T0: r.top - ez.ty };
+        return;
+      }
+      if (ptr.size > 2) return;
+      const tool = segVal('edTool') || 'brush';
+      if (tool === 'hand') { pan = { x: e.clientX, y: e.clientY, tx: ez.tx, ty: ez.ty }; return; }
       const c = ctx2();
       er.stack.push(c.getImageData(0, 0, mk.width, mk.height));
       if (er.stack.length > 8) er.stack.shift();
       const p = edPoint(e);
-      if ((segVal('edTool') || 'brush') === 'wand') { wandAt(p); e.preventDefault(); return; }
+      if (tool === 'wand') { wandAt(p); return; }
       paint = { last: p, pts: [p], id: e.pointerId };
       seg(p, p);
-      e.preventDefault();
     });
     cw.addEventListener('pointermove', function (e) {
+      if (!ptr.has(e.pointerId)) return;
+      ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && ptr.size >= 2) {
+        const z = Math.min(8, Math.max(1, pinch.z0 * pdist() / pinch.d0)), m = pmid();
+        ez.z = z; ez.tx = m.x - pinch.u.x * z - pinch.L0; ez.ty = m.y - pinch.u.y * z - pinch.T0;
+        edApplyZoom();
+        return;
+      }
+      if (pan) { ez.tx = pan.tx + e.clientX - pan.x; ez.ty = pan.ty + e.clientY - pan.y; edApplyZoom(); return; }
       if (!paint || e.pointerId !== paint.id) return;
       const p = edPoint(e);
       seg(paint.last, p);
       paint.last = p; paint.pts.push(p);
     });
     function up(e) {
+      ptr.delete(e.pointerId);
+      if (ptr.size < 2) pinch = null;
+      if (ptr.size === 0) pan = null;
       if (!paint || e.pointerId !== paint.id) return;
       if ((segVal('edTool') || 'brush') === 'lasso' && paint.pts.length > 2) {
         const c = ctx2();
@@ -2122,6 +2306,23 @@ p { margin: 0; }
     }
     cw.addEventListener('pointerup', up);
     cw.addEventListener('pointercancel', up);
+    cw.addEventListener('wheel', function (e) {
+      if (ed.tab !== 'erase') return;
+      e.preventDefault();
+      const r = cw.getBoundingClientRect(), z0 = ez.z, z = Math.min(8, Math.max(1, z0 * (e.deltaY > 0 ? 0.88 : 1.14)));
+      const u = { x: (e.clientX - r.left) / z0, y: (e.clientY - r.top) / z0 };
+      ez.z = z; ez.tx = e.clientX - u.x * z - (r.left - ez.tx); ez.ty = e.clientY - u.y * z - (r.top - ez.ty);
+      edApplyZoom();
+    }, { passive: false });
+    function zoomBtn(f) {
+      const st = $('edStage').getBoundingClientRect(), r = cw.getBoundingClientRect(), z0 = ez.z, z = Math.min(8, Math.max(1, z0 * f));
+      const cx = st.left + st.width / 2, cy = st.top + st.height / 2, u = { x: (cx - r.left) / z0, y: (cy - r.top) / z0 };
+      ez.z = z; ez.tx = cx - u.x * z - (r.left - ez.tx); ez.ty = cy - u.y * z - (r.top - ez.ty);
+      edApplyZoom();
+    }
+    $('edZin').addEventListener('click', function () { zoomBtn(1.6); });
+    $('edZout').addEventListener('click', function () { zoomBtn(1 / 1.6); });
+    $('edZfit').addEventListener('click', resetZoom);
     document.querySelectorAll('#edTool button').forEach(function (b) { b.addEventListener('click', function () {
       segSet('edTool', b.dataset.v);
       $('edTolRow').hidden = b.dataset.v !== 'wand'; $('edWandHint').hidden = b.dataset.v !== 'wand';
@@ -2143,12 +2344,12 @@ p { margin: 0; }
     $('edBgGo').addEventListener('click', bgRemove);
     function stkChange() {
       ed.tmp.stk = $('edStk').checked ? (parseInt($('edStkW').value, 10) || 40) : 0;
-      ed.tmp.stkC = $('edStkC').value;
+      ed.tmp.stkC = $('edStkC').value; ed.tmp.stkG = $('edStkG').checked;
       $('edStkRow').hidden = !$('edStk').checked;
       if (ed.f && !ed.f.cut && ed.tmp.stk > 0) $('edBgMsg').textContent = 'Primero toca «Quitar fondo»; el borde se pone alrededor de lo que queda.';
       scheduleFiltered();
     }
-    ['edStk', 'edStkW', 'edStkC'].forEach(function (id) { $(id).addEventListener('input', stkChange); $(id).addEventListener('change', stkChange); });
+    ['edStk', 'edStkW', 'edStkC', 'edStkG'].forEach(function (id) { $(id).addEventListener('input', stkChange); $(id).addEventListener('change', stkChange); });
     $('edBgUndo').addEventListener('click', bgUndo);
     cw.addEventListener('pointerdown', function (e) {
       if (ed.tab !== 'crop' || !ed.cr) return;
@@ -2286,7 +2487,7 @@ p { margin: 0; }
           const wPx = Math.max(32, Math.round(r.w / 25.4 * 300));
           const hPx = Math.max(32, Math.round(r.h / 25.4 * 300));
           const v = viewOf(r);
-          const key = r.f.id + '|' + (r.f.cut ? (r.f.stk || 0) + (r.f.stkC || '') : '') + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
+          const key = r.f.id + '|' + (r.f.cut ? (r.f.stk || 0) + (r.f.stkC || '') + (r.f.stkG === false ? 'n' : 'g') : '') + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
           let data = cache.get(key);
           if (!data) { data = await tileJpeg(r.f, wPx, hPx, tileMode, r.rot, v); cache.set(key, data); }
           const op = opacityOf(r);
@@ -2816,7 +3017,7 @@ p { margin: 0; }
     return o;
   }
 
-  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc'];
+  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg'];
   function styleOf(o) { const r = {}; STYLE_KEYS.forEach(function (k) { r[k] = o[k]; }); return r; }
 
   // Reparte un texto largo en cuadros: si no cabe en la hoja sigue en la siguiente.
@@ -2943,7 +3144,7 @@ p { margin: 0; }
     let front = renderText0(o, w, h, fill);
     if (o.poster) return front;
     if (o.d3 > 0) front = extrude(o, front, w, h);
-    if (o.stk > 0) front = stickerize(front, stickerR(o.stk, w, h, 0.1), o.stkc);
+    if (o.stk > 0) front = stickerize(front, stickerR(o.stk, w, h, 0.1), o.stkc, stickerG(o.stkg, w, h));
     return front;
   }
 
@@ -3048,7 +3249,7 @@ p { margin: 0; }
 
   function textKey(o) {
     return [o.fit ? 'F' + o.text + '|' + o.capMM + '|' + o.asc0 : (o.lines || []).join('\u0001'), o.font, o.size, o.align, o.bold ? 1 : 0, o.italic ? 1 : 0,
-      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0,
+      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0,
       o.poster ? [o.poster.W, o.poster.H, o.poster.ix, o.poster.iy].join(',') : ''].join('|');
   }
 
@@ -3118,7 +3319,7 @@ p { margin: 0; }
       fillMode: segVal('txFillMode') || 'color', fillFit: segVal('txFillFit') || 'cover', color: $('txColor').value, fillImg: parseInt($('txFill').value, 10) || 0,
       stroke: $('txStroke').checked, strokeColor: $('txStrokeColor').value, strokeW: parseInt($('txStrokeW').value, 10) || 6,
       d3: $('tx3d').checked ? (parseInt($('tx3dD').value, 10) || 40) : 0, d3dir: $('tx3dDir').value, d3color: $('tx3dColor').value,
-      stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value
+      stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value, stkg: $('txStkG').checked
     };
   }
 
@@ -3142,7 +3343,7 @@ p { margin: 0; }
     segSet('txAlign', o.align || 'center'); segSet('txFillMode', o.fillMode || 'color'); segSet('txFillFit', o.fillFit || 'cover');
     $('txStroke').checked = !!o.stroke; $('txStrokeColor').value = o.strokeColor; $('txStrokeW').value = o.strokeW;
     $('tx3d').checked = !!o.d3; if (o.d3) $('tx3dD').value = o.d3; $('tx3dDir').value = o.d3dir || 'se'; $('tx3dColor').value = o.d3color || '#7a1642';
-    $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff';
+    $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff'; $('txStkG').checked = o.stkg !== false;
     $('txPoster').checked = !!o.poster;
     if (o.poster) $('txPosterW').value = Math.round(o.poster.W / 10);
     fillOptions(o.fillImg || '');
@@ -3252,7 +3453,7 @@ p { margin: 0; }
       op.value = f.k; op.textContent = f.n;
       fs.appendChild(op);
     });
-    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterW'].forEach(function (id) {
+    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterW'].forEach(function (id) {
       $(id).addEventListener('input', live);
       $(id).addEventListener('change', live);
     });
@@ -3759,7 +3960,8 @@ p { margin: 0; }
   }
 
   function bindDoc() {
-    ['docFileW', 'docFileX', 'docFileP'].forEach(function (id) {
+    try { if (window.claude && window.claude.use) $('docPick').textContent = 'Estás viendo la página dentro de Claude. Ahí el celular a veces no deja elegir Word, Excel o PDF: abre la copia de GitHub Pages en Chrome.'; } catch (e) { /* ok */ }
+    ['docFileW', 'docFileX', 'docFileP', 'docFileN'].forEach(function (id) {
       function got(e) {
         const f = e.target.files && e.target.files[0];
         if (!f) return;
