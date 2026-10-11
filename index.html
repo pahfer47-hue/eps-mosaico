@@ -234,6 +234,17 @@ p { margin: 0; }
 .doc-tools { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--line); align-items: center; }
 .doc-tools input, .doc-tools select { font: inherit; min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); min-width: 0; flex: 1 1 110px; }
 .doc-tools .btn { min-height: 38px; padding-inline: 10px; flex: none; }
+.doc-dock { background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.doc-tabs { display: flex; gap: 4px; padding: 6px 8px; overflow-x: auto; }
+.doc-tabs .btn { min-height: 38px; padding-inline: 12px; flex: none; }
+.doc-tabs .tab[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.doc-pane { display: flex; gap: 6px; padding: 2px 10px 8px; overflow-x: auto; align-items: center; flex-wrap: nowrap; }
+.doc-pane.wrap { flex-wrap: wrap; overflow: visible; }
+.doc-pane .btn { min-height: 38px; padding-inline: 10px; flex: none; }
+.doc-pane input[type="text"], .doc-pane select { font: inherit; min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); flex: 1 0 130px; min-width: 0; }
+.doc-imgtools { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; align-items: center; }
+.doc-lupa { background: #fff; color: #000; border-bottom: 2px solid var(--accent); height: 96px; overflow: hidden; position: relative; }
+#docLupaIn { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
 .doc-scroll { flex: 1; min-height: 0; overflow: auto; background: #8d98a0; padding: 12px; position: relative; }
 #docBody { transform-origin: 0 0; width: max-content; }
 #docZoom { overflow: hidden; }
@@ -245,10 +256,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 .pgbreak::after { content: attr(data-l); position: absolute; right: 6px; top: -18px; font: 600 11px sans-serif; color: #e5484d; background: #fff; padding: 0 4px; }
 .docimg { position: absolute; pointer-events: none; touch-action: none; user-select: none; -webkit-user-select: none; }
 .docimg img { width: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
-.docimg .dh { display: none; position: absolute; right: -10px; bottom: -10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+.docimg .dh { display: none; position: absolute; right: calc(-14px * var(--inv, 1)); bottom: calc(-14px * var(--inv, 1)); width: calc(28px * var(--inv, 1)); height: calc(28px * var(--inv, 1)); border-radius: 50%; background: var(--accent); border: calc(2px * var(--inv, 1)) solid #fff; touch-action: none; }
 .docimg.back { z-index: 0; } .docimg.front { z-index: 2; }
-#docBody.imgmode .docimg { pointer-events: auto; outline: 1px dashed var(--accent); cursor: move; }
-#docBody.imgmode .docimg.sel { outline: 2px solid var(--accent); }
+#docBody.imgmode { touch-action: none; }
+#docBody.imgmode .docimg { pointer-events: auto; outline: calc(1px * var(--inv, 1)) dashed var(--accent); cursor: move; }
+#docBody.imgmode .docimg.sel { outline: calc(2px * var(--inv, 1)) solid var(--accent); }
 #docBody.imgmode .docimg.sel .dh { display: block; }
 #docBody.imgmode section.docx > article { pointer-events: none; }
 .xl-table { border-collapse: collapse; font: 11pt Calibri, Carlito, Arial, sans-serif; color: #000; background: #fff; }
@@ -319,6 +331,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
             <button class="btn" id="msZ0" type="button">Zoom normal</button>
           </div>
           <div class="row">
+            <button class="btn" id="msEdit" type="button">Editar esta foto</button>
             <button class="btn" id="msBw" type="button">Blanco y negro</button>
             <button class="btn" id="msFilt" type="button">Filtros…</button>
             <button class="btn" id="msDel" type="button">Quitar</button>
@@ -550,6 +563,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button class="btn" id="selRotR" type="button" aria-label="Girar a la derecha">↻ Girar</button>
           <button class="btn" id="selZm" type="button">－ Zoom</button>
           <button class="btn" id="selZp" type="button">＋ Zoom</button>
+          <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="1" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
+          <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
           <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
           <button class="btn" id="selReset" type="button">Quitar encuadre</button>
           <button class="btn" id="selSmaller" type="button" aria-label="Más chica">− Chica</button>
@@ -602,42 +617,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <strong id="docTitle">Documento</strong>
     <button class="btn primary" id="docMake" type="button">Crear PDF</button>
   </div>
-  <div class="doc-tools">
-    <button class="btn" type="button" data-cmd="bold" aria-label="Negrita"><b>N</b></button>
-    <button class="btn" type="button" data-cmd="italic" aria-label="Cursiva"><i>K</i></button>
-    <button class="btn" type="button" data-cmd="underline" aria-label="Subrayado"><u>S</u></button>
-    <button class="btn" type="button" data-cmd="undo" aria-label="Deshacer">↶</button>
-    <button class="btn" type="button" id="docZoomOut" aria-label="Alejar">− Zoom</button>
-    <button class="btn" type="button" id="docZoomIn" aria-label="Acercar">+ Zoom</button>
-    <select id="docSheet" aria-label="Hoja de Excel" hidden></select>
-    <select id="docOrient" aria-label="Orientación del PDF" hidden>
-      <option value="0">PDF vertical</option>
-      <option value="1">PDF horizontal</option>
-    </select>
-  </div>
-  <div class="doc-tools" id="docFmt">
-    <button class="btn" type="button" data-cmd="justifyLeft" aria-label="Alinear a la izquierda">Izq.</button>
-    <button class="btn" type="button" data-cmd="justifyCenter" aria-label="Centrar">Centro</button>
-    <button class="btn" type="button" data-cmd="justifyRight" aria-label="Alinear a la derecha">Der.</button>
-    <button class="btn" type="button" data-cmd="justifyFull" aria-label="Justificar">Justif.</button>
-    <select id="docLH" aria-label="Interlineado"><option value="">Interlineado</option><option value="1">1</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2</option><option value="2.5">2.5</option></select>
-    <label class="check" style="min-height:38px;flex:none"><input type="checkbox" id="docLHAll"> a todo</label>
-    <select id="docMargin" aria-label="Margen de las hojas"><option value="">Margen</option><option value="orig">Original</option><option value="1">1 cm</option><option value="1.5">1.5 cm</option><option value="2">2 cm</option><option value="2.54">2.54 cm</option><option value="3">3 cm</option></select>
-    <button class="btn" type="button" id="docImgBtn">Agregar imagen</button>
-    <input id="docImgIn" type="file" accept="image/*" hidden>
-    <button class="btn" type="button" id="docImgMode" aria-pressed="false">Mover imágenes</button>
-  </div>
-  <div class="doc-tools" id="docImgTools" hidden>
-    <label class="sl-inline">Tamaño <input type="range" id="docImgSize" min="5" max="100" value="40"></label>
-    <label class="sl-inline">Transparencia <input type="range" id="docImgAlpha" min="0" max="90" value="0"></label>
-    <button class="btn" type="button" id="docImgZ">Detrás del texto</button>
-    <button class="btn" type="button" id="docImgDel">Quitar imagen</button>
-  </div>
-  <div class="doc-tools">
-    <input id="docFind" type="text" placeholder="Buscar" autocomplete="off">
-    <input id="docRepl" type="text" placeholder="Cambiar por" autocomplete="off">
-    <button class="btn" id="docReplAll" type="button">Cambiar todo</button>
-  </div>
+  <div class="doc-lupa" id="docLupa" hidden><div id="docLupaIn"></div></div>
   <div class="doc-scroll" id="docScroll"><div id="docZoom"><div id="docBody"></div></div></div>
   <div class="doc-bar">
     <div id="docNote" class="note" role="status" aria-live="polite" style="margin:0 0 6px"></div>
@@ -650,6 +630,58 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       </div>
     </div>
     <div class="prog" id="docProgWrap" hidden><div id="docProg"></div></div>
+  </div>
+  <div class="doc-dock" id="docDock">
+    <div class="doc-tabs">
+      <button class="btn tab" type="button" data-t="txt" aria-pressed="true">Texto</button>
+      <button class="btn tab" type="button" data-t="par" id="docTabPar" aria-pressed="false">Párrafo</button>
+      <button class="btn tab" type="button" data-t="img" id="docTabImg" aria-pressed="false">Imagen</button>
+      <button class="btn tab" type="button" data-t="find" aria-pressed="false">Buscar</button>
+      <button class="btn tab" type="button" data-t="view" aria-pressed="false">Ver</button>
+      <button class="btn" type="button" id="docDockHide" aria-label="Ocultar herramientas">▼</button>
+    </div>
+    <div class="doc-pane" data-p="txt">
+      <button class="btn" type="button" data-cmd="bold" aria-label="Negrita"><b>N</b></button>
+      <button class="btn" type="button" data-cmd="italic" aria-label="Cursiva"><i>K</i></button>
+      <button class="btn" type="button" data-cmd="underline" aria-label="Subrayado"><u>S</u></button>
+      <button class="btn" type="button" data-cmd="undo" aria-label="Deshacer">↶ Deshacer</button>
+      <button class="btn" type="button" data-cmd="redo" aria-label="Rehacer">↷ Rehacer</button>
+    </div>
+    <div class="doc-pane" data-p="par" id="docFmt" hidden>
+      <button class="btn" type="button" data-cmd="justifyLeft" aria-label="Alinear a la izquierda">Izq.</button>
+      <button class="btn" type="button" data-cmd="justifyCenter" aria-label="Centrar">Centro</button>
+      <button class="btn" type="button" data-cmd="justifyRight" aria-label="Alinear a la derecha">Der.</button>
+      <button class="btn" type="button" data-cmd="justifyFull" aria-label="Justificar">Justif.</button>
+      <select id="docLH" aria-label="Interlineado"><option value="">Interlineado</option><option value="1">1</option><option value="1.15">1.15</option><option value="1.5">1.5</option><option value="2">2</option><option value="2.5">2.5</option></select>
+      <label class="check" style="min-height:38px;flex:none"><input type="checkbox" id="docLHAll"> a todo</label>
+      <select id="docMargin" aria-label="Margen de las hojas"><option value="">Margen</option><option value="orig">Original</option><option value="1">1 cm</option><option value="1.5">1.5 cm</option><option value="2">2 cm</option><option value="2.54">2.54 cm</option><option value="3">3 cm</option></select>
+    </div>
+    <div class="doc-pane wrap" data-p="img" hidden>
+      <button class="btn" type="button" id="docImgBtn">Agregar imagen</button>
+      <input id="docImgIn" type="file" accept="image/*" hidden>
+      <button class="btn" type="button" id="docImgMode" aria-pressed="false">Mover imágenes</button>
+      <div class="doc-imgtools" id="docImgTools" hidden>
+        <label class="sl-inline">Tamaño <input type="range" id="docImgSize" min="5" max="100" value="40"></label>
+        <label class="sl-inline">Transparencia <input type="range" id="docImgAlpha" min="0" max="90" value="0"></label>
+        <button class="btn" type="button" id="docImgZ">Detrás del texto</button>
+        <button class="btn" type="button" id="docImgDel">Quitar imagen</button>
+      </div>
+    </div>
+    <div class="doc-pane" data-p="find" hidden>
+      <input id="docFind" type="text" placeholder="Buscar" autocomplete="off">
+      <input id="docRepl" type="text" placeholder="Cambiar por" autocomplete="off">
+      <button class="btn" id="docReplAll" type="button">Cambiar todo</button>
+    </div>
+    <div class="doc-pane" data-p="view" hidden>
+      <button class="btn" type="button" id="docZoomOut" aria-label="Alejar">− Zoom</button>
+      <button class="btn" type="button" id="docZoomIn" aria-label="Acercar">+ Zoom</button>
+      <select id="docLupaSel" aria-label="Ventana de zoom del texto que editas"><option value="0">Sin ventana de zoom</option><option value="1.5">Ventana de zoom ×1.5</option><option value="2">Ventana de zoom ×2</option><option value="3">Ventana de zoom ×3</option></select>
+      <select id="docSheet" aria-label="Hoja de Excel" hidden></select>
+      <select id="docOrient" aria-label="Orientación del PDF" hidden>
+        <option value="0">PDF vertical</option>
+        <option value="1">PDF horizontal</option>
+      </select>
+    </div>
   </div>
 </div>
 
@@ -790,8 +822,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       <div class="sl"><label for="edBl">Negros</label><output id="edBlO">0</output><input type="range" id="edBl" min="-100" max="100" value="0"></div>
       <div class="sl"><label for="edSa">Saturación</label><output id="edSaO">0</output><input type="range" id="edSa" min="-100" max="100" value="0"></div>
       <div class="sl"><label for="edDn">Reducir ruido</label><output id="edDnO">0</output><input type="range" id="edDn" min="0" max="100" value="0"></div>
+      <div class="sl"><label for="edSh">Nitidez</label><output id="edShO">0</output><input type="range" id="edSh" min="0" max="100" value="0"></div>
       <div class="sl"><label for="edAl">Transparencia</label><output id="edAlO">0</output><input type="range" id="edAl" min="0" max="90" value="0"></div>
       <div class="tools"><button class="btn" id="edResetF" type="button">Quitar filtros</button></div>
+      <div id="edQRow">
+        <div class="tools"><button class="btn primary" id="edQGo" type="button">Mejorar calidad con IA ✨ (x2)</button></div>
+        <p class="hint">La IA agranda la foto al doble y le devuelve detalle (sirve para fotos chicas, borrosas o enviadas por WhatsApp). La primera vez descarga un modelo pequeño y necesita internet; en celulares modestos puede tardar uno o dos minutos. Si la foto ya es grande, se reduce un poco antes de procesarla.</p>
+        <p class="hint" id="edQMsg" role="status"></p>
+      </div>
       <label class="check" id="edAllRow"><input type="checkbox" id="edAll"> Aplicar estos filtros a todas las fotos</label>
     </div>
   </div>
@@ -973,8 +1011,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   }
 
   // ---- Filtros de imagen (sobre datos RGBA) ----
-  const DEF_F = { bw: false, br: 0, co: 0, wh: 0, bl: 0, sa: 0, dn: 0, al: 0 };
-  function filtersAreDefault(f) { return !f.bw && !f.br && !f.co && !f.wh && !f.bl && !f.sa && !f.dn; }
+  const DEF_F = { bw: false, br: 0, co: 0, wh: 0, bl: 0, sa: 0, dn: 0, sh: 0, al: 0 };
+  function filtersAreDefault(f) { return !f.bw && !f.br && !f.co && !f.wh && !f.bl && !f.sa && !f.dn && !f.sh; }
 
   // Tabla de tonos: brillo, contraste, blancos y negros dependen solo del valor del canal.
   function buildLut(f) {
@@ -1043,6 +1081,22 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       d[i] = r; d[i + 1] = g; d[i + 2] = b;
     }
+    if (f.sh > 0) sharpen(d, w, h, f.sh);
+  }
+
+  // Nitidez (máscara de enfoque): realza la diferencia con el promedio de los 8 vecinos.
+  function sharpen(d, w, h, amount) {
+    const k = amount / 100 * 1.6, src = new Uint8ClampedArray(d);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = (y * w + x) * 4;
+        for (let c = 0; c < 3; c++) {
+          const j = i + c;
+          const blur = (src[j - 4] + src[j + 4] + src[j - w * 4] + src[j + w * 4] + (src[j - 4 - w * 4] + src[j + 4 - w * 4] + src[j - 4 + w * 4] + src[j + 4 + w * 4]) * 0.5) / 6;
+          d[j] = src[j] + k * (src[j] - blur);
+        }
+      }
+    }
   }
 
   // ---- Orientación y recorte (geometría) ----
@@ -1098,24 +1152,38 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     return { sx: v.px * (iw - sw), sy: v.py * (ih - sh), sw: sw, sh: sh, dx: x, dy: y, dw: w, dh: h };
   }
 
+  // Geometría del encuadre con giro fino (v.a en grados, positivo = horario).
+  // La foto siempre cubre el cuadro: si se gira, el zoom sube lo necesario.
+  function viewGeom(iw, ih, w, h, v) {
+    const a = (v.a || 0) * Math.PI / 180, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a));
+    const bw = w * ca + h * sa, bh = w * sa + h * ca;
+    const s = Math.max(Math.max(w / iw, h / ih) * v.z, bw / iw, bh / ih);
+    const ww = Math.min(iw, bw / s), wh = Math.min(ih, bh / s);
+    return { a: a, s: s, ww: ww, wh: wh, cx: ww / 2 + v.px * (iw - ww), cy: wh / 2 + v.py * (ih - wh) };
+  }
+  function viewFromCenter(iw, ih, w, h, z, ang, cx, cy) {
+    const g = viewGeom(iw, ih, w, h, { z: z, a: ang, px: 0.5, py: 0.5 });
+    const rx = iw - g.ww, ry = ih - g.wh;
+    const x = cl(cx, g.ww / 2, iw - g.ww / 2), y = cl(cy, g.wh / 2, ih - g.wh / 2);
+    return { z: z, a: ang || 0, px: rx > 1e-6 ? cl((x - g.ww / 2) / rx, 0, 1) : 0.5, py: ry > 1e-6 ? cl((y - g.wh / 2) / ry, 0, 1) : 0.5 };
+  }
+
   // Mueve la foto dentro del cuadro: (du, dv) en mm en el cuadro; la foto sigue al dedo.
   function panView(iw, ih, w, h, v, du, dv) {
-    const r = viewRects(iw, ih, 0, 0, w, h, v);
-    const k = r.sw / w;
-    const rx = iw - r.sw, ry = ih - r.sh;
-    const sx = cl(r.sx - du * k, 0, rx), sy = cl(r.sy - dv * k, 0, ry);
-    return { z: v.z, px: rx > 1e-6 ? sx / rx : 0.5, py: ry > 1e-6 ? sy / ry : 0.5 };
+    const g = viewGeom(iw, ih, w, h, v), c = Math.cos(g.a), sn = Math.sin(g.a);
+    return viewFromCenter(iw, ih, w, h, v.z, v.a, g.cx - (du * c + dv * sn) / g.s, g.cy - (-du * sn + dv * c) / g.s);
   }
 
   // Cambia el zoom (factor) manteniendo fijo el centro de lo que se ve.
   function zoomView(iw, ih, w, h, v, factor) {
-    const r = viewRects(iw, ih, 0, 0, w, h, v);
-    const cx = r.sx + r.sw / 2, cy = r.sy + r.sh / 2;
-    const z = cl(v.z * factor, 1, 8);
-    const n = viewRects(iw, ih, 0, 0, w, h, { z: z, px: 0.5, py: 0.5 });
-    const rx = iw - n.sw, ry = ih - n.sh;
-    const sx = cl(cx - n.sw / 2, 0, rx), sy = cl(cy - n.sh / 2, 0, ry);
-    return { z: z, px: rx > 1e-6 ? sx / rx : 0.5, py: ry > 1e-6 ? sy / ry : 0.5 };
+    const g = viewGeom(iw, ih, w, h, v);
+    return viewFromCenter(iw, ih, w, h, cl(v.z * factor, 1, 8), v.a, g.cx, g.cy);
+  }
+
+  // Cambia el giro fino (grados) manteniendo el centro.
+  function rotView(iw, ih, w, h, v, ang) {
+    const g = viewGeom(iw, ih, w, h, v);
+    return viewFromCenter(iw, ih, w, h, v.z, cl(ang, -45, 45), g.cx, g.cy);
   }
 
   // Mantiene un objeto (x,y,w,h en mm) dentro de la hoja; si es más grande que la hoja lo reduce.
@@ -1163,6 +1231,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   function drawFit(ctx, src, x, y, w, h, mode, view) {
     const d = dims(src);
+    if (view && view.a) {
+      const g = viewGeom(d.w, d.h, w, h, view);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      ctx.translate(x + w / 2, y + h / 2);
+      ctx.rotate(g.a);
+      ctx.scale(g.s, g.s);
+      ctx.translate(-g.cx, -g.cy);
+      ctx.drawImage(src, 0, 0);
+      ctx.restore();
+      return;
+    }
     const r = view ? viewRects(d.w, d.h, x, y, w, h, view) : fitRects(d.w, d.h, x, y, w, h, mode);
     ctx.drawImage(src, r.sx, r.sy, r.sw, r.sh, r.dx, r.dy, r.dw, r.dh);
   }
@@ -1183,7 +1263,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   let freeSeq = 1;
 
   function viewOf(r) { return r.view !== undefined ? r.view : (r.f.view || null); }
-  function viewKey(v) { return v ? v.z.toFixed(3) + ',' + v.px.toFixed(3) + ',' + v.py.toFixed(3) : ''; }
+  function viewKey(v) { return v ? v.z.toFixed(3) + ',' + v.px.toFixed(3) + ',' + v.py.toFixed(3) + ',' + (v.a || 0).toFixed(2) : ''; }
 
   function makeObj(f, x, y, w, h) {
     return { id: freeSeq++, f: f, x: x, y: y, w: w, h: h, rot: false, view: newView(), ar0: w / h };
@@ -1506,6 +1586,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('multiBar').hidden = !ms.on;
     $('thumbs').classList.toggle('selecting', ms.on);
     $('msCount').textContent = ms.ids.size + (ms.ids.size === 1 ? ' elegida' : ' elegidas');
+    $('msEdit').disabled = ms.ids.size !== 1;
   }
   function msNeed() {
     const l = msList();
@@ -1534,7 +1615,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const chk = document.createElement('span'); chk.className = 'chk'; chk.textContent = '✓'; d.appendChild(chk);
       const cv = document.createElement('canvas');
       cv.width = 120; cv.height = 120;
-      drawFit(cv.getContext('2d'), f.thumb, 0, 0, 120, 120, 'fill');
+      drawFit(cv.getContext('2d'), f.thumb, 0, 0, 120, 120, 'fit');
       const x = document.createElement('button');
       x.type = 'button'; x.className = 'x'; x.textContent = '×';
       x.setAttribute('aria-label', 'Quitar ' + f.name);
@@ -1716,7 +1797,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const r = await loadImg(f.file);
     const tileAr = rot ? hPx / wPx : wPx / hPx;
     const cover = Math.max(f.ar / tileAr, tileAr / f.ar);
-    const ratio = view ? cover * view.z : (mode === 'fill' ? cover : 1);
+    const ratio = view ? cover * view.z * (view.a ? 1.5 : 1) : (mode === 'fill' ? cover : 1);
     const need = Math.min(3000, Math.max(wPx, hPx) * ratio);
     const crop = filteredCanvas(r.img, f.edit, need);
     URL.revokeObjectURL(r.url);
@@ -1737,7 +1818,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   const ed = { targets: null, open: false, f: null, all: false, work: null, orient: null, tmp: null, tab: 'crop', cr: null, aspect: null, key: 'free', k: 1, base: null, raf: 0 };
   const ptrs = new Map();
   let gesture = null, pinch = null;
-  const SL = [['edBr', 'br'], ['edCo', 'co'], ['edWh', 'wh'], ['edBl', 'bl'], ['edSa', 'sa'], ['edDn', 'dn'], ['edAl', 'al']];
+  const SL = [['edBr', 'br'], ['edCo', 'co'], ['edWh', 'wh'], ['edBl', 'bl'], ['edSa', 'sa'], ['edDn', 'dn'], ['edSh', 'sh'], ['edAl', 'al']];
 
   function minPx() { return Math.max(16, 0.04 * Math.max(ed.orient.width, ed.orient.height)); }
 
@@ -1893,6 +1974,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     };
     $('edAll').checked = false;
     $('edAllRow').hidden = !!all;
+    $('edQRow').hidden = !!all; qMsg('');
     $('edTabs').hidden = !!all;
     $('edTileChip').hidden = cfg().mode !== 'grid';
     syncSliders();
@@ -1976,6 +2058,95 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     ed.work = w;
     f.small = smallOf(r.img, iw, ih); f.sw = iw; f.sh = ih;
     URL.revokeObjectURL(r.url);
+  }
+
+  // ---- Mejorar calidad con IA (Swin2SR x2, por teselas) ----
+  let enhP = null, enhCancel = false;
+  function qMsg(t) { $('edQMsg').textContent = t; }
+  async function getEnhancer() {
+    if (window.__enhance) return window.__enhance;
+    if (!enhP) {
+      enhP = (async function () {
+        const T = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
+        T.env.allowLocalModels = false;
+        const up = await T.pipeline('image-to-image', 'Xenova/swin2SR-lightweight-x2-64', {
+          progress_callback: function (d) { if (d && d.status === 'progress' && d.progress != null) qMsg('Descargando modelo de IA… ' + Math.round(d.progress) + '%'); }
+        });
+        return async function (cv) {
+          const raw = await T.RawImage.fromURL(cv.toDataURL('image/png'));
+          const out = await up(raw), n = out.channels || 3;
+          const o = document.createElement('canvas'); o.width = out.width; o.height = out.height;
+          const id = new ImageData(out.width, out.height);
+          for (let i = 0, p = 0; i < out.width * out.height; i++, p += n) {
+            id.data[i * 4] = out.data[p]; id.data[i * 4 + 1] = out.data[p + (n > 1 ? 1 : 0)]; id.data[i * 4 + 2] = out.data[p + (n > 2 ? 2 : 0)]; id.data[i * 4 + 3] = 255;
+          }
+          o.getContext('2d').putImageData(id, 0, 0);
+          return o;
+        };
+      })().catch(function (e) { enhP = null; throw e; });
+    }
+    return enhP;
+  }
+
+  async function enhanceUpscale(src, run, onProg) {
+    const W = src.width, H = src.height, CORE = 96, PAD = 16;
+    const out = document.createElement('canvas'); out.width = W * 2; out.height = H * 2;
+    const oc = out.getContext('2d');
+    const nx = Math.ceil(W / CORE), ny = Math.ceil(H / CORE), total = nx * ny;
+    let done = 0;
+    for (let ty = 0; ty < ny; ty++) {
+      for (let tx = 0; tx < nx; tx++) {
+        if (enhCancel) throw new Error('cancelado');
+        const cx0 = tx * CORE, cy0 = ty * CORE, cw = Math.min(CORE, W - cx0), ch = Math.min(CORE, H - cy0);
+        const px0 = Math.max(0, cx0 - PAD), py0 = Math.max(0, cy0 - PAD);
+        const px1 = Math.min(W, cx0 + cw + PAD), py1 = Math.min(H, cy0 + ch + PAD);
+        const t = document.createElement('canvas'); t.width = px1 - px0; t.height = py1 - py0;
+        t.getContext('2d').drawImage(src, px0, py0, t.width, t.height, 0, 0, t.width, t.height);
+        const r = await run(t);
+        const k = r.width / t.width;
+        oc.drawImage(r, (cx0 - px0) * k, (cy0 - py0) * k, cw * k, ch * k, cx0 * 2, cy0 * 2, cw * 2, ch * 2);
+        t.width = 1; t.height = 1; r.width = 1; r.height = 1;
+        done++; onProg(done / total);
+        await yieldUI();
+      }
+    }
+    return out;
+  }
+
+  async function enhanceGo() {
+    const f = ed.f, go = $('edQGo');
+    if (!f) return;
+    if (er.busy) { enhCancel = true; qMsg('Cancelando…'); return; }
+    er.busy = true; enhCancel = false; go.textContent = 'Cancelar';
+    qMsg('Preparando la IA…');
+    try {
+      const run = await getEnhancer();
+      const r0 = await loadImg(f.file);
+      const iw = r0.img.naturalWidth, ih = r0.img.naturalHeight, s = Math.min(1, 1200 / Math.max(iw, ih));
+      const src = document.createElement('canvas');
+      src.width = Math.max(1, Math.round(iw * s)); src.height = Math.max(1, Math.round(ih * s));
+      const sx = src.getContext('2d');
+      if (!f.cut) { sx.fillStyle = '#fff'; sx.fillRect(0, 0, src.width, src.height); }
+      sx.drawImage(r0.img, 0, 0, src.width, src.height);
+      URL.revokeObjectURL(r0.url);
+      const t0 = Date.now();
+      const out = await enhanceUpscale(src, run, function (fr) {
+        const el = (Date.now() - t0) / 1000, eta = fr > 0.03 ? Math.round(el / fr - el) : null;
+        qMsg('Mejorando… ' + Math.round(fr * 100) + '%' + (eta != null ? ' · faltan unos ' + (eta > 90 ? Math.round(eta / 60) + ' min' : eta + ' s') : ''));
+      });
+      qMsg('Guardando…');
+      const blob = await canvasBlob(out, f.cut ? 'png' : 'jpg', 0.95);
+      out.width = 1; out.height = 1;
+      const file = new File([blob], f.name.replace(/\.[^.]+$/, '') + '-mejorada.' + (f.cut ? 'png' : 'jpg'), { type: blob.type });
+      if (!f.origFile) { f.origFile = f.file; f.origSmall = f.small; f.origSw = f.sw; f.origSh = f.sh; }
+      f.file = file; f.bgTouched = true;
+      await reloadWork(f);
+      showTab(ed.tab);
+      qMsg('Listo: la foto ahora tiene el doble de píxeles. Toca «Listo» arriba para guardar.');
+    } catch (e) {
+      qMsg(e && e.message === 'cancelado' ? 'Cancelado.' : 'No se pudo mejorar con IA (' + (e && e.message ? e.message : 'error') + '). Revisa tu conexión a internet.');
+    }
+    er.busy = false; go.textContent = 'Mejorar calidad con IA ✨ (x2)';
   }
 
   async function bgRemove() {
@@ -2739,6 +2910,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('edAiNew').addEventListener('click', function () { aiNewObject(); aiMsg('Listo: toca el siguiente objeto.'); });
     $('edTol').addEventListener('input', function () { $('edTolO').textContent = $('edTol').value; });
     $('edTrans').addEventListener('click', eraseTrans);
+    $('edQGo').addEventListener('click', enhanceGo);
     $('edEraseAI').addEventListener('click', eraseAI);
     $('edSavePng').addEventListener('click', saveOnePng);
     $('pngAll').addEventListener('click', saveAllPng);
@@ -3123,7 +3295,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     if (!isTxt) sh.loaded = null;
     let hint = '';
     if (!r) hint = pageRects().length ? (isFree ? 'Toca una foto para elegirla y moverla.' : 'Toca una foto para encuadrarla dentro de su cuadro.') : '';
-    else if (sh.frame) hint = 'Arrastra para mover la foto dentro de su cuadro. Con dos dedos (o la rueda del mouse) la amplías.';
+    else if (sh.frame) hint = 'Arrastra para mover la foto dentro de su cuadro. Con dos dedos la amplías y la giras (o usa las barras Zoom y Enderezar).';
     else if (isFree) hint = 'Arrastra para mover. Arrastra el círculo para cambiar el tamaño, o usa dos dedos.';
     else hint = 'Pulsa Encuadrar para mover y ampliar la foto dentro de su cuadro.';
     $('sheetHint').textContent = hint;
@@ -3133,7 +3305,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       hint = 'Toca las fotos de la hoja para marcarlas o desmarcarlas. Luego usa Girar o Zoom. Pulsa «Varias» para volver a elegir de una en una.';
       $('sheetHint').textContent = hint;
     } else $('selAlpha').closest('label').hidden = false;
-    ['selRotL', 'selRotR', 'selZm', 'selZp'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
+    ['selRotL', 'selRotR'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
+    ['selZm', 'selZp'].forEach(function (id) { $(id).hidden = !sh.multiOn; });
+    ['selZoomRow', 'selAngRow'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
+    if (r && !isTxt) {
+      const v = viewOf(r) || newView();
+      $('selZoom').value = String(Math.min(6, v.z)); $('selZoomO').textContent = Math.round(v.z * 100) + '%';
+      $('selAng').value = String(v.a || 0); $('selAngO').textContent = (v.a || 0).toFixed(1) + '°';
+    }
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
   }
 
@@ -3178,8 +3357,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     holder(r).view = zoomView(d.w, d.h, fd.w, fd.h, base, factor);
   }
   function endGesture() {
-    if (sh.g && sh.g.changed) hideResult();
+    const ch = sh.g && sh.g.changed;
+    if (ch) hideResult();
     sh.g = null;
+    if (ch) syncSel();
   }
 
   // ---- Cambios en varias fotos a la vez (lista y hoja) ----
@@ -3189,7 +3370,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const oldAr = f.ar, n = dir > 0 ? 1 : 3;
       f.edit.rot = (f.edit.rot + n) % 4;
       if (f.edit.crop) f.edit.crop = rotCrop(f.edit.crop, n);
-      if (f.view) f.view = { z: f.view.z, px: 0.5, py: 0.5 };
+      if (f.view) f.view = { z: f.view.z, a: f.view.a || 0, px: 0.5, py: 0.5 };
       refreshThumb(f);
       refitObjs(f, oldAr);
     });
@@ -3200,7 +3381,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       if (!factor) { h.view = def; return; }
       if (!h.view && factor < 1) return;
       const v = h.view || newView();
-      h.view = { z: cl(v.z * factor, 1, 8), px: v.px, py: v.py };
+      h.view = { z: cl(v.z * factor, 1, 8), a: v.a || 0, px: v.px, py: v.py };
     }
     if (state.mode !== 'free') list.forEach(function (f) { fix(f, null); });
     else free.pages.forEach(function (pg) { pg.forEach(function (o) { if (o.type !== 'text' && ids.has(o.f.id)) fix(o, newView()); }); });
@@ -3225,6 +3406,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('msZp').addEventListener('click', function () { const l = msNeed(); if (l.length) { zoomPhotos(l, 1.2); afterBatch(); } });
     $('msZm').addEventListener('click', function () { const l = msNeed(); if (l.length) { zoomPhotos(l, 1 / 1.2); afterBatch(); } });
     $('msZ0').addEventListener('click', function () { const l = msNeed(); if (l.length) { zoomPhotos(l, 0); afterBatch(); } });
+    $('msEdit').addEventListener('click', function () { const l = msList(); if (l.length === 1) { ms.on = false; ms.ids.clear(); renderThumbs(); openEditor(l[0], false); } else setNote('Elige solo una foto para editarla.', true); });
     $('msBw').addEventListener('click', function () { const l = msNeed(); if (l.length) { bwPhotos(l); afterBatch(); } });
     $('msFilt').addEventListener('click', function () { const l = msNeed(); if (l.length && !state.busy && !ed.open) { ed.targets = l; openEditor(l[0], true); } });
     $('msDel').addEventListener('click', function () {
@@ -3239,6 +3421,26 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('selRotR').addEventListener('click', function () { sheetDo(function (l) { rotatePhotos(l, 1); }); });
     $('selZp').addEventListener('click', function () { sheetDo(function (l) { zoomPhotos(l, 1.2); }); });
     $('selZm').addEventListener('click', function () { sheetDo(function (l) { zoomPhotos(l, 1 / 1.2); }); });
+    function setViewParams(z, a) {
+      if (sh.multiOn) {
+        const list = state.files.filter(function (f) { return sh.multi.has(f.id); });
+        if (!list.length) return;
+        const ids = new Set(list.map(function (f) { return f.id; }));
+        const ap = function (h, def) { const v = h.view || def; h.view = { z: z != null ? z : v.z, a: a != null ? a : (v.a || 0), px: v.px, py: v.py }; };
+        if (state.mode !== 'free') list.forEach(function (f) { ap(f, newView()); });
+        else free.pages.forEach(function (pg) { pg.forEach(function (o) { if (o.type !== 'text' && ids.has(o.f.id)) ap(o, newView()); }); });
+      } else {
+        const r = selRect(); if (!r || r.type === 'text') return;
+        const dd = dims(r.f.thumb), fd = frameDims(r);
+        let v = Object.assign({}, ensureView(r));
+        if (z != null) v = zoomView(dd.w, dd.h, fd.w, fd.h, v, z / v.z);
+        if (a != null) v = rotView(dd.w, dd.h, fd.w, fd.h, v, a);
+        holder(r).view = v;
+      }
+      hideResult(); drawSheet();
+    }
+    $('selZoom').addEventListener('input', function () { const z = parseFloat($('selZoom').value) || 1; $('selZoomO').textContent = Math.round(z * 100) + '%'; setViewParams(z, null); });
+    $('selAng').addEventListener('input', function () { const a = parseFloat($('selAng').value) || 0; $('selAngO').textContent = a.toFixed(1) + '°'; setViewParams(null, a); });
     $('selMulti').addEventListener('click', function () {
       const r = selRect();
       if (!sh.multiOn) { sh.multiOn = true; sh.multi.clear(); if (r && r.type !== 'text') sh.multi.add(r.f.id); sh.sel = null; sh.frame = false; }
@@ -3257,7 +3459,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const canAdjust = state.mode === 'free' || sh.frame;
       if (sh.ptrs.size === 2) {
         if (r && canAdjust && !r.poster) {
-          sh.g = { t: 'pinch', d0: ptr2(), base: { x: r.x, y: r.y, w: r.w, h: r.h, size: r.size, view: r.type === 'text' ? null : Object.assign({}, ensureView(r)) }, changed: false };
+          const q0 = Array.from(sh.ptrs.values());
+          sh.g = { t: 'pinch', d0: ptr2(), ang0: Math.atan2(q0[1].y - q0[0].y, q0[1].x - q0[0].x), m0: { x: (q0[0].x + q0[1].x) / 2, y: (q0[0].y + q0[1].y) / 2 }, base: { x: r.x, y: r.y, w: r.w, h: r.h, size: r.size, view: r.type === 'text' ? null : Object.assign({}, ensureView(r)) }, changed: false };
         } else sh.g = null;
         return;
       }
@@ -3274,7 +3477,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       const i = hitIdx(p);
       if (i < 0) { sh.g = null; if (sh.sel) { clearSel(); drawSheet(); } return; }
-      if (!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i)) selectIdx(i);
+      if (!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i)) { selectIdx(i); if (state.mode !== 'free' && !(pageRects()[i] || {}).poster) sh.frame = true; }
       const r2 = selRect();
       sh.g = { t: r2.poster ? null : (sh.frame ? 'pan' : (state.mode === 'free' ? 'move' : null)), p0: p, last: p, s: { x: r2.x, y: r2.y }, changed: false };
       syncSel(); drawSheet();
@@ -3293,7 +3496,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           r.x = g.base.x; r.y = g.base.y; r.w = g.base.w; r.h = g.base.h;
           if (r.type === 'text') r.size = g.base.size;
           scaleAny(r, f, pw, ph);
-        } else applyZoom(r, g.base.view, f);
+        } else {
+          const q = Array.from(sh.ptrs.values()), bx = $('sheet').getBoundingClientRect();
+          const da = (Math.atan2(q[1].y - q[0].y, q[1].x - q[0].x) - g.ang0) * 180 / Math.PI;
+          const mx = ((q[0].x + q[1].x) / 2 - g.m0.x) / bx.width * cur.c.pw, my = ((q[0].y + q[1].y) / 2 - g.m0.y) / bx.height * cur.c.ph;
+          const dd = dims(r.f.thumb), fd = frameDims(r);
+          let v = zoomView(dd.w, dd.h, fd.w, fd.h, g.base.view, f);
+          let ang = (g.base.view.a || 0) + (r.rot ? da : da);
+          ang = ((ang + 540) % 360) - 180;
+          v = rotView(dd.w, dd.h, fd.w, fd.h, v, Math.abs(da) < 4 && !(g.base.view.a) ? 0 : ang);
+          const du = r.rot ? my : mx, dv = r.rot ? -mx : my;
+          holder(r).view = panView(dd.w, dd.h, fd.w, fd.h, v, du, dv);
+        }
         g.changed = true; drawSheet(); return;
       }
       if (sh.ptrs.size > 1 || !g.t) return;
@@ -3340,7 +3554,6 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
     $('selFrame').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
-      if (!sh.frame) ensureView(r);
       sh.frame = !sh.frame; syncSel(); drawSheet();
     });
     $('selReset').addEventListener('click', function () {
@@ -4045,6 +4258,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const fit = Math.min(1, (sc.clientWidth - 24) / Math.max(1, w));
     const k = Math.min(2, fit * dc.zoom);
     body.style.transform = k !== 1 ? 'scale(' + k + ')' : 'none';
+    body.style.setProperty('--inv', String(Math.min(6, 1 / Math.max(0.15, k))));
     z.style.width = Math.round(w * k) + 'px';
     z.style.height = Math.round(h * k) + 'px';
   }
@@ -4115,7 +4329,9 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         $('docOrient').value = '0';
       }
       fitDoc();
-      $('docFmt').hidden = dc.kind !== 'docx';
+      $('docTabPar').hidden = dc.kind !== 'docx'; $('docTabImg').hidden = dc.kind !== 'docx';
+      docTab((dc.kind !== 'docx' && (dc.tab === 'par' || dc.tab === 'img')) ? 'txt' : (dc.tab || 'txt'));
+      lupaUpdate();
       $('docImgTools').hidden = true; $('docBody').classList.remove('imgmode'); $('docImgMode').setAttribute('aria-pressed', 'false');
       if (dc.kind === 'docx') markPages();
       if (dc.kind === 'xlsx') {
@@ -4426,7 +4642,63 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     rd.readAsDataURL(file);
   }
 
+  function docExec(cmd) {
+    const body = $('docBody'), sel = window.getSelection();
+    const inside = sel && sel.rangeCount && body.contains(sel.anchorNode);
+    if (!inside && dc.lastRange) {
+      const art = (dc.lastRange.startContainer.nodeType === 1 ? dc.lastRange.startContainer : dc.lastRange.startContainer.parentNode).closest('[contenteditable="true"]');
+      if (art) art.focus({ preventScroll: true });
+      sel.removeAllRanges(); sel.addRange(dc.lastRange);
+    }
+    try { document.execCommand(cmd, false, null); } catch (e) { /* ignorar */ }
+    docHideResult();
+    markSoon(); lupaUpdate();
+  }
+  // ---- Pestañas de herramientas y ventana de zoom del texto ----
+  function docTab(t) {
+    dc.tab = t;
+    document.querySelectorAll('#docDock .tab').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === t)); });
+    document.querySelectorAll('#docDock .doc-pane').forEach(function (pn) { pn.hidden = pn.dataset.p !== t || !!dc.dockHidden; });
+    if (dc.open) setTimeout(fitDoc, 0);
+  }
+  let lupaRaf = 0;
+  function lupaUpdate() {
+    cancelAnimationFrame(lupaRaf);
+    lupaRaf = requestAnimationFrame(function () {
+      const k = parseFloat($('docLupaSel').value) || 0, box = $('docLupa');
+      box.hidden = !k || !dc.open;
+      if (!k || !dc.open) return;
+      const sel = window.getSelection();
+      let n = sel && sel.rangeCount && $('docBody').contains(sel.anchorNode) ? sel.anchorNode : (dc.lastRange ? dc.lastRange.startContainer : null);
+      while (n && n !== $('docBody') && !(n.nodeType === 1 && /^(P|LI|H[1-6]|TD|TH)$/.test(n.tagName))) n = n.parentNode;
+      const inn = $('docLupaIn');
+      inn.textContent = '';
+      if (!n || n === $('docBody')) { inn.style.transform = 'none'; inn.style.padding = '10px'; inn.textContent = 'Toca el texto que quieres corregir y aquí lo verás ampliado.'; inn.style.width = 'auto'; return; }
+      const sec = document.createElement('section'), art = document.createElement('article');
+      sec.className = 'docx'; art.className = 'docx';
+      sec.style.cssText = 'min-height:0;box-shadow:none;margin:0;padding:6px 10px;background:#fff;width:' + Math.round(box.clientWidth / k) + 'px;position:static;';
+      const cl2 = n.cloneNode(true);
+      cl2.removeAttribute('contenteditable');
+      art.appendChild(cl2); sec.appendChild(art);
+      inn.style.padding = '0'; inn.style.width = Math.round(box.clientWidth / k) + 'px';
+      inn.appendChild(sec);
+      inn.style.transform = 'scale(' + k + ')';
+    });
+  }
+
   function bindDocFmt() {
+    document.querySelectorAll('#docDock .tab').forEach(function (b) {
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      b.addEventListener('click', function () { dc.dockHidden = false; $('docDockHide').textContent = '▼'; docTab(b.dataset.t); });
+    });
+    $('docDockHide').addEventListener('mousedown', function (e) { e.preventDefault(); });
+    $('docDockHide').addEventListener('click', function () {
+      dc.dockHidden = !dc.dockHidden;
+      $('docDockHide').textContent = dc.dockHidden ? '▲' : '▼';
+      docTab(dc.tab || 'txt');
+    });
+    $('docLupaSel').addEventListener('change', lupaUpdate);
+    document.addEventListener('selectionchange', function () { if (dc.open) lupaUpdate(); });
     $('docImgBtn').addEventListener('click', function () { $('docImgIn').click(); });
     $('docImgIn').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; if (f) addDocImage(f); setTimeout(function () { e.target.value = ''; }, 0); });
     $('docImgMode').addEventListener('click', function () { setImgMode($('docBody').classList.contains('imgmode') ? false : true); });
@@ -4440,19 +4712,37 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       docHideResult();
     });
     $('docImgDel').addEventListener('click', function () { if (dc.img) { dc.img.remove(); dc.img = null; docHideResult(); } });
-    let drag = null;
-    const body = $('docBody');
+    const body = $('docBody'), dptr = new Map();
+    let drag = null, pinch = null;
     body.addEventListener('pointerdown', function (e) {
       if (!body.classList.contains('imgmode')) return;
+      dptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const k = docScale();
+      if (dptr.size === 2 && dc.img) {
+        const a = Array.from(dptr.values());
+        pinch = { d0: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, w0: dc.img.offsetWidth, l0: dc.img.offsetLeft, t0: dc.img.offsetTop, h0: dc.img.offsetHeight };
+        drag = null; e.preventDefault(); return;
+      }
+      if (dptr.size > 2) return;
       const el = e.target.closest && e.target.closest('.docimg');
-      if (!el) return;
+      if (!el) { selectDocImg(null); return; }
       e.preventDefault();
       selectDocImg(el);
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
-      const k = docScale();
-      drag = { el: el, id: e.pointerId, resize: e.target.classList && e.target.classList.contains('dh'), x: e.clientX, y: e.clientY, l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, k: k };
+      try { body.setPointerCapture(e.pointerId); } catch (err) { /* ok */ }
+      drag = { el: el, id: e.pointerId, resize: !!(e.target.classList && e.target.classList.contains('dh')), x: e.clientX, y: e.clientY, l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, k: k };
     });
     body.addEventListener('pointermove', function (e) {
+      if (!dptr.has(e.pointerId)) return;
+      dptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && dptr.size >= 2 && dc.img) {
+        const a = Array.from(dptr.values()), f = (Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1) / pinch.d0;
+        const w = Math.max(24, pinch.w0 * f);
+        dc.img.style.width = Math.round(w) + 'px';
+        dc.img.style.left = Math.round(pinch.l0 + (pinch.w0 - w) / 2) + 'px';
+        dc.img.style.top = Math.round(pinch.t0 + (pinch.h0 - pinch.h0 * w / pinch.w0) / 2) + 'px';
+        $('docImgSize').value = Math.round(w / dc.img.parentNode.offsetWidth * 100);
+        docHideResult(); return;
+      }
       if (!drag || e.pointerId !== drag.id) return;
       const dx = (e.clientX - drag.x) / drag.k, dy = (e.clientY - drag.y) / drag.k;
       if (drag.resize) {
@@ -4462,7 +4752,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       } else { drag.el.style.left = Math.round(drag.l + dx) + 'px'; drag.el.style.top = Math.round(drag.t + dy) + 'px'; }
       docHideResult();
     });
-    function up(e) { if (drag && e.pointerId === drag.id) drag = null; }
+    function up(e) {
+      dptr.delete(e.pointerId);
+      if (drag && e.pointerId === drag.id) drag = null;
+      if (dptr.size < 2) pinch = null;
+    }
     body.addEventListener('pointerup', up); body.addEventListener('pointercancel', up);
     // recordar la selección de texto (los menús la pueden perder)
     document.addEventListener('selectionchange', function () {
@@ -4487,7 +4781,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       $('docMargin').value = '';
       docHideResult(); markPages();
     });
-    $('docBody').addEventListener('input', markSoon);
+    $('docBody').addEventListener('input', function () { markSoon(); lupaUpdate(); });
   }
 
   function buildXlPages(holder) {
@@ -4658,11 +4952,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('docZoomOut').addEventListener('click', function () { dc.zoom = Math.max(1, dc.zoom / 1.4); fitDoc(); });
     $('docMake').addEventListener('click', makeDocPdf);
     $('docSave').addEventListener('click', saveDocPdf);
-    document.querySelectorAll('.doc-tools [data-cmd]').forEach(function (b) {
+    document.querySelectorAll('#doc [data-cmd]').forEach(function (b) {
       function keep(e) { e.preventDefault(); }
       b.addEventListener('mousedown', keep);
       b.addEventListener('pointerdown', keep);
-      b.addEventListener('click', function () { document.execCommand(b.dataset.cmd, false, null); docHideResult(); });
+      b.addEventListener('click', function () { docExec(b.dataset.cmd); });
     });
     $('docSheet').addEventListener('change', function () {
       const i = parseInt($('docSheet').value, 10);
