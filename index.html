@@ -186,6 +186,13 @@ p { margin: 0; }
 
 .thumb { cursor: pointer; }
 .thumb:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.thumbs.selecting .thumb { opacity: .55; }
+.thumbs.selecting .thumb.sel { opacity: 1; outline: 3px solid var(--accent); outline-offset: -3px; }
+.thumb .chk { display: none; position: absolute; left: 4px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 13px/20px sans-serif; text-align: center; }
+.thumbs.selecting .thumb.sel .chk { display: block; }
+.thumbs.selecting .thumb .x { display: none; }
+.multibar { margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.multibar .row + .row { margin-top: 8px; }
 .thumb .dot { position: absolute; left: 4px; bottom: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff; }
 
 /* Editor de foto: pantalla completa */
@@ -295,7 +302,29 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button class="btn" id="filtersAll" type="button" hidden>Más filtros para todas</button>
           <button class="btn" id="pngAll" type="button" hidden>Guardar mis fotos en PNG</button>
         </div>
-        <p class="hint" id="editHint" hidden>Toca una foto para recortarla, girarla o ponerle filtros.</p>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="msToggle" type="button" aria-pressed="false" hidden>Seleccionar varias</button>
+        </div>
+        <div class="multibar" id="multiBar" hidden>
+          <div class="row">
+            <button class="btn" id="msAll" type="button">Todas</button>
+            <button class="btn" id="msNone" type="button">Ninguna</button>
+            <span class="muted" id="msCount">0 elegidas</span>
+          </div>
+          <div class="row">
+            <button class="btn" id="msRotL" type="button" aria-label="Girar a la izquierda">↺ Girar</button>
+            <button class="btn" id="msRotR" type="button" aria-label="Girar a la derecha">↻ Girar</button>
+            <button class="btn" id="msZm" type="button">－ Zoom</button>
+            <button class="btn" id="msZp" type="button">＋ Zoom</button>
+            <button class="btn" id="msZ0" type="button">Zoom normal</button>
+          </div>
+          <div class="row">
+            <button class="btn" id="msBw" type="button">Blanco y negro</button>
+            <button class="btn" id="msFilt" type="button">Filtros…</button>
+            <button class="btn" id="msDel" type="button">Quitar</button>
+          </div>
+        </div>
+        <p class="hint" id="editHint" hidden>Toca una foto para recortarla, girarla o ponerle filtros. Con «Seleccionar varias» cambias muchas a la vez.</p>
         <div class="thumbs" id="thumbs"></div>
         </div>
       </details>
@@ -322,8 +351,21 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button type="button" data-v="grid" aria-pressed="true">Tamaño fijo</button>
           <button type="button" data-v="auto" aria-pressed="false">Automático</button>
           <button type="button" data-v="free" aria-pressed="false">Libre</button>
+          <button type="button" data-v="dni" aria-pressed="false">DNI</button>
         </div>
         <p class="hint" id="modeHint"></p>
+
+        <div id="dniPanel" class="sub" hidden>
+          <div class="seg" id="dniSeg" role="group" aria-label="Tamaño del DNI">
+            <button type="button" data-v="a" aria-pressed="true">8.5 × 5.5 cm</button>
+            <button type="button" data-v="b" aria-pressed="false">9 × 6 cm</button>
+          </div>
+          <div class="fields" style="margin-top:12px">
+            <div class="field"><label for="dniTop">Margen de arriba (cm)</label><input id="dniTop" inputmode="decimal" value="3.5" autocomplete="off"></div>
+            <div class="field"><label for="dniGap">Espacio entre ambos (cm)</label><input id="dniGap" inputmode="decimal" value="5" autocomplete="off"></div>
+          </div>
+          <p class="hint">Elige las fotos de dos en dos: la primera es el anverso (queda arriba, centrada) y la segunda el reverso (abajo). Cada pareja sale en una hoja. Si una foto está parada, se gira sola para llenar el marco. En «Copias» eliges cuántas hojas iguales sacar.</p>
+        </div>
 
         <div id="gridPanel" class="sub">
           <div class="fields">
@@ -340,6 +382,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <div class="seg" id="fitSeg" role="group" aria-label="Qué hacer si la foto no tiene esa forma" style="margin-top:14px">
             <button type="button" data-v="fit" aria-pressed="true">Completa</button>
             <button type="button" data-v="fill" aria-pressed="false">Llenar (recorta)</button>
+            <button type="button" data-v="turn" aria-pressed="false">Girar y llenar</button>
           </div>
           <p class="hint" id="fitHint"></p>
         </div>
@@ -502,6 +545,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         <div class="grid-info" id="gridInfo"></div>
         <p class="hint" id="sheetHint" style="margin-inline:auto;text-align:center"></p>
         <div class="seltools" id="selTools" hidden>
+          <button class="btn" id="selMulti" type="button" aria-pressed="false">Varias</button>
+          <button class="btn" id="selRotL" type="button" aria-label="Girar a la izquierda">↺ Girar</button>
+          <button class="btn" id="selRotR" type="button" aria-label="Girar a la derecha">↻ Girar</button>
+          <button class="btn" id="selZm" type="button">－ Zoom</button>
+          <button class="btn" id="selZp" type="button">＋ Zoom</button>
           <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
           <button class="btn" id="selReset" type="button">Quitar encuadre</button>
           <button class="btn" id="selSmaller" type="button" aria-label="Más chica">− Chica</button>
@@ -874,6 +922,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     return { bins: bins.map(function (b) { return b.placed; }), unplaced: unplaced };
   }
 
+  function turnBetter(ar, tAr) {
+    if (!(ar > 0) || !(tAr > 0)) return false;
+    const a = Math.max(ar / tAr, tAr / ar), b = Math.max(ar * tAr, 1 / (ar * tAr));
+    return b < a * 0.98;
+  }
   // c: {mode, pw, ph, tw, th, margin, gap, by, as, rotate}; list: [{ar,...}]
   // Devuelve páginas con rectángulos absolutos en mm.
   function layout(c, list) {
@@ -888,7 +941,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         for (let i = 0; i < g.per; i++) {
           const r = slotRect(g, i, c.tw, c.th, c.gap);
           const f = list[p * g.per + i];
-          if (f) rects.push({ f: f, x: r.x, y: r.y, w: r.w, h: r.h, rot: false });
+          if (f) rects.push({ f: f, x: r.x, y: r.y, w: r.w, h: r.h, rot: !!c.turn && turnBetter(f.ar, r.w / r.h) });
           else empty.push(r);
         }
         pages.push({ rects: rects, empty: empty });
@@ -1093,7 +1146,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   const $ = function (id) { return document.getElementById(id); };
   const state = {
-    files: [], paper: 'carta', land: false, mode: 'grid', fit: 'fit', by: 'long', copies: 1, page: 0,
+    files: [], paper: 'carta', land: false, mode: 'grid', fit: 'fit', by: 'long', dni: 'a', copies: 1, page: 0,
     busy: false, url: null, blob: null, name: 'mosaico.pdf'
   };
   const PREF = 'epson-mosaico-prefs-v2';
@@ -1177,7 +1230,25 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     free.pages.forEach(function (p) { p.forEach(function (o) { clampObj(o, c.pw, c.ph, MIN_OBJ); }); });
   }
 
+  function layoutDni(c) {
+    const files = state.files, one = [];
+    const x = (c.pw - c.dw) / 2, y2 = c.dtop + c.dh + c.dgap;
+    const fits = x >= 0 && y2 + c.dh <= c.ph + 0.01;
+    for (let i = 0; i < files.length; i += 2) {
+      const rects = [], empty = [];
+      [[files[i], c.dtop], [files[i + 1], y2]].forEach(function (q) {
+        if (q[0]) rects.push({ f: q[0], x: x, y: q[1], w: c.dw, h: c.dh, rot: turnBetter(q[0].ar, c.dw / c.dh) });
+        else empty.push({ x: x, y: q[1], w: c.dw, h: c.dh });
+      });
+      one.push({ rects: rects, empty: empty });
+    }
+    const pages = [];
+    for (let k = 0; k < state.copies; k++) one.forEach(function (pg) { pages.push({ rects: pg.rects.map(function (r) { return Object.assign({}, r); }), empty: pg.empty }); });
+    return { pages: pages, unplaced: fits ? 0 : 1, per: 2, cols: 1, rows: 2, used: pages.length ? Math.min(1, 2 * c.dw * c.dh / (c.pw * c.ph)) : 0, dniFits: fits };
+  }
+
   function getLayout(c, list) {
+    if (c.mode === 'dni') return layoutDni(c);
     if (c.mode !== 'free') return layout(c, list);
     syncFree(c);
     let area = 0;
@@ -1198,7 +1269,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       by: state.by, as: parseNum($('as').value, 0) * 10, rotate: $('rot').checked,
       margin: Math.max(0, parseNum($('margin').value, 0) * 10),
       gap: Math.max(0, parseNum($('gap').value, 0) * 10),
-      guides: $('guides').checked
+      guides: $('guides').checked,
+      turn: state.fit === 'turn',
+      dw: state.dni === 'b' ? 90 : 85, dh: state.dni === 'b' ? 60 : 55,
+      dtop: Math.max(0, parseNum($('dniTop').value, 3.5) * 10), dgap: Math.max(0, parseNum($('dniGap').value, 5) * 10)
     };
   }
 
@@ -1230,7 +1304,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const pg = L.pages[state.page];
     if (!pg) return;
     ctx.imageSmoothingQuality = 'high';
-    const tileMode = c.mode === 'grid' ? state.fit : 'fit';
+    const tileMode = c.mode === 'grid' ? (state.fit === 'turn' ? 'fill' : state.fit) : c.mode === 'dni' ? 'fill' : 'fit';
     pg.rects.forEach(function (r) {
       if (r.type === 'text') {
         ctx.globalAlpha = opacityOf(r);
@@ -1254,6 +1328,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     ctx.lineWidth = dpr;
     pg.empty.forEach(function (r) { ctx.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k); });
     ctx.setLineDash([]);
+    if (sh.multiOn) {
+      const ac = cssVar('--accent') || '#0b7d92';
+      pg.rects.forEach(function (r) {
+        if (r.type === 'text' || !sh.multi.has(r.f.id)) return;
+        ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = ac; ctx.fillRect(r.x * k, r.y * k, r.w * k, r.h * k); ctx.restore();
+        ctx.strokeStyle = ac; ctx.lineWidth = 3 * dpr; ctx.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k);
+      });
+    }
     const sr = selRect();
     if (sr) {
       const accent = cssVar('--accent') || '#0b7d92';
@@ -1286,7 +1368,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       localStorage.setItem(PREF, JSON.stringify({
         paper: state.paper, land: state.land, mode: state.mode, fit: state.fit, by: state.by, copies: state.copies,
         w: $('w').value, h: $('h').value, as: $('as').value, rot: $('rot').checked,
-        margin: $('margin').value, gap: $('gap').value, guides: $('guides').checked
+        margin: $('margin').value, gap: $('gap').value, guides: $('guides').checked,
+        dni: state.dni, dniTop: $('dniTop').value, dniGap: $('dniGap').value
       }));
     } catch (e) { /* sin almacenamiento: no pasa nada */ }
   }
@@ -1298,8 +1381,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const p = JSON.parse(raw);
       if (PAPERS[p.paper]) state.paper = p.paper;
       state.land = !!p.land;
-      state.mode = p.mode === 'auto' || p.mode === 'free' ? p.mode : 'grid';
-      state.fit = p.fit === 'fill' ? 'fill' : 'fit';
+      state.mode = p.mode === 'auto' || p.mode === 'free' || p.mode === 'dni' ? p.mode : 'grid';
+      state.dni = p.dni === 'b' ? 'b' : 'a';
+      if (p.dniTop != null) $('dniTop').value = p.dniTop;
+      if (p.dniGap != null) $('dniGap').value = p.dniGap;
+      state.fit = p.fit === 'fill' || p.fit === 'turn' ? p.fit : 'fit';
       state.by = p.by === 'w' || p.by === 'h' ? p.by : 'long';
       state.copies = Math.min(99, Math.max(1, parseInt(p.copies, 10) || 1));
       if (p.w) $('w').value = p.w;
@@ -1316,7 +1402,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     grid: 'Todas las fotos con el mismo tamaño, en cuadrícula.',
     auto: 'Cada foto conserva su forma (cuadrada, alargada, horizontal o vertical) y se acomodan para que entren las máximas por hoja.',
     free: 'Cada foto se mueve y se amplía con el dedo. Toca una foto para elegirla; arrástrala para moverla y usa el círculo de la esquina o dos dedos para cambiar su tamaño.',
-    fit: 'Completa muestra la foto entera y deja espacio blanco si no tiene esa forma. Llenar corta los bordes para cubrir todo el cuadro.'
+    dni: 'Anverso y reverso del documento en una sola hoja: el anverso arriba, centrado, y el reverso abajo. Elige las fotos en orden: anverso, reverso.',
+    fit: 'Completa muestra la foto entera y deja espacio blanco si no tiene esa forma. Llenar corta los bordes para cubrir todo el cuadro. Girar y llenar además gira las fotos que estén "acostadas" o "paradas" al revés del cuadro para recortar lo menos posible (si el cuadro es cuadrado no cambia nada).'
   };
 
   function syncControls() {
@@ -1326,14 +1413,16 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     press('#modeSeg button', function (b) { return b.dataset.v === state.mode; });
     press('#fitSeg button', function (b) { return b.dataset.v === state.fit; });
     press('#bySeg button', function (b) { return b.dataset.v === state.by; });
+    press('#dniSeg button', function (b) { return b.dataset.v === state.dni; });
     $('copies').textContent = String(state.copies);
     const w = parseNum($('w').value, -1), h = parseNum($('h').value, -1);
     press('#chips .chip', function (b) { return parseFloat(b.dataset.w) === w && parseFloat(b.dataset.h) === h; });
     const a = parseNum($('as').value, -1);
     press('#achips .chip', function (b) { return parseFloat(b.dataset.v) === a; });
     $('gridPanel').hidden = state.mode !== 'grid';
-    $('autoPanel').hidden = state.mode === 'grid';
-    $('rotRow').hidden = state.mode === 'free';
+    $('autoPanel').hidden = state.mode === 'grid' || state.mode === 'dni';
+    $('dniPanel').hidden = state.mode !== 'dni';
+    $('rotRow').hidden = state.mode === 'free' || state.mode === 'dni';
     $('freeRow').hidden = state.mode !== 'free';
     $('modeHint').textContent = HINTS[state.mode];
     $('fitHint').textContent = HINTS.fit;
@@ -1345,7 +1434,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const list = items();
     if (c.mode !== sh.mode) { sh.mode = c.mode; clearSel(); }
     const L = getLayout(c, list);
-    const n = c.mode === 'free' ? L.pages.reduce(function (s, p) { return s + p.rects.length; }, 0) : list.length;
+    const n = c.mode === 'free' || c.mode === 'dni' ? L.pages.reduce(function (s, p) { return s + p.rects.length; }, 0) : list.length;
     cur = { c: c, L: L };
     const pages = L.pages.length;
     if (state.page >= pages) state.page = Math.max(0, pages - 1);
@@ -1366,6 +1455,17 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         $('gridInfo').textContent = L.cols + ' × ' + L.rows + ' = ' + L.per + ' por hoja · ' + sizeTxt;
         $('sumMain').textContent = n === 0 ? 'Sin imágenes' : n + (n === 1 ? ' foto' : ' fotos') + ' · ' + pages + (pages === 1 ? ' hoja' : ' hojas');
         $('sumSub').textContent = L.per + ' por hoja, ' + (c.tw / 10) + ' × ' + (c.th / 10) + ' cm';
+      }
+    } else if (c.mode === 'dni') {
+      $('gridInfo').textContent = 'DNI ' + (c.dw / 10) + ' × ' + (c.dh / 10) + ' cm · ' + sizeTxt;
+      if (!L.dniFits) {
+        blocked = true;
+        $('sumMain').textContent = 'No cabe en la hoja';
+        $('sumSub').textContent = 'Reduce el margen de arriba o el espacio entre ambos.';
+      } else {
+        const sheetsN = L.pages.length;
+        $('sumMain').textContent = state.files.length === 0 ? 'Sin imágenes' : state.files.length + (state.files.length === 1 ? ' foto' : ' fotos') + ' · ' + sheetsN + (sheetsN === 1 ? ' hoja' : ' hojas');
+        $('sumSub').textContent = state.files.length === 0 ? '' : (state.files.length % 2 ? 'Falta el reverso de la última pareja' : 'Anverso arriba, reverso abajo');
       }
     } else if (c.mode === 'free') {
       $('gridInfo').textContent = 'Libre · ' + sizeTxt;
@@ -1398,17 +1498,40 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     savePrefs();
   }
 
+  const ms = { on: false, ids: new Set() };
+  function msList() { return state.files.filter(function (f) { return ms.ids.has(f.id); }); }
+  function msSync() {
+    $('msToggle').setAttribute('aria-pressed', String(ms.on));
+    $('msToggle').textContent = ms.on ? 'Terminar selección' : 'Seleccionar varias';
+    $('multiBar').hidden = !ms.on;
+    $('thumbs').classList.toggle('selecting', ms.on);
+    $('msCount').textContent = ms.ids.size + (ms.ids.size === 1 ? ' elegida' : ' elegidas');
+  }
+  function msNeed() {
+    const l = msList();
+    if (!l.length) setNote('Primero toca las fotos que quieres cambiar.', true);
+    else setNote('');
+    return l;
+  }
   function renderThumbs() {
     const box = $('thumbs');
     box.textContent = '';
+    ms.ids.forEach(function (id) { if (!state.files.some(function (f) { return f.id === id; })) ms.ids.delete(id); });
+    if (!state.files.length) ms.on = false;
     state.files.forEach(function (f) {
       const d = document.createElement('div');
       d.className = 'thumb';
       d.tabIndex = 0;
       d.setAttribute('role', 'button');
       d.setAttribute('aria-label', 'Editar ' + f.name);
-      d.addEventListener('click', function () { openEditor(f, false); });
-      d.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEditor(f, false); } });
+      function act() {
+        if (ms.on) { if (ms.ids.has(f.id)) ms.ids.delete(f.id); else ms.ids.add(f.id); d.classList.toggle('sel', ms.ids.has(f.id)); msSync(); }
+        else openEditor(f, false);
+      }
+      if (ms.ids.has(f.id)) d.classList.add('sel');
+      d.addEventListener('click', act);
+      d.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
+      const chk = document.createElement('span'); chk.className = 'chk'; chk.textContent = '✓'; d.appendChild(chk);
       const cv = document.createElement('canvas');
       cv.width = 120; cv.height = 120;
       drawFit(cv.getContext('2d'), f.thumb, 0, 0, 120, 120, 'fill');
@@ -1433,6 +1556,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('editHint').hidden = state.files.length === 0;
     $('filtersAll').hidden = state.files.length === 0;
     $('bwAll').hidden = state.files.length === 0;
+    $('msToggle').hidden = state.files.length === 0;
+    msSync();
     $('pngAll').hidden = state.files.length === 0;
     const allBw = state.files.length > 0 && state.files.every(function (f) { return f.edit.f.bw; });
     $('bwAll').setAttribute('aria-pressed', String(allBw));
@@ -1609,7 +1734,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   }
 
   // ---- Editor de foto ----
-  const ed = { open: false, f: null, all: false, work: null, orient: null, tmp: null, tab: 'crop', cr: null, aspect: null, key: 'free', k: 1, base: null, raf: 0 };
+  const ed = { targets: null, open: false, f: null, all: false, work: null, orient: null, tmp: null, tab: 'crop', cr: null, aspect: null, key: 'free', k: 1, base: null, raf: 0 };
   const ptrs = new Map();
   let gesture = null, pinch = null;
   const SL = [['edBr', 'br'], ['edCo', 'co'], ['edWh', 'wh'], ['edBl', 'bl'], ['edSa', 'sa'], ['edDn', 'dn'], ['edAl', 'al']];
@@ -1743,7 +1868,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     ed.open = true; ed.f = f; ed.all = !!all; ed.cr = null;
     document.body.style.overflow = 'hidden';
     $('ed').hidden = false;
-    $('edTitle').textContent = all ? 'Filtros para todas las fotos' : 'Foto ' + (state.files.indexOf(f) + 1) + ' de ' + state.files.length;
+    $('edTitle').textContent = all ? (ed.targets ? 'Filtros para ' + ed.targets.length + (ed.targets.length === 1 ? ' foto' : ' fotos') : 'Filtros para todas las fotos') : 'Foto ' + (state.files.indexOf(f) + 1) + ' de ' + state.files.length;
     $('edLoading').hidden = false;
     $('edCrop').hidden = true;
     try {
@@ -1777,7 +1902,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   }
 
   function closeEditor() {
-    ed.open = false; ed.work = null; ed.orient = null; ed.base = null; ed.cr = null;
+    ed.open = false; ed.work = null; ed.orient = null; ed.base = null; ed.cr = null; ed.targets = null;
     ptrs.clear(); gesture = null; pinch = null;
     document.body.style.overflow = '';
     $('ed').hidden = true;
@@ -1786,9 +1911,9 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   async function edDone() {
     if (!ed.open || !ed.tmp) return;
     if (ed.tab === 'crop' && ed.cr) saveCrop();
-    const f = ed.f, t = ed.tmp, onlyFilters = ed.all, toAll = ed.all || $('edAll').checked;
+    const f = ed.f, t = ed.tmp, onlyFilters = ed.all, toAll = ed.all || $('edAll').checked, tg = ed.targets;
     closeEditor();
-    const targets = toAll ? state.files.slice() : [f];
+    const targets = tg || (toAll ? state.files.slice() : [f]);
     state.busy = true; update();
     for (let i = 0; i < targets.length; i++) {
       const g = targets[i];
@@ -2753,7 +2878,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const orient = state.land ? 'landscape' : 'portrait';
     const short = Math.min(c.pw, c.ph), long = Math.max(c.pw, c.ph);
     const doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
-    const tileMode = c.mode === 'grid' ? state.fit : 'fit';
+    const tileMode = c.mode === 'grid' ? (state.fit === 'turn' ? 'fill' : state.fit) : c.mode === 'dni' ? 'fill' : 'fit';
     const cache = new Map();
     let done = 0;
     try {
@@ -2793,7 +2918,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       const blob = doc.output('blob');
       state.blob = blob;
-      const sz = c.mode === 'grid' ? (c.tw / 10) + 'x' + (c.th / 10) + 'cm' : c.mode === 'free' ? 'libre' : 'auto-' + (c.as / 10) + 'cm';
+      const sz = c.mode === 'grid' ? (c.tw / 10) + 'x' + (c.th / 10) + 'cm' : c.mode === 'dni' ? 'dni-' + (c.dw / 10) + 'x' + (c.dh / 10) + 'cm' : c.mode === 'free' ? 'libre' : 'auto-' + (c.as / 10) + 'cm';
       state.name = 'mosaico-' + sz + '-' + state.paper + '.pdf';
       state.url = URL.createObjectURL(blob);
       $('pdfName').value = state.name.replace(/\.pdf$/i, '');
@@ -2933,7 +3058,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   }
 
   // ---- Interacción con la hoja (elegir, mover, ampliar, encuadrar) ----
-  const sh = { mode: 'grid', sel: null, frame: false, ptrs: new Map(), g: null };
+  const sh = { mode: 'grid', sel: null, frame: false, ptrs: new Map(), g: null, multiOn: false, multi: new Set() };
 
   function pageRects() { const pg = cur && cur.L.pages[state.page]; return pg ? pg.rects : []; }
   function selRect() {
@@ -2983,7 +3108,9 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   function syncSel() {
     const r = selRect(), isFree = state.mode === 'free';
-    $('selTools').hidden = !r;
+    $('selTools').hidden = !r && !sh.multiOn;
+    $('selMulti').setAttribute('aria-pressed', String(sh.multiOn));
+    $('selMulti').textContent = sh.multiOn ? 'Varias: ' + sh.multi.size : 'Varias';
     $('selFrame').setAttribute('aria-pressed', String(sh.frame));
     ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg'].forEach(function (id) { $(id).hidden = !isFree; });
     const isTxt = !!r && r.type === 'text';
@@ -3000,6 +3127,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     else if (isFree) hint = 'Arrastra para mover. Arrastra el círculo para cambiar el tamaño, o usa dos dedos.';
     else hint = 'Pulsa Encuadrar para mover y ampliar la foto dentro de su cuadro.';
     $('sheetHint').textContent = hint;
+    if (sh.multiOn) {
+      ['selFrame', 'selReset', 'selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selEdit'].forEach(function (id) { $(id).hidden = true; });
+      $('selAlpha').closest('label').hidden = true;
+      hint = 'Toca las fotos de la hoja para marcarlas o desmarcarlas. Luego usa Girar o Zoom. Pulsa «Varias» para volver a elegir de una en una.';
+      $('sheetHint').textContent = hint;
+    } else $('selAlpha').closest('label').hidden = false;
+    ['selRotL', 'selRotR', 'selZm', 'selZp'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
   }
 
@@ -3048,6 +3182,71 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     sh.g = null;
   }
 
+  // ---- Cambios en varias fotos a la vez (lista y hoja) ----
+  function rotCrop(c, n) { for (let i = 0; i < n; i++) c = { x: 1 - (c.y + c.h), y: c.x, w: c.h, h: c.w }; return c; }
+  function rotatePhotos(list, dir) {
+    list.forEach(function (f) {
+      const oldAr = f.ar, n = dir > 0 ? 1 : 3;
+      f.edit.rot = (f.edit.rot + n) % 4;
+      if (f.edit.crop) f.edit.crop = rotCrop(f.edit.crop, n);
+      if (f.view) f.view = { z: f.view.z, px: 0.5, py: 0.5 };
+      refreshThumb(f);
+      refitObjs(f, oldAr);
+    });
+  }
+  function zoomPhotos(list, factor) {
+    const ids = new Set(list.map(function (f) { return f.id; }));
+    function fix(h, def) {
+      if (!factor) { h.view = def; return; }
+      if (!h.view && factor < 1) return;
+      const v = h.view || newView();
+      h.view = { z: cl(v.z * factor, 1, 8), px: v.px, py: v.py };
+    }
+    if (state.mode !== 'free') list.forEach(function (f) { fix(f, null); });
+    else free.pages.forEach(function (pg) { pg.forEach(function (o) { if (o.type !== 'text' && ids.has(o.f.id)) fix(o, newView()); }); });
+  }
+  function bwPhotos(list) {
+    const on = !list.every(function (f) { return f.edit.f.bw; });
+    list.forEach(function (f) { f.edit.f.bw = on; refreshThumb(f); });
+  }
+  function afterBatch() { hideResult(); renderThumbs(); update(); }
+  function sheetTargets() {
+    if (sh.multiOn) return state.files.filter(function (f) { return sh.multi.has(f.id); });
+    const r = selRect();
+    return r && r.type !== 'text' ? [r.f] : [];
+  }
+
+  function bindMulti() {
+    $('msToggle').addEventListener('click', function () { ms.on = !ms.on; if (!ms.on) { ms.ids.clear(); document.querySelectorAll('#thumbs .thumb.sel').forEach(function (e) { e.classList.remove('sel'); }); } msSync(); setNote(''); });
+    $('msAll').addEventListener('click', function () { state.files.forEach(function (f) { ms.ids.add(f.id); }); renderThumbs(); });
+    $('msNone').addEventListener('click', function () { ms.ids.clear(); renderThumbs(); });
+    $('msRotL').addEventListener('click', function () { const l = msNeed(); if (l.length) { rotatePhotos(l, -1); afterBatch(); } });
+    $('msRotR').addEventListener('click', function () { const l = msNeed(); if (l.length) { rotatePhotos(l, 1); afterBatch(); } });
+    $('msZp').addEventListener('click', function () { const l = msNeed(); if (l.length) { zoomPhotos(l, 1.2); afterBatch(); } });
+    $('msZm').addEventListener('click', function () { const l = msNeed(); if (l.length) { zoomPhotos(l, 1 / 1.2); afterBatch(); } });
+    $('msZ0').addEventListener('click', function () { const l = msNeed(); if (l.length) { zoomPhotos(l, 0); afterBatch(); } });
+    $('msBw').addEventListener('click', function () { const l = msNeed(); if (l.length) { bwPhotos(l); afterBatch(); } });
+    $('msFilt').addEventListener('click', function () { const l = msNeed(); if (l.length && !state.busy && !ed.open) { ed.targets = l; openEditor(l[0], true); } });
+    $('msDel').addEventListener('click', function () {
+      const l = msNeed(); if (!l.length) return;
+      const ids = new Set(l.map(function (f) { return f.id; }));
+      state.files = state.files.filter(function (f) { return !ids.has(f.id); });
+      ms.ids.clear(); renderThumbs(); update();
+    });
+    // en la hoja
+    function sheetDo(fn) { const l = sheetTargets(); if (!l.length) { setNote('Toca primero una foto de la hoja' + (sh.multiOn ? ' (puedes tocar varias).' : '.'), true); return; } setNote(''); fn(l); afterBatch(); }
+    $('selRotL').addEventListener('click', function () { sheetDo(function (l) { rotatePhotos(l, -1); }); });
+    $('selRotR').addEventListener('click', function () { sheetDo(function (l) { rotatePhotos(l, 1); }); });
+    $('selZp').addEventListener('click', function () { sheetDo(function (l) { zoomPhotos(l, 1.2); }); });
+    $('selZm').addEventListener('click', function () { sheetDo(function (l) { zoomPhotos(l, 1 / 1.2); }); });
+    $('selMulti').addEventListener('click', function () {
+      const r = selRect();
+      if (!sh.multiOn) { sh.multiOn = true; sh.multi.clear(); if (r && r.type !== 'text') sh.multi.add(r.f.id); sh.sel = null; sh.frame = false; }
+      else { sh.multiOn = false; sh.multi.clear(); }
+      syncSel(); drawSheet();
+    });
+  }
+
   function bindSheet() {
     const cv = $('sheet');
     cv.addEventListener('pointerdown', function (e) {
@@ -3064,6 +3263,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       if (sh.ptrs.size > 2) return;
       const p = ptMM(e);
+      if (sh.multiOn) {
+        const mi = hitIdx(p);
+        if (mi >= 0) { const rr = pageRects()[mi]; if (rr.type !== 'text') { if (sh.multi.has(rr.f.id)) sh.multi.delete(rr.f.id); else sh.multi.add(rr.f.id); } }
+        sh.g = null; syncSel(); drawSheet(); return;
+      }
       if (r && state.mode === 'free' && !sh.frame) {
         const hk = hitHandle(r, p);
         if (hk) { sh.g = { t: 'resize', k: hk, p0: p, s: { x: r.x, y: r.y, w: r.w, h: r.h }, changed: false }; e.preventDefault(); return; }
@@ -3200,7 +3404,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       hideResult(); drawSheet();
     });
     $('selAlpha').addEventListener('change', function () { if (state.mode !== 'free') renderThumbs(); });
-    $('selDone').addEventListener('click', function () { clearSel(); drawSheet(); });
+    $('selDone').addEventListener('click', function () { sh.multiOn = false; sh.multi.clear(); clearSel(); drawSheet(); });
     $('rearrange').addEventListener('click', function () {
       free.pages = free.pages.map(function (p) { return p.filter(function (o) { return o.type === 'text'; }); })
         .filter(function (p) { return p.length > 0; });
@@ -4483,9 +4687,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   bindSeg('#modeSeg button', function (b) { state.mode = b.dataset.v; });
   bindSeg('#fitSeg button', function (b) { state.fit = b.dataset.v; });
   bindSeg('#bySeg button', function (b) { state.by = b.dataset.v; });
+  bindSeg('#dniSeg button', function (b) { state.dni = b.dataset.v; });
   bindSeg('#chips .chip', function (b) { $('w').value = b.dataset.w; $('h').value = b.dataset.h; });
   bindSeg('#achips .chip', function (b) { $('as').value = b.dataset.v; });
-  ['w', 'h', 'as', 'margin', 'gap'].forEach(function (id) { $(id).addEventListener('input', function () { state.page = 0; update(); }); });
+  ['w', 'h', 'as', 'margin', 'gap', 'dniTop', 'dniGap'].forEach(function (id) { $(id).addEventListener('input', function () { state.page = 0; update(); }); });
   $('guides').addEventListener('change', update);
   $('rot').addEventListener('change', function () { state.page = 0; update(); });
   $('less').addEventListener('click', function () { if (state.copies > 1) { state.copies--; update(); } });
@@ -4507,6 +4712,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   bindMini();
   bindDoc();
   bindDocFmt();
+  bindMulti();
   bindPx();
   loadPrefs();
   renderThumbs();
