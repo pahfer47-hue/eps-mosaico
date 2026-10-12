@@ -590,6 +590,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button class="btn" id="selZp" type="button">＋ Zoom</button>
           <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
           <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
+          <label class="sl-inline" id="selFaRow">Girar cuadro <input type="range" id="selFa" min="-180" max="180" step="0.5" value="0"><output id="selFaO">0°</output></label>
           <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
           <button class="btn" id="selReset" type="button">Quitar encuadre</button>
           <button class="btn" id="selSmaller" type="button" aria-label="Más chica">− Chica</button>
@@ -739,6 +740,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     </select>
     <select id="spPaper" aria-label="Tamaño de las hojas de salida"><option value="carta">Salida: Carta</option><option value="oficio">Salida: Oficio</option><option value="a4">Salida: A4</option></select>
     <select id="spMargin" aria-label="Margen"><option value="0">Sin margen</option><option value="5" selected>Margen 5 mm</option><option value="10">Margen 10 mm</option></select>
+    <select id="spFit" aria-label="Ajuste"><option value="fit">Sin recortar (marca de corte)</option><option value="fill">Llenar la hoja (recorta bordes)</option></select>
     <select id="spOv" aria-label="Solape para pegar"><option value="0">Sin solape</option><option value="0.03">Solape pequeño</option><option value="0.06">Solape medio</option></select>
   </div>
   <div class="doc-scroll" style="text-align:center"><canvas id="spCv" width="10" height="10" style="max-width:96%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.35)"></canvas></div>
@@ -1464,6 +1466,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     ctx.imageSmoothingQuality = 'high';
     const tileMode = c.mode === 'grid' ? (state.fit === 'turn' ? 'fill' : state.fit) : c.mode === 'dni' ? 'fill' : 'fit';
     pg.rects.forEach(function (r) {
+      ctx.save(); if (r.fa) rotCtx(ctx, r, k);
+      try { drawObjMain(r); } finally { ctx.restore(); }
+    });
+    function drawObjMain(r) {
       if (r.type === 'text') {
         ctx.globalAlpha = opacityOf(r);
         ctx.drawImage(textCanvas(r, Math.max(2, Math.round(r.w * k)), Math.max(2, Math.round(r.h * k))), r.x * k, r.y * k);
@@ -1480,7 +1486,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         ctx.lineWidth = Math.max(1, 0.2 * k);
         ctx.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k);
       }
-    });
+    }
     ctx.setLineDash([4 * dpr, 4 * dpr]);
     ctx.strokeStyle = 'rgba(90,100,110,0.45)';
     ctx.lineWidth = dpr;
@@ -1500,13 +1506,15 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       ctx.strokeStyle = accent;
       ctx.lineWidth = 2.5 * dpr;
       if (sh.frame) ctx.setLineDash([6 * dpr, 4 * dpr]);
+      ctx.save(); if (sr.fa) rotCtx(ctx, sr, k);
       ctx.strokeRect(sr.x * k, sr.y * k, sr.w * k, sr.h * k);
+      ctx.restore();
       ctx.setLineDash([]);
       if (c.mode === 'free' && !sh.frame) {
         handlePts(sr).forEach(function (hp) {
           ctx.beginPath();
           ctx.arc(hp.x * k, hp.y * k, 7 * dpr, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = hp.k === 'rot' ? accent : '#ffffff';
           ctx.fill();
           ctx.lineWidth = 2 * dpr;
           ctx.stroke();
@@ -3172,6 +3180,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         const rects = L.pages[p].rects;
         for (let i = 0; i < rects.length; i++) {
           const r = rects[i];
+          if (r.fa) {
+            const ro = await rotatedPng(r, 300 / 25.4, tileMode), opr = opacityOf(r);
+            if (opr < 1) pdfAlpha(doc, opr);
+            doc.addImage(ro.data, 'PNG', ro.B.x, ro.B.y, ro.B.w, ro.B.h, undefined, 'FAST');
+            if (opr < 1) pdfAlpha(doc, 1);
+            done++; $('make').textContent = 'Procesando ' + done + '/' + total; setProgress(done / total); await yieldUI();
+            continue;
+          }
           if (r.type === 'text') {
             await pdfText(doc, r);
             done++;
@@ -3348,6 +3364,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     for (let i = 0; i < pg.rects.length; i++) {
       const r = pg.rects[i];
       const w = Math.max(2, Math.round(r.w * ppm)), h = Math.max(2, Math.round(r.h * ppm));
+      x.save(); if (r.fa) rotCtx(x, r, ppm);
       if (r.type === 'text') {
         await loadFont(r);
         const k = Math.min(1, Math.sqrt(30e6 / (w * h))), e = fillEntry(r);
@@ -3360,6 +3377,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         x.globalAlpha = opacityOf(r); x.drawImage(im, r.x * ppm, r.y * ppm, w, h); x.globalAlpha = 1;
       }
       if (c.guides) { x.strokeStyle = 'rgb(150,155,160)'; x.lineWidth = Math.max(1, 0.1 * ppm); x.strokeRect(r.x * ppm, r.y * ppm, w, h); }
+      x.restore();
       await yieldUI();
     }
     return cv;
@@ -3402,10 +3420,50 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     if (!sh.sel || !cur || sh.sel.page !== state.page) return null;
     return pageRects()[sh.sel.idx] || null;
   }
+  function rotCtx(ctx, r, k) {
+    const cx = (r.x + r.w / 2) * k, cy = (r.y + r.h / 2) * k;
+    ctx.translate(cx, cy); ctx.rotate((r.fa || 0) * Math.PI / 180); ctx.translate(-cx, -cy);
+  }
+  function rotPt(r, x, y, inv) {
+    if (!r.fa) return { x: x, y: y };
+    const a = (inv ? -1 : 1) * r.fa * Math.PI / 180, cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = x - cx, dy = y - cy, co = Math.cos(a), si = Math.sin(a);
+    return { x: cx + dx * co - dy * si, y: cy + dx * si + dy * co };
+  }
   function handlePts(r) {
-    const all = [{ k: 'se', x: r.x + r.w, y: r.y + r.h }, { k: 'e', x: r.x + r.w, y: r.y + r.h / 2 }, { k: 's', x: r.x + r.w / 2, y: r.y + r.h }];
     if (r.poster) return [];
-    return r.type === 'text' && !r.fit ? all.slice(0, 2) : all;
+    const loc = [{ k: 'se', x: r.x + r.w, y: r.y + r.h }, { k: 'e', x: r.x + r.w, y: r.y + r.h / 2 }, { k: 's', x: r.x + r.w / 2, y: r.y + r.h }];
+    const sel = r.type === 'text' && !r.fit ? loc.slice(0, 2) : loc;
+    sel.push({ k: 'rot', x: r.x + r.w / 2, y: r.y - 9 });
+    return sel.map(function (h) { const q = rotPt(r, h.x, h.y); return { k: h.k, x: q.x, y: q.y }; });
+  }
+  function reanchor(r, tl) {
+    const a = (r.fa || 0) * Math.PI / 180, co = Math.cos(a), si = Math.sin(a);
+    const ncx = tl.x + (r.w / 2) * co - (r.h / 2) * si, ncy = tl.y + (r.w / 2) * si + (r.h / 2) * co;
+    r.x = ncx - r.w / 2; r.y = ncy - r.h / 2;
+  }
+  function rotBox(r) {
+    const a = (r.fa || 0) * Math.PI / 180, co = Math.abs(Math.cos(a)), si = Math.abs(Math.sin(a));
+    const bw = r.w * co + r.h * si, bh = r.w * si + r.h * co, cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    return { x: cx - bw / 2, y: cy - bh / 2, w: bw, h: bh, a: a };
+  }
+  async function rotatedPng(r, ppm, tileMode) {
+    const B = rotBox(r), k = Math.min(1, Math.sqrt(6e6 / (B.w * ppm * B.h * ppm)));
+    ppm *= k;
+    const W = Math.max(2, Math.round(B.w * ppm)), H = Math.max(2, Math.round(B.h * ppm));
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.translate(W / 2, H / 2); x.rotate(B.a);
+    const w = Math.max(2, Math.round(r.w * ppm)), h = Math.max(2, Math.round(r.h * ppm));
+    if (r.type === 'text') {
+      await loadFont(r);
+      const e = fillEntry(r), t = renderText(r, w, h, e ? e.small : null);
+      x.drawImage(t, -w / 2, -h / 2, w, h); t.width = 1; t.height = 1;
+    } else {
+      const im = await loadDataImg(await tileJpeg(r.f, w, h, tileMode, r.rot, viewOf(r)));
+      x.drawImage(im, -w / 2, -h / 2, w, h);
+    }
+    const data = cv.toDataURL('image/png'); cv.width = 1; cv.height = 1;
+    return { data: data, B: B };
   }
   function opacityOf(r) {
     if (r.alpha != null) return r.alpha;
@@ -3479,6 +3537,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       $('selZoom').value = String(Math.max(0.25, Math.min(6, v.z))); $('selZoomO').textContent = Math.round(v.z * 100) + '%';
       $('selAng').value = String(v.a || 0); $('selAngO').textContent = (v.a || 0).toFixed(1) + '°';
     }
+    $('selFaRow').hidden = !(isFree && r && !r.poster && !sh.multiOn);
+    if (r) { $('selFa').value = String(r.fa || 0); $('selFaO').textContent = (r.fa || 0) + '°'; }
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
   }
 
@@ -3493,8 +3553,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   function hitIdx(p) {
     const rs = pageRects();
     for (let i = rs.length - 1; i >= 0; i--) {
-      const r = rs[i];
-      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return i;
+      const r = rs[i], q = rotPt(r, p.x, p.y, true);
+      if (q.x >= r.x && q.x <= r.x + r.w && q.y >= r.y && q.y <= r.y + r.h) return i;
     }
     return -1;
   }
@@ -3650,6 +3710,12 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     }
     $('selZoom').addEventListener('input', function () { const z = parseFloat($('selZoom').value) || 1; $('selZoomO').textContent = Math.round(z * 100) + '%'; setViewParams(z, null); });
     $('selAng').addEventListener('input', function () { const a = parseFloat($('selAng').value) || 0; $('selAngO').textContent = a.toFixed(1) + '°'; setViewParams(null, a); });
+    $('selFa').addEventListener('input', function () {
+      const r = selRect(); if (!r || state.mode !== 'free') return;
+      const a = parseFloat($('selFa').value) || 0; $('selFaO').textContent = a + '°';
+      if (a) r.fa = a; else delete r.fa;
+      hideResult(); drawSheet();
+    });
     $('selFlipH').addEventListener('click', function () { sheetDo(function (l) { flipPhotos(l, false); }); });
     $('selFlipV').addEventListener('click', function () { sheetDo(function (l) { flipPhotos(l, true); }); });
     $('selFront').addEventListener('click', function () { moveLayer('front'); });
@@ -3688,7 +3754,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       if (r && state.mode === 'free' && !sh.frame) {
         const hk = hitHandle(r, p);
-        if (hk) { sh.g = { t: 'resize', k: hk, p0: p, s: { x: r.x, y: r.y, w: r.w, h: r.h }, changed: false }; e.preventDefault(); return; }
+        if (hk) { sh.g = { t: hk === 'rot' ? 'rotate' : 'resize', k: hk, p0: p, s: { x: r.x, y: r.y, w: r.w, h: r.h }, tl: rotPt(r, r.x, r.y), changed: false }; e.preventDefault(); return; }
       }
       const i = hitIdx(p);
       if (i < 0) { sh.g = null; if (sh.sel) { clearSel(); drawSheet(); } return; }
@@ -3731,10 +3797,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       if (g.t === 'move') {
         r.x = g.s.x + p.x - g.p0.x; r.y = g.s.y + p.y - g.p0.y;
         clampObj(r, pw, ph, MIN_OBJ, true);
+      } else if (g.t === 'rotate') {
+        const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+        let a = Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI + 90;
+        a = ((a + 540) % 360) - 180;
+        [-180, -135, -90, -45, 0, 45, 90, 135, 180].forEach(function (sn) { if (Math.abs(a - sn) < 3) a = sn; });
+        r.fa = Math.round(a * 2) / 2; if (r.fa === -180) r.fa = 180;
+        if (r.fa === 0) delete r.fa;
       } else if (g.t === 'resize') {
-        const dx = p.x - g.p0.x, dy = p.y - g.p0.y;
+        let dx = p.x - g.p0.x, dy = p.y - g.p0.y;
+        if (r.fa) { const a = r.fa * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), ddx = dx, ddy = dy; dx = ddx * co + ddy * si; dy = -ddx * si + ddy * co; }
         if (r.type === 'text' && !r.fit) {
-          r.w = cl(g.s.w + dx, 10, 3 * pw); layoutOne(r); clampObj(r, pw, ph, MIN_OBJ, true);
+          r.w = cl(g.s.w + dx, 10, 3 * pw); layoutOne(r); if (r.fa) reanchor(r, g.tl); clampObj(r, pw, ph, MIN_OBJ, true);
           g.changed = true; drawSheet(); return;
         }
         let w = g.s.w, h = g.s.h;
@@ -3742,6 +3816,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         else if (g.k === 'e') w = cl(g.s.w + dx, MIN_OBJ, 3 * pw);
         else h = cl(g.s.h + dy, MIN_OBJ, 3 * ph);
         r.w = w; r.h = h;
+        if (r.fa) reanchor(r, g.tl);
       } else if (g.t === 'pan') {
         applyPan(r, p.x - g.last.x, p.y - g.last.y);
         g.last = p;
@@ -3786,6 +3861,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('selDup').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
       const o = r.type === 'text' ? Object.assign({}, r, { id: freeSeq++, x: r.x + 5, y: r.y + 5 }, r.fit ? {} : { grp: freeSeq++, gtext: r.raw }) : makeObj(r.f, r.x + 5, r.y + 5, r.w, r.h);
+      if (r.fa) o.fa = r.fa;
       if (r.type !== 'text') { o.view = Object.assign({}, r.view); if (r.alpha != null) o.alpha = r.alpha; }
       clampObj(o, cur.c.pw, cur.c.ph, MIN_OBJ, true);
       const arr = free.pages[state.page];
@@ -4793,6 +4869,28 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     sp.aw = c.pw; sp.ah = c.ph; sp.base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
     spPreview();
   }
+  function spScissors(doc, x, y, s) {
+    doc.setDrawColor(110); doc.setLineWidth(0.25);
+    doc.line(x + 0.22 * s, y - 0.2 * s, x + s, y + 0.05 * s); doc.line(x + 0.22 * s, y + 0.2 * s, x + s, y - 0.05 * s);
+    doc.circle(x + 0.09 * s, y - 0.2 * s, 0.13 * s); doc.circle(x + 0.09 * s, y + 0.2 * s, 0.13 * s);
+  }
+  // Línea finísima alrededor de la imagen y «CORTAR» en el blanco que sobra.
+  function spCutMarks(doc, o, ix, iy, dw, dh) {
+    doc.setDrawColor(120); doc.setLineWidth(0.08);
+    doc.rect(ix, iy, dw, dh);
+    doc.setTextColor(110); doc.setFontSize(8);
+    const msg = 'CORTAR todo este blanco (por la línea fina)';
+    const bands = [{ t: iy, cy: iy / 2, h: true }, { t: o.h - iy - dh, cy: iy + dh + (o.h - iy - dh) / 2, h: true }];
+    bands.forEach(function (b) {
+      if (b.t < 7) return;
+      spScissors(doc, o.w / 2 - 38, b.cy, 6);
+      doc.text(msg, o.w / 2 - 30, b.cy + 1, { align: 'left' });
+    });
+    [{ t: ix, cx: ix / 2 }, { t: o.w - ix - dw, cx: ix + dw + (o.w - ix - dw) / 2 }].forEach(function (b) {
+      if (b.t < 7) return;
+      doc.text('CORTAR este blanco', b.cx + 1, o.h / 2 + 20, { angle: 90 });
+    });
+  }
   async function spMake() {
     if (sp.busy || !sp.n || !window.jspdf) { if (!window.jspdf) spNote('No cargó la librería de PDF. Revisa tu conexión a internet.', true); return; }
     sp.busy = true; spSync();
@@ -4804,14 +4902,21 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         const c0 = cells[0], cwf = (c0.x1 - c0.x0), chf = (c0.y1 - c0.y0);
         const o = spOutPage(cwf * sp.aw, chf * sp.ah);
         const aw = o.w - 2 * m, ah = o.h - 2 * m, cellAsp = (cwf * sp.aw) / (chf * sp.ah);
+        const fill = $('spFit').value === 'fill';
         let dw = aw, dh = aw / cellAsp; if (dh > ah) { dh = ah; dw = ah * cellAsp; }
+        if (fill) { dw = aw; dh = ah; }
         const needW = Math.ceil(dw / 25.4 * 220 / cwf);
         const src = await spSource(i, needW);
         for (let j = 0; j < cells.length; j++) {
           spNote('Creando parte ' + (done + 1) + ' de ' + total + '…'); spProg(done / total);
           const ce = cells[j];
-          const sx = Math.round(ce.x0 * src.width), sy = Math.round(ce.y0 * src.height);
-          const sw = Math.max(1, Math.round(ce.x1 * src.width) - sx), sh = Math.max(1, Math.round(ce.y1 * src.height) - sy);
+          let sx = Math.round(ce.x0 * src.width), sy = Math.round(ce.y0 * src.height);
+          let sw = Math.max(1, Math.round(ce.x1 * src.width) - sx), sh = Math.max(1, Math.round(ce.y1 * src.height) - sy);
+          if (fill) {
+            const pa = dw / dh;
+            if (sw / sh > pa) { const nw = Math.max(1, Math.round(sh * pa)); sx += Math.round((sw - nw) / 2); sw = nw; }
+            else { const nh = Math.max(1, Math.round(sw / pa)); sy += Math.round((sh - nh) / 2); sh = nh; }
+          }
           const cv = document.createElement('canvas'); cv.width = sw; cv.height = sh;
           const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, sw, sh);
           x.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
@@ -4819,7 +4924,9 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           const short = Math.min(o.w, o.h), long = Math.max(o.w, o.h), orient = o.w > o.h ? 'landscape' : 'portrait';
           if (!doc) doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
           else doc.addPage([short, long], orient);
-          doc.addImage(data, 'JPEG', (o.w - dw) / 2, (o.h - dh) / 2, dw, dh);
+          const ix = (o.w - dw) / 2, iy = (o.h - dh) / 2;
+          doc.addImage(data, 'JPEG', ix, iy, dw, dh);
+          if (!fill) spCutMarks(doc, o, ix, iy, dw, dh);
           if (m >= 5) { doc.setFontSize(7); doc.setTextColor(150); doc.text((sp.n > 1 ? 'Hoja ' + (i + 1) + ' · ' : '') + 'Parte ' + (j + 1) + ' de ' + cells.length + ' (fila ' + (ce.r + 1) + ', columna ' + (ce.c + 1) + ')', o.w / 2, o.h - 1.8, { align: 'center' }); }
           done++; await yieldUI();
         }
@@ -4847,7 +4954,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('spClose').addEventListener('click', closeSp);
     $('spFile').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; setTimeout(function () { e.target.value = ''; }, 0); if (f) spLoadFile(f); });
     $('spUse').addEventListener('click', spUseSheet);
-    ['spCut', 'spOv', 'spPaper'].forEach(function (id) { $(id).addEventListener('change', spPreview); });
+    ['spCut', 'spOv', 'spPaper', 'spFit'].forEach(function (id) { $(id).addEventListener('change', spPreview); });
     $('spPrev').addEventListener('click', function () { if (sp.cur > 0) { sp.cur--; spPreview(); } });
     $('spNext').addEventListener('click', function () { if (sp.cur < sp.n - 1) { sp.cur++; spPreview(); } });
     $('spMake').addEventListener('click', spMake);
