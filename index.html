@@ -186,6 +186,11 @@ p { margin: 0; }
 
 .thumb { cursor: pointer; }
 .thumb:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.layers { display: flex; gap: 6px; width: 100%; overflow-x: auto; padding: 2px 0; align-items: center; }
+.layers .lbl { font-size: .8125rem; color: var(--muted); flex: none; }
+.layers button { flex: none; width: 46px; height: 46px; padding: 0; border: 2px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; font: 700 14px sans-serif; color: #333; }
+.layers button[aria-pressed="true"] { border-color: var(--accent); }
+.layers canvas { width: 100%; height: 100%; display: block; }
 .thumbs.selecting .thumb { opacity: .55; }
 .thumbs.selecting .thumb.sel { opacity: 1; outline: 3px solid var(--accent); outline-offset: -3px; }
 .thumb .chk { display: none; position: absolute; left: 4px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 13px/20px sans-serif; text-align: center; }
@@ -200,6 +205,10 @@ p { margin: 0; }
 .ed-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .ed-top strong { flex: 1; min-width: 0; text-align: center; font-size: 0.9375rem; }
 .ed-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: #12181c; position: relative; }
+.ed-stage { overflow: hidden; }
+#edRing { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000; background: rgba(255,45,85,.3); pointer-events: none; display: none; z-index: 6; }
+#edLoupe { position: absolute; top: 8px; width: 120px; height: 120px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 12px rgba(0,0,0,.6); overflow: hidden; background: #222; pointer-events: none; z-index: 7; }
+#edLoupe canvas { width: 100%; height: 100%; display: block; }
 .ed-cw { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
 .ed-cw canvas { width: 100%; height: 100%; display: block; }
 .ed-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; }
@@ -243,7 +252,14 @@ p { margin: 0; }
 .doc-pane .btn { min-height: 38px; padding-inline: 10px; flex: none; }
 .doc-pane input[type="text"], .doc-pane select { font: inherit; min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); flex: 1 0 130px; min-width: 0; }
 .doc-imgtools { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; align-items: center; }
-.doc-lupa { background: #fff; color: #000; border-bottom: 2px solid var(--accent); height: 96px; overflow: hidden; position: relative; }
+.doc-lupa { background: #fff; color: #000; border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); height: 96px; overflow: hidden; position: absolute; left: 0; right: 0; top: 57px; z-index: 7; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+.doc-banner { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 6px 12px; background: var(--accent); color: #fff; font-size: .875rem; }
+.doc-banner .btn { min-height: 34px; }
+.pgguide { position: absolute; pointer-events: none; z-index: 4; }
+.pgguide.m { border: 1px dashed rgba(30,110,255,.6); }
+.pgguide.cv { border-left: 1px dashed rgba(255,120,0,.65); }
+.pgguide.ch { border-top: 1px dashed rgba(255,120,0,.65); }
+#docBody.noguides .pgguide { display: none; }
 #docLupaIn { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
 .doc-scroll { flex: 1; min-height: 0; overflow: auto; background: #8d98a0; padding: 12px; position: relative; }
 #docBody { transform-origin: 0 0; width: max-content; }
@@ -561,9 +577,15 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button class="btn" id="selMulti" type="button" aria-pressed="false">Varias</button>
           <button class="btn" id="selRotL" type="button" aria-label="Girar a la izquierda">↺ Girar</button>
           <button class="btn" id="selRotR" type="button" aria-label="Girar a la derecha">↻ Girar</button>
+          <button class="btn" id="selFlipH" type="button">↔ Voltear</button>
+          <button class="btn" id="selFlipV" type="button">↕ Voltear</button>
+          <button class="btn" id="selFront" type="button">⤒ Al frente</button>
+          <button class="btn" id="selUp" type="button">↑ Subir capa</button>
+          <button class="btn" id="selDown" type="button">↓ Bajar capa</button>
+          <button class="btn" id="selBack" type="button">⤓ Al fondo</button>
           <button class="btn" id="selZm" type="button">－ Zoom</button>
           <button class="btn" id="selZp" type="button">＋ Zoom</button>
-          <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="1" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
+          <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
           <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
           <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
           <button class="btn" id="selReset" type="button">Quitar encuadre</button>
@@ -575,6 +597,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button class="btn" id="selDel" type="button">Eliminar</button>
           <button class="btn" id="selEdit" type="button">Editar foto</button>
           <label class="sl-inline">Transparencia <input type="range" id="selAlpha" min="0" max="90" value="0"><output id="selAlphaO">0%</output></label>
+          <div class="layers" id="layerList" hidden></div>
           <button class="btn primary" id="selDone" type="button">Listo</button>
         </div>
         <div class="pager">
@@ -618,6 +641,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <button class="btn primary" id="docMake" type="button">Crear PDF</button>
   </div>
   <div class="doc-lupa" id="docLupa" hidden><div id="docLupaIn"></div></div>
+  <div class="doc-banner" id="docImgBanner" hidden><span>Modo imágenes: mueve o amplía las imágenes (con dos dedos también).</span><button class="btn" type="button" id="docImgBack">Volver al texto</button></div>
   <div class="doc-scroll" id="docScroll"><div id="docZoom"><div id="docBody"></div></div></div>
   <div class="doc-bar">
     <div id="docNote" class="note" role="status" aria-live="polite" style="margin:0 0 6px"></div>
@@ -675,7 +699,9 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <div class="doc-pane" data-p="view" hidden>
       <button class="btn" type="button" id="docZoomOut" aria-label="Alejar">− Zoom</button>
       <button class="btn" type="button" id="docZoomIn" aria-label="Acercar">+ Zoom</button>
-      <select id="docLupaSel" aria-label="Ventana de zoom del texto que editas"><option value="0">Sin ventana de zoom</option><option value="1.5">Ventana de zoom ×1.5</option><option value="2">Ventana de zoom ×2</option><option value="3">Ventana de zoom ×3</option></select>
+      <input type="range" id="docZoomSl" min="0.5" max="4" step="0.05" value="1" aria-label="Zoom de la hoja" style="flex:1 0 110px;accent-color:var(--accent)">
+      <label class="check" style="min-height:38px;flex:none"><input type="checkbox" id="docGuides" checked> Guías de margen y centro</label>
+      <select id="docLupaSel" aria-label="Ventana de zoom del texto que escribes"><option value="0">Sin ventana de zoom al escribir</option><option value="1.5">Zoom al escribir ×1.5</option><option value="2">Zoom al escribir ×2</option><option value="3">Zoom al escribir ×3</option></select>
       <select id="docSheet" aria-label="Hoja de Excel" hidden></select>
       <select id="docOrient" aria-label="Orientación del PDF" hidden>
         <option value="0">PDF vertical</option>
@@ -715,6 +741,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <button class="btn primary" id="edDone" type="button">Listo</button>
   </div>
   <div class="ed-stage" id="edStage">
+    <div id="edRing" aria-hidden="true"></div>
+    <div id="edLoupe" hidden aria-hidden="true"><canvas id="edLoupeC" width="120" height="120"></canvas></div>
     <div class="ed-cw" id="edCW">
       <canvas id="edCanvas" width="10" height="10"></canvas>
       <canvas id="edMask" width="10" height="10" hidden style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;opacity:.55"></canvas>
@@ -785,7 +813,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         <button class="btn" id="edZout" type="button">－ Alejar</button>
         <button class="btn" id="edZfit" type="button">Ver toda</button>
       </div>
-      <p class="hint">Para pintar con precisión: acerca con dos dedos (pellizcar) o con los botones. Con dos dedos también mueves la foto; o usa «Mover».</p>
+      <div class="sl"><label for="edZoomSl">Zoom</label><output id="edZoomSlO">100%</output><input type="range" id="edZoomSl" min="1" max="8" step="0.05" value="1"></div>
+      <p class="hint">Para pintar con precisión: acerca con dos dedos (pellizcar), con los botones o con la barra Zoom. Con dos dedos también mueves la foto; o usa «Mover».</p>
       <div class="sl"><label for="edBrush">Tamaño del pincel</label><output id="edBrushO">30</output><input type="range" id="edBrush" min="6" max="120" value="30"></div>
       <div class="sl" id="edTolRow" hidden><label for="edTol">Sensibilidad de la varita</label><output id="edTolO">30</output><input type="range" id="edTol" min="5" max="120" value="30"></div>
       <p class="hint" id="edAiHint" hidden>Objeto IA (experimental): toca un objeto y la IA lo marca. La primera vez descarga un modelo de unos 15–50 MB y necesita internet. Si marca de más (por ejemplo el pie entero en vez de la media), elige «Pequeña», o toca con «Excluir» sobre lo que NO quieres quitar.</p>
@@ -1157,7 +1186,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   function viewGeom(iw, ih, w, h, v) {
     const a = (v.a || 0) * Math.PI / 180, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a));
     const bw = w * ca + h * sa, bh = w * sa + h * ca;
-    const s = Math.max(Math.max(w / iw, h / ih) * v.z, bw / iw, bh / ih);
+    const s0 = Math.max(w / iw, h / ih) * v.z, s = v.z < 1 ? s0 : Math.max(s0, bw / iw, bh / ih);
     const ww = Math.min(iw, bw / s), wh = Math.min(ih, bh / s);
     return { a: a, s: s, ww: ww, wh: wh, cx: ww / 2 + v.px * (iw - ww), cy: wh / 2 + v.py * (ih - wh) };
   }
@@ -1177,7 +1206,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   // Cambia el zoom (factor) manteniendo fijo el centro de lo que se ve.
   function zoomView(iw, ih, w, h, v, factor) {
     const g = viewGeom(iw, ih, w, h, v);
-    return viewFromCenter(iw, ih, w, h, cl(v.z * factor, 1, 8), v.a, g.cx, g.cy);
+    return viewFromCenter(iw, ih, w, h, cl(v.z * factor, 0.25, 8), v.a, g.cx, g.cy);
   }
 
   // Cambia el giro fino (grados) manteniendo el centro.
@@ -1231,7 +1260,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   function drawFit(ctx, src, x, y, w, h, mode, view) {
     const d = dims(src);
-    if (view && view.a) {
+    if (view && (view.a || view.z < 1)) {
       const g = viewGeom(d.w, d.h, w, h, view);
       ctx.save();
       ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
@@ -2197,7 +2226,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   // ---- Borrar objetos (relleno con parches de la propia foto, sin internet) ----
   const er = { stack: [], busy: false };
   const ez = { z: 1, tx: 0, ty: 0 };
-  function edApplyZoom() { $('edCW').style.transform = ez.z === 1 && !ez.tx && !ez.ty ? '' : 'translate(' + ez.tx + 'px,' + ez.ty + 'px) scale(' + ez.z + ')'; }
+  function edApplyZoom() {
+    $('edCW').style.transform = ez.z === 1 && !ez.tx && !ez.ty ? '' : 'translate(' + ez.tx + 'px,' + ez.ty + 'px) scale(' + ez.z + ')';
+    if ($('edZoomSl')) { $('edZoomSl').value = String(ez.z); $('edZoomSlO').textContent = Math.round(ez.z * 100) + '%'; }
+  }
   function resetZoom() { ez.z = 1; ez.tx = 0; ez.ty = 0; edApplyZoom(); }
 
   function eraseStage() {
@@ -2822,6 +2854,34 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       c.lineWidth = tool === 'lasso' ? Math.max(1, 3 * sc) : Math.max(1, (parseInt($('edBrush').value, 10) || 30) * sc);
       c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x + 0.01, b.y); c.stroke();
     }
+    // Lupa que acompaña al dedo mientras marcas
+    function loupeHide() { $('edLoupe').hidden = true; }
+    function loupeShow(e) {
+      const tool = segVal('edTool') || 'brush';
+      if (tool === 'hand' || tool === 'ai' || tool === 'wand') { loupeHide(); return; }
+      const st = $('edStage').getBoundingClientRect(), L = $('edLoupe'), cvs = $('edCanvas'), r = cw.getBoundingClientRect();
+      L.hidden = false;
+      L.style.left = ((e.clientX - st.left) < st.width / 2 ? st.width - 128 : 8) + 'px';
+      const Z = 3, k = cvs.width / r.width, half = 60 / Z * k;
+      const cx = (e.clientX - r.left) * k, cy = (e.clientY - r.top) * k;
+      const c = $('edLoupeC').getContext('2d');
+      c.clearRect(0, 0, 120, 120);
+      c.fillStyle = '#222'; c.fillRect(0, 0, 120, 120);
+      c.imageSmoothingEnabled = true;
+      c.drawImage(cvs, cx - half, cy - half, half * 2, half * 2, 0, 0, 120, 120);
+      c.globalAlpha = 0.55;
+      c.drawImage(mk, cx - half, cy - half, half * 2, half * 2, 0, 0, 120, 120);
+      c.globalAlpha = 1;
+      const rad = tool === 'lasso' ? 4 : Math.max(2, (parseInt($('edBrush').value, 10) || 30) / 2 * Z);
+      c.lineWidth = 3; c.strokeStyle = '#000'; c.beginPath(); c.arc(60, 60, rad, 0, Math.PI * 2); c.stroke();
+      c.lineWidth = 1.5; c.strokeStyle = '#fff'; c.beginPath(); c.arc(60, 60, rad, 0, Math.PI * 2); c.stroke();
+    }
+    let ringT = 0;
+    function ringShow() {
+      const rg = $('edRing'), d = parseInt($('edBrush').value, 10) || 30;
+      rg.style.width = d + 'px'; rg.style.height = d + 'px'; rg.style.display = 'block';
+      clearTimeout(ringT); ringT = setTimeout(function () { rg.style.display = 'none'; }, 1200);
+    }
     const ptr = new Map();
     let pinch = null, pan = null;
     function pdist() { const a = Array.from(ptr.values()); return Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1; }
@@ -2850,6 +2910,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       if (tool === 'ai') { aiPick(p); return; }
       paint = { last: p, pts: [p], id: e.pointerId };
       seg(p, p);
+      loupeShow(e);
     });
     cw.addEventListener('pointermove', function (e) {
       if (!ptr.has(e.pointerId)) return;
@@ -2865,9 +2926,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const p = edPoint(e);
       seg(paint.last, p);
       paint.last = p; paint.pts.push(p);
+      loupeShow(e);
     });
     function up(e) {
       ptr.delete(e.pointerId);
+      loupeHide();
       if (ptr.size < 2) pinch = null;
       if (ptr.size === 0) pan = null;
       if (!paint || e.pointerId !== paint.id) return;
@@ -2914,7 +2977,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('edEraseAI').addEventListener('click', eraseAI);
     $('edSavePng').addEventListener('click', saveOnePng);
     $('pngAll').addEventListener('click', saveAllPng);
-    $('edBrush').addEventListener('input', function () { $('edBrushO').textContent = $('edBrush').value; });
+    $('edBrush').addEventListener('input', function () { $('edBrushO').textContent = $('edBrush').value; ringShow(); });
+    $('edZoomSl').addEventListener('input', function () { const z = parseFloat($('edZoomSl').value) || 1; zoomBtn(z / ez.z); });
     $('edMUndo').addEventListener('click', function () { const s = er.stack.pop(); if (s) ctx2().putImageData(s, 0, 0); aiNewObject(); });
     $('edMClear').addEventListener('click', function () { ctx2().clearRect(0, 0, mk.width, mk.height); er.stack = []; aiNewObject(); });
     $('edErase').addEventListener('click', eraseGo);
@@ -3284,10 +3348,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     $('selMulti').setAttribute('aria-pressed', String(sh.multiOn));
     $('selMulti').textContent = sh.multiOn ? 'Varias: ' + sh.multi.size : 'Varias';
     $('selFrame').setAttribute('aria-pressed', String(sh.frame));
-    ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg'].forEach(function (id) { $(id).hidden = !isFree; });
+    ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = !isFree; });
     const isTxt = !!r && r.type === 'text';
     $('selFrame').hidden = isTxt; $('selReset').hidden = isTxt;
-    if (r && r.poster) ['selSmaller', 'selBigger', 'selDup', 'selPrevPg', 'selNextPg'].forEach(function (id) { $(id).hidden = true; });
+    if (r && r.poster) ['selSmaller', 'selBigger', 'selDup', 'selPrevPg', 'selNextPg', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = true; });
     if (r) { const al = Math.round((1 - opacityOf(r)) * 100); $('selAlpha').value = String(al); $('selAlphaO').textContent = al + '%'; }
     $('selEdit').textContent = isTxt ? 'Editar texto' : 'Editar foto';
     if (isTxt) sh.frame = false;
@@ -3300,17 +3364,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     else hint = 'Pulsa Encuadrar para mover y ampliar la foto dentro de su cuadro.';
     $('sheetHint').textContent = hint;
     if (sh.multiOn) {
-      ['selFrame', 'selReset', 'selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selEdit'].forEach(function (id) { $(id).hidden = true; });
+      ['selFrame', 'selReset', 'selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selEdit', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = true; });
       $('selAlpha').closest('label').hidden = true;
       hint = 'Toca las fotos de la hoja para marcarlas o desmarcarlas. Luego usa Girar o Zoom. Pulsa «Varias» para volver a elegir de una en una.';
       $('sheetHint').textContent = hint;
     } else $('selAlpha').closest('label').hidden = false;
-    ['selRotL', 'selRotR'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
+    ['selRotL', 'selRotR', 'selFlipH', 'selFlipV'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
+    renderLayers();
     ['selZm', 'selZp'].forEach(function (id) { $(id).hidden = !sh.multiOn; });
     ['selZoomRow', 'selAngRow'].forEach(function (id) { $(id).hidden = isTxt && !sh.multiOn; });
     if (r && !isTxt) {
       const v = viewOf(r) || newView();
-      $('selZoom').value = String(Math.min(6, v.z)); $('selZoomO').textContent = Math.round(v.z * 100) + '%';
+      $('selZoom').value = String(Math.max(0.25, Math.min(6, v.z))); $('selZoomO').textContent = Math.round(v.z * 100) + '%';
       $('selAng').value = String(v.a || 0); $('selAngO').textContent = (v.a || 0).toFixed(1) + '°';
     }
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
@@ -3318,12 +3383,6 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   function selectIdx(i) {
     sh.sel = { page: state.page, idx: i };
-    if (state.mode === 'free') {
-      const arr = free.pages[state.page];
-      const o = arr.splice(i, 1)[0];
-      arr.push(o);
-      sh.sel.idx = arr.length - 1;
-    }
   }
 
   function ptMM(e) {
@@ -3357,9 +3416,16 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     holder(r).view = zoomView(d.w, d.h, fd.w, fd.h, base, factor);
   }
   function endGesture() {
-    const ch = sh.g && sh.g.changed;
+    const g0 = sh.g, ch = g0 && g0.changed;
     if (ch) hideResult();
     sh.g = null;
+    if (g0 && !ch && g0.wasSel && state.mode === 'free' && !sh.frame && sh.sel) {
+      const rs = pageRects();
+      for (let q = sh.sel.idx - 1; q >= 0; q--) {
+        const rr = rs[q];
+        if (g0.p0.x >= rr.x && g0.p0.x <= rr.x + rr.w && g0.p0.y >= rr.y && g0.p0.y <= rr.y + rr.h) { sh.sel = { page: state.page, idx: q }; drawSheet(); syncSel(); return; }
+      }
+    }
     if (ch) syncSel();
   }
 
@@ -3379,12 +3445,54 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const ids = new Set(list.map(function (f) { return f.id; }));
     function fix(h, def) {
       if (!factor) { h.view = def; return; }
-      if (!h.view && factor < 1) return;
       const v = h.view || newView();
-      h.view = { z: cl(v.z * factor, 1, 8), a: v.a || 0, px: v.px, py: v.py };
+      h.view = { z: cl(v.z * factor, 0.25, 8), a: v.a || 0, px: v.px, py: v.py };
     }
     if (state.mode !== 'free') list.forEach(function (f) { fix(f, null); });
     else free.pages.forEach(function (pg) { pg.forEach(function (o) { if (o.type !== 'text' && ids.has(o.f.id)) fix(o, newView()); }); });
+  }
+  function flipPhotos(list, vertical) {
+    list.forEach(function (f) {
+      const e = f.edit;
+      e.flip = !e.flip; e.rot = (4 - e.rot) % 4;
+      if (vertical) e.rot = (e.rot + 2) % 4;
+      if (e.crop) e.crop = vertical ? { x: e.crop.x, y: 1 - (e.crop.y + e.crop.h), w: e.crop.w, h: e.crop.h } : { x: 1 - (e.crop.x + e.crop.w), y: e.crop.y, w: e.crop.w, h: e.crop.h };
+      if (f.view) f.view = { z: f.view.z, a: -(f.view.a || 0), px: vertical ? f.view.px : 1 - f.view.px, py: vertical ? 1 - f.view.py : f.view.py };
+      refreshThumb(f);
+    });
+  }
+  function moveLayer(kind) {
+    const r = selRect(); if (!r || state.mode !== 'free' || r.poster) return;
+    const arr = free.pages[state.page], i = sh.sel.idx, o = arr[i];
+    let j = i;
+    if (kind === 'front') j = arr.length - 1; else if (kind === 'back') j = 0; else if (kind === 'up') j = Math.min(arr.length - 1, i + 1); else j = Math.max(0, i - 1);
+    if (j === i) { setNote(kind === 'front' || kind === 'up' ? 'Ya está arriba de todo.' : 'Ya está al fondo.'); return; }
+    setNote('');
+    arr.splice(i, 1); arr.splice(j, 0, o);
+    sh.sel.idx = j;
+    hideResult(); drawSheet(); syncSel();
+  }
+  function renderLayers() {
+    const box = $('layerList');
+    const arr = state.mode === 'free' && cur && !sh.multiOn ? (free.pages[state.page] || []) : [];
+    box.hidden = arr.length < 2;
+    box.textContent = '';
+    if (arr.length < 2) return;
+    const lbl = document.createElement('span'); lbl.className = 'lbl'; lbl.textContent = 'Capas (arriba → abajo):'; box.appendChild(lbl);
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const o = arr[i], b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(!!sh.sel && sh.sel.page === state.page && sh.sel.idx === i));
+      b.setAttribute('aria-label', 'Capa ' + (arr.length - i));
+      if (o.type === 'text') b.textContent = 'Aa';
+      else {
+        const cv = document.createElement('canvas'); cv.width = 46; cv.height = 46;
+        drawFit(cv.getContext('2d'), o.f.thumb, 0, 0, 46, 46, 'fit');
+        b.appendChild(cv);
+      }
+      (function (idx) { b.addEventListener('click', function () { sh.sel = { page: state.page, idx: idx }; syncSel(); drawSheet(); }); })(i);
+      box.appendChild(b);
+    }
   }
   function bwPhotos(list) {
     const on = !list.every(function (f) { return f.edit.f.bw; });
@@ -3441,6 +3549,12 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     }
     $('selZoom').addEventListener('input', function () { const z = parseFloat($('selZoom').value) || 1; $('selZoomO').textContent = Math.round(z * 100) + '%'; setViewParams(z, null); });
     $('selAng').addEventListener('input', function () { const a = parseFloat($('selAng').value) || 0; $('selAngO').textContent = a.toFixed(1) + '°'; setViewParams(null, a); });
+    $('selFlipH').addEventListener('click', function () { sheetDo(function (l) { flipPhotos(l, false); }); });
+    $('selFlipV').addEventListener('click', function () { sheetDo(function (l) { flipPhotos(l, true); }); });
+    $('selFront').addEventListener('click', function () { moveLayer('front'); });
+    $('selUp').addEventListener('click', function () { moveLayer('up'); });
+    $('selDown').addEventListener('click', function () { moveLayer('down'); });
+    $('selBack').addEventListener('click', function () { moveLayer('back'); });
     $('selMulti').addEventListener('click', function () {
       const r = selRect();
       if (!sh.multiOn) { sh.multiOn = true; sh.multi.clear(); if (r && r.type !== 'text') sh.multi.add(r.f.id); sh.sel = null; sh.frame = false; }
@@ -3477,9 +3591,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       const i = hitIdx(p);
       if (i < 0) { sh.g = null; if (sh.sel) { clearSel(); drawSheet(); } return; }
+      const wasSelBefore = !!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i);
       if (!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i)) { selectIdx(i); if (state.mode !== 'free' && !(pageRects()[i] || {}).poster) sh.frame = true; }
       const r2 = selRect();
-      sh.g = { t: r2.poster ? null : (sh.frame ? 'pan' : (state.mode === 'free' ? 'move' : null)), p0: p, last: p, s: { x: r2.x, y: r2.y }, changed: false };
+      sh.g = { t: r2.poster ? null : (sh.frame ? 'pan' : (state.mode === 'free' ? 'move' : null)), p0: p, last: p, s: { x: r2.x, y: r2.y }, changed: false, wasSel: wasSelBefore };
       syncSel(); drawSheet();
     });
 
@@ -4261,6 +4376,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     body.style.setProperty('--inv', String(Math.min(6, 1 / Math.max(0.15, k))));
     z.style.width = Math.round(w * k) + 'px';
     z.style.height = Math.round(h * k) + 'px';
+    if ($('docZoomSl')) $('docZoomSl').value = String(Math.max(0.5, Math.min(4, dc.zoom)));
   }
 
   function closeDoc() {
@@ -4578,11 +4694,22 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     if (dc.kind !== 'docx') return;
     $('docBody').querySelectorAll('section.docx').forEach(function (sec) {
       sec.querySelectorAll(':scope > .pgbreak').forEach(function (e) { e.remove(); });
-      computeCuts(sec, docNomH(sec)).forEach(function (c, i) {
+      sec.querySelectorAll(':scope > .pgguide').forEach(function (e) { e.remove(); });
+      const nomH = docNomH(sec), cuts = computeCuts(sec, nomH), cs = getComputedStyle(sec);
+      const pt = parseFloat(cs.paddingTop) || 0, pb = parseFloat(cs.paddingBottom) || 0, pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
+      cuts.forEach(function (c, i) {
         const d = document.createElement('div');
         d.className = 'pgbreak'; d.setAttribute('contenteditable', 'false'); d.dataset.l = 'Aquí empieza la hoja ' + (i + 2);
         d.style.top = c + 'px';
         sec.appendChild(d);
+      });
+      const tops = [0].concat(cuts.map(function (c) { return c - pt; }));
+      sec._pg = { tops: tops, nomH: nomH };
+      tops.forEach(function (t0) {
+        function add(cls, css) { const g = document.createElement('div'); g.className = 'pgguide ' + cls; g.setAttribute('contenteditable', 'false'); g.style.cssText = css; sec.appendChild(g); }
+        add('m', 'left:' + pl + 'px;top:' + (t0 + pt) + 'px;width:' + Math.max(0, sec.offsetWidth - pl - pr) + 'px;height:' + Math.max(0, nomH - pt - pb) + 'px;');
+        add('cv', 'left:' + (sec.offsetWidth / 2) + 'px;top:' + t0 + 'px;height:' + nomH + 'px;width:0;');
+        add('ch', 'left:0;right:0;top:' + (t0 + nomH / 2) + 'px;height:0;');
       });
     });
     fitDoc();
@@ -4612,6 +4739,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   function setImgMode(on) {
     $('docBody').classList.toggle('imgmode', on);
+    $('docImgBanner').hidden = !on;
     $('docImgMode').setAttribute('aria-pressed', String(on));
     $('docImgTools').hidden = !on;
     if (!on) selectDocImg(null);
@@ -4657,6 +4785,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   // ---- Pestañas de herramientas y ventana de zoom del texto ----
   function docTab(t) {
     dc.tab = t;
+    if (t !== 'img' && $('docBody').classList.contains('imgmode')) setImgMode(false);
     document.querySelectorAll('#docDock .tab').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === t)); });
     document.querySelectorAll('#docDock .doc-pane').forEach(function (pn) { pn.hidden = pn.dataset.p !== t || !!dc.dockHidden; });
     if (dc.open) setTimeout(fitDoc, 0);
@@ -4668,10 +4797,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const k = parseFloat($('docLupaSel').value) || 0, box = $('docLupa');
       box.hidden = !k || !dc.open;
       if (!k || !dc.open) return;
-      const sel = window.getSelection();
-      let n = sel && sel.rangeCount && $('docBody').contains(sel.anchorNode) ? sel.anchorNode : (dc.lastRange ? dc.lastRange.startContainer : null);
+      const sel = window.getSelection(), ae = document.activeElement;
+      const typing = !!(ae && $('docBody').contains(ae) && !$('docBody').classList.contains('imgmode') && sel && sel.rangeCount && $('docBody').contains(sel.anchorNode));
+      if (!typing) { box.hidden = true; return; }
+      let n = sel.anchorNode;
       while (n && n !== $('docBody') && !(n.nodeType === 1 && /^(P|LI|H[1-6]|TD|TH)$/.test(n.tagName))) n = n.parentNode;
       const inn = $('docLupaIn');
+      try {
+        const cr = sel.getRangeAt(0).getBoundingClientRect(), sr = $('docScroll').getBoundingClientRect(), er0 = $('doc').getBoundingClientRect();
+        const caretTop = cr.height ? cr.top : (n && n.nodeType === 1 ? n.getBoundingClientRect().top : sr.top + 200);
+        const bottomPlace = caretTop - sr.top < 120;
+        box.style.top = Math.round((bottomPlace ? sr.bottom - er0.top - 100 : sr.top - er0.top)) + 'px';
+      } catch (e) { /* posición por defecto */ }
       inn.textContent = '';
       if (!n || n === $('docBody')) { inn.style.transform = 'none'; inn.style.padding = '10px'; inn.textContent = 'Toca el texto que quieres corregir y aquí lo verás ampliado.'; inn.style.width = 'auto'; return; }
       const sec = document.createElement('section'), art = document.createElement('article');
@@ -4698,6 +4835,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       docTab(dc.tab || 'txt');
     });
     $('docLupaSel').addEventListener('change', lupaUpdate);
+    $('docImgBack').addEventListener('click', function () { setImgMode(false); });
+    $('docGuides').addEventListener('change', function () { $('docBody').classList.toggle('noguides', !$('docGuides').checked); });
+    $('docBody').addEventListener('focusin', lupaUpdate);
+    $('docBody').addEventListener('focusout', function () { setTimeout(lupaUpdate, 150); });
     document.addEventListener('selectionchange', function () { if (dc.open) lupaUpdate(); });
     $('docImgBtn').addEventListener('click', function () { $('docImgIn').click(); });
     $('docImgIn').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; if (f) addDocImage(f); setTimeout(function () { e.target.value = ''; }, 0); });
@@ -4749,7 +4890,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         const w = Math.max(24, drag.w + dx);
         drag.el.style.width = Math.round(w) + 'px';
         $('docImgSize').value = Math.round(w / drag.el.parentNode.offsetWidth * 100);
-      } else { drag.el.style.left = Math.round(drag.l + dx) + 'px'; drag.el.style.top = Math.round(drag.t + dy) + 'px'; }
+      } else {
+        let nl = drag.l + dx, nt = drag.t + dy;
+        const sec = drag.el.parentNode, w = drag.el.offsetWidth, h = drag.el.offsetHeight, tol = 7 / drag.k;
+        if (Math.abs(nl + w / 2 - sec.offsetWidth / 2) < tol) nl = sec.offsetWidth / 2 - w / 2;
+        if (sec._pg) sec._pg.tops.forEach(function (t0) { const mid = t0 + sec._pg.nomH / 2; if (Math.abs(nt + h / 2 - mid) < tol) nt = mid - h / 2; });
+        drag.el.style.left = Math.round(nl) + 'px'; drag.el.style.top = Math.round(nt) + 'px';
+      }
       docHideResult();
     });
     function up(e) {
@@ -4845,7 +4992,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           const cs = getComputedStyle(sec);
           const clone = sec.cloneNode(true);
           clone.style.boxShadow = 'none'; clone.style.margin = '0';
-          clone.querySelectorAll('.pgbreak, .dh').forEach(function (e) { e.remove(); });
+          clone.querySelectorAll('.pgbreak, .pgguide, .dh').forEach(function (e) { e.remove(); });
           clone.querySelectorAll('.docimg').forEach(function (e) { e.classList.remove('sel'); e.style.outline = 'none'; });
           holder.appendChild(clone);
           const w = sec.offsetWidth, h = Math.max(clone.offsetHeight, 1);
@@ -4949,7 +5096,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     });
     $('docClose').addEventListener('click', closeDoc);
     $('docZoomIn').addEventListener('click', function () { dc.zoom = Math.min(4, dc.zoom * 1.4); fitDoc(); });
-    $('docZoomOut').addEventListener('click', function () { dc.zoom = Math.max(1, dc.zoom / 1.4); fitDoc(); });
+    $('docZoomOut').addEventListener('click', function () { dc.zoom = Math.max(0.5, dc.zoom / 1.4); fitDoc(); });
+    $('docZoomSl').addEventListener('input', function () { dc.zoom = parseFloat($('docZoomSl').value) || 1; fitDoc(); });
     $('docMake').addEventListener('click', makeDocPdf);
     $('docSave').addEventListener('click', saveDocPdf);
     document.querySelectorAll('#doc [data-cmd]').forEach(function (b) {
