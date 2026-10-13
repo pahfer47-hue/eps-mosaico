@@ -307,6 +307,50 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 .seltools .btn { min-height: 44px; padding-inline: 12px; }
 .seltools .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 700; }
 #sheet { touch-action: pan-y; }
+/* ===== Interfaz tipo Canva: botones abajo + ventanitas ===== */
+body { padding-block: 10px calc(var(--bui, 128px) + 14px); }
+header { margin-bottom: 4px; }
+header .lede { display: none; }
+h1 { font-size: 1.1rem; }
+.layout { display: block; margin-top: 6px; }
+.stage > h2 { display: none; }
+.preview { position: static !important; }
+#bui { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--surface); box-shadow: 0 -2px 14px rgba(0,0,0,.18); }
+#bui .bar { position: static; border-top: 1px solid var(--line); padding: 6px 14px calc(6px + env(safe-area-inset-bottom, 0px)); }
+#bui .bar .btn { min-height: 40px; padding-block: 6px; }
+#dock { border-top: 1px solid var(--line); }
+.dk-row { display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden; padding: 6px 8px 4px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; touch-action: pan-x; }
+.dk-row::-webkit-scrollbar { display: none; }
+.dk-row[hidden] { display: none; }
+.dk { flex: none; scroll-snap-align: start; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 1px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 0.6875rem; font-weight: 600; padding: 4px 8px; border-radius: 10px; cursor: pointer; }
+.dk b { font-size: 1.25rem; line-height: 1.2; font-weight: 600; min-height: 1.5rem; display: block; }
+.dk[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.dk.danger { color: var(--danger); }
+.dk.go { color: var(--accent); }
+.dk[hidden] { display: none; }
+.controls details.group { display: none; }
+.controls details.group.sheet {
+  display: block; position: fixed; left: 0; right: 0; bottom: var(--bui, 128px); z-index: 12; max-height: min(58vh, 520px); overflow-y: auto;
+  background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.28); padding: 0 16px 14px; border-top: 0; margin: 0 auto; max-width: 720px;
+}
+.controls details.group.sheet > summary { position: sticky; top: 0; background: var(--surface); z-index: 1; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.controls details.group.sheet > summary::after { content: "✕"; font-size: 1.1rem; transform: none; }
+.seltools { display: none; position: fixed; left: 0; right: 0; bottom: var(--bui, 128px); z-index: 13; margin: 0 auto; max-width: 720px; max-height: 46vh; overflow-y: auto; background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.28); padding: 12px 16px 14px; }
+.seltools.show:not([hidden]) { display: block; }
+.spanel { display: none; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spanel.on { display: flex; }
+.spanel::before { content: attr(data-title); flex: 1 1 100%; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.selact { display: none; }
+#dock { position: relative; }
+.dkarrow { position: absolute; top: 6px; bottom: 4px; width: 30px; border: 0; background: linear-gradient(to right, var(--surface) 55%, transparent); color: var(--ink); font-size: 1.6rem; font-weight: 700; cursor: pointer; z-index: 2; display: grid; place-items: center; }
+.dkarrow.l { left: 0; }
+.dkarrow.r { right: 0; background: linear-gradient(to left, var(--surface) 55%, transparent); }
+.dkarrow[hidden] { display: none; }
+@media (pointer: fine) { .dk-row { scrollbar-width: thin; padding-bottom: 8px; } .dk-row::-webkit-scrollbar { display: block; height: 7px; } .dk-row::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; } }
+#sp { bottom: var(--bui, 128px); z-index: 7; }
+.mini { bottom: calc(var(--bui, 128px) + 8px) !important; }
+.sheetwrap { display: flex; justify-content: center; }
+
 </style>
 
 <main>
@@ -320,7 +364,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   <div class="layout">
     <section class="controls" aria-label="Ajustes">
-      <details class="group" open>
+      <details class="group" open data-dk="🖼|Fotos">
         <summary>1 · Imágenes</summary>
         <div class="gbody">
         <div class="row">
@@ -362,7 +406,21 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         </div>
       </details>
 
-      <details class="group" open>
+      <details class="group" id="aiGroup" data-dk="✨|IA">
+        <summary>IA · mejorar y limpiar fotos</summary>
+        <div class="gbody">
+        <div class="seg" id="aiSeg" role="group" aria-label="Herramienta de IA">
+          <button type="button" data-v="enh" aria-pressed="true">Mejorar calidad</button>
+          <button type="button" data-v="bg" aria-pressed="false">Quitar fondo</button>
+          <button type="button" data-v="erase" aria-pressed="false">Borrar objeto</button>
+        </div>
+        <p class="hint" id="aiHint"></p>
+        <p class="hint"><b>Toca la foto</b> que quieres trabajar:</p>
+        <div class="thumbs" id="aiThumbs"></div>
+        </div>
+      </details>
+
+      <details class="group" open data-dk="📄|Hoja">
         <summary>Hoja</summary>
         <div class="gbody">
         <div class="seg" id="paperSeg" role="group" aria-label="Tamaño de hoja">
@@ -400,7 +458,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         </div>
       </details>
 
-      <details class="group" open>
+      <details class="group" open data-dk="▦|Acomodo">
         <summary>Acomodo</summary>
         <div class="gbody">
         <div class="seg" id="modeSeg" role="group" aria-label="Tipo de acomodo">
@@ -468,12 +526,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         </div>
       </details>
 
-      <details class="group" id="textGroup">
+      <details class="group" id="textGroup" data-dk="Aa|Letras">
         <summary>Letras y títulos</summary>
         <div class="gbody">
         <div class="field">
           <label for="txt">Texto (si es largo, sigue en la hoja siguiente)</label>
           <textarea id="txt" rows="3" placeholder="Escribe aquí tu título">Título</textarea>
+        </div>
+        <div class="row" id="txCase" style="margin:8px 0">
+          <button class="btn" type="button" data-case="upper">MAYÚSCULAS</button>
+          <button class="btn" type="button" data-case="lower">minúsculas</button>
+          <button class="btn" type="button" data-case="title">Primera Mayúscula</button>
+          <button class="btn" type="button" data-case="swap">aA ⇄ Invertir</button>
         </div>
         <div class="fields tx-gap">
           <div class="field"><label for="txFont">Tipo de letra</label>
@@ -546,7 +610,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         </div>
       </details>
 
-      <details class="group">
+      <details class="group" data-dk="📑|Documentos" data-split="1">
         <summary>Documentos Word, Excel o PDF</summary>
         <div class="gbody">
         <div class="row">
@@ -571,7 +635,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         </div>
       </details>
 
-      <details class="group">
+      <details class="group" data-dk="📏|Espacios">
         <summary>Espacios (cm)</summary>
         <div class="gbody">
         <div class="fields">
@@ -581,7 +645,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         </div>
       </details>
 
-      <details class="group">
+      <details class="group" data-dk="⚙|Opciones">
         <summary>Opciones</summary>
         <div class="gbody">
         <div class="row" style="justify-content:space-between">
@@ -604,31 +668,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         <div class="grid-info" id="gridInfo"></div>
         <p class="hint" id="sheetHint" style="margin-inline:auto;text-align:center"></p>
         <div class="seltools" id="selTools" hidden>
-          <button class="btn" id="selMulti" type="button" aria-pressed="false">Varias</button>
-          <button class="btn" id="selRotL" type="button" aria-label="Girar a la izquierda">↺ Girar</button>
-          <button class="btn" id="selRotR" type="button" aria-label="Girar a la derecha">↻ Girar</button>
-          <button class="btn" id="selFlipH" type="button">↔ Voltear</button>
-          <button class="btn" id="selFlipV" type="button">↕ Voltear</button>
-          <button class="btn" id="selFront" type="button">⤒ Al frente</button>
-          <button class="btn" id="selUp" type="button">↑ Subir capa</button>
-          <button class="btn" id="selDown" type="button">↓ Bajar capa</button>
-          <button class="btn" id="selBack" type="button">⤓ Al fondo</button>
-          <button class="btn" id="selZm" type="button">－ Zoom</button>
-          <button class="btn" id="selZp" type="button">＋ Zoom</button>
-          <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
-          <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
-          <label class="sl-inline" id="selFaRow">Girar cuadro <input type="range" id="selFa" min="-180" max="180" step="0.5" value="0"><output id="selFaO">0°</output></label>
-          <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
-          <button class="btn" id="selReset" type="button">Quitar encuadre</button>
-          <button class="btn" id="selSmaller" type="button" aria-label="Más chica">− Chica</button>
-          <button class="btn" id="selBigger" type="button" aria-label="Más grande">+ Grande</button>
-          <button class="btn" id="selPrevPg" type="button">← A la hoja anterior</button>
-          <button class="btn" id="selNextPg" type="button">A la hoja siguiente →</button>
-          <button class="btn" id="selDup" type="button">Duplicar</button>
-          <button class="btn" id="selDel" type="button">Eliminar</button>
-          <button class="btn" id="selEdit" type="button">Editar foto</button>
-          <button class="btn" id="selEnh" type="button">✨ Mejorar con IA</button>
-          <div class="nudge" id="selPad" hidden>
+          <div class="spanel" id="sp_mov" data-title="Mover">
+<div class="nudge" id="selPad" hidden>
             <span class="lbl">Mover:</span>
             <button class="btn" id="nudL" type="button" aria-label="Izquierda">◀</button>
             <button class="btn" id="nudU" type="button" aria-label="Arriba">▲</button>
@@ -636,9 +677,51 @@ section.docx > article, section.docx > header, section.docx > footer { position:
             <button class="btn" id="nudR" type="button" aria-label="Derecha">▶</button>
             <select id="nudStep" aria-label="Paso"><option value="0.5">0,5 mm</option><option value="1" selected>1 mm</option><option value="2">2 mm</option><option value="5">5 mm</option><option value="10">10 mm</option></select>
           </div>
-          <label class="sl-inline">Transparencia <input type="range" id="selAlpha" min="0" max="90" value="0"><output id="selAlphaO">0%</output></label>
-          <div class="layers" id="layerList" hidden></div>
-          <button class="btn primary" id="selDone" type="button">Listo</button>
+            <button class="btn" id="selPrevPg" type="button">← A la hoja anterior</button>
+            <button class="btn" id="selNextPg" type="button">A la hoja siguiente →</button>
+          </div>
+          <div class="spanel" id="sp_siz" data-title="Tamaño">
+            <label class="sl-inline" id="selSizeRow">Tamaño <input type="range" id="selSize" min="5" max="400" step="1" value="50"><output id="selSizeO">5 cm</output></label>
+            <button class="btn" id="selSmaller" type="button" aria-label="Más chica">− Chica</button>
+            <button class="btn" id="selBigger" type="button" aria-label="Más grande">+ Grande</button>
+          </div>
+          <div class="spanel" id="sp_rot" data-title="Girar y voltear">
+            <button class="btn" id="selRotL" type="button" aria-label="Girar a la izquierda">↺ Girar</button>
+            <button class="btn" id="selRotR" type="button" aria-label="Girar a la derecha">↻ Girar</button>
+            <button class="btn" id="selFlipH" type="button">↔ Voltear</button>
+            <button class="btn" id="selFlipV" type="button">↕ Voltear</button>
+            <label class="sl-inline" id="selFaRow">Girar cuadro <input type="range" id="selFa" min="-180" max="180" step="0.5" value="0"><output id="selFaO">0°</output></label>
+          </div>
+          <div class="spanel" id="sp_edt" data-title="Editar">
+            <button class="btn" id="selEdit" type="button">Editar foto</button>
+            <button class="btn" id="selEnh" type="button">✨ Mejorar con IA</button>
+            <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
+            <button class="btn" id="selReset" type="button">Quitar encuadre</button>
+            <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
+            <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
+            <button class="btn" id="selZm" type="button">－ Zoom</button>
+            <button class="btn" id="selZp" type="button">＋ Zoom</button>
+          </div>
+          <div class="spanel" id="sp_opa" data-title="Transparencia">
+            <label class="sl-inline">Transparencia <input type="range" id="selAlpha" min="0" max="90" value="0"><output id="selAlphaO">0%</output></label>
+          </div>
+          <div class="spanel" id="sp_lay" data-title="Capas">
+            <button class="btn" id="selFront" type="button">⤒ Al frente</button>
+            <button class="btn" id="selUp" type="button">↑ Subir capa</button>
+            <button class="btn" id="selDown" type="button">↓ Bajar capa</button>
+            <button class="btn" id="selBack" type="button">⤓ Al fondo</button>
+            <div class="layers" id="layerList" hidden></div>
+          </div>
+          <div class="spanel" id="sp_mul" data-title="Varias fotos">
+            <button class="btn" id="selMulti" type="button" aria-pressed="false">Varias</button>
+            <button class="btn" id="selGroup" type="button">Agrupar elegidas</button>
+            <button class="btn" id="selUngroup" type="button">Desagrupar</button>
+          </div>
+          <div class="selact" id="selAct">
+            <button class="btn" id="selDup" type="button">Duplicar</button>
+            <button class="btn" id="selDel" type="button">Eliminar</button>
+            <button class="btn primary" id="selDone" type="button">Listo</button>
+          </div>
         </div>
         <div class="pager">
           <button class="btn" id="prev" type="button" aria-label="Hoja anterior">‹</button>
@@ -666,12 +749,18 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
 <button class="mini" id="mini" type="button" hidden aria-label="Ver la hoja completa"><canvas id="miniCv" width="248" height="320"></canvas><span id="miniLbl">Hoja</span></button>
 
+<div id="bui">
+<div id="dock" aria-label="Herramientas">
+  <div class="dk-row" id="dockMain"></div>
+  <div class="dk-row" id="dockSel" hidden></div>
+</div>
 <div class="bar">
   <div class="inner">
     <div class="sum"><strong id="sumMain">Sin imágenes</strong><span class="muted" id="sumSub"></span></div>
     <button class="btn primary" id="make" type="button" disabled>Crear PDF</button>
   </div>
   <div class="prog" id="progWrap" hidden><div id="prog"></div></div>
+</div>
 </div>
 
 <div class="ed" id="doc" role="dialog" aria-modal="true" aria-label="Documento" hidden>
@@ -1514,7 +1603,9 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const c = cur.c, L = cur.L;
     const cv = $('sheet');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const cssW = Math.min(cv.parentElement.clientWidth - 28, 480) || 300;
+    const bui = ($('bui') && $('bui').offsetHeight) || 128;
+    const availH = Math.max(260, window.innerHeight - 150 - bui);
+    const cssW = Math.max(180, Math.min(cv.parentElement.clientWidth - 8, availH * (c.pw / c.ph), 900)) || 300;
     const cssH = cssW * (c.ph / c.pw);
     cv.width = Math.round(cssW * dpr);
     cv.height = Math.round(cssH * dpr);
@@ -1562,6 +1653,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = ac; ctx.fillRect(r.x * k, r.y * k, r.w * k, r.h * k); ctx.restore();
         ctx.strokeStyle = ac; ctx.lineWidth = 3 * dpr; ctx.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k);
       });
+    }
+    const sr0 = selRect();
+    if (sr0 && sr0.gid) {
+      const mem = grpMembers(sr0);
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      mem.forEach(function (m) { x0 = Math.min(x0, m.x); y0 = Math.min(y0, m.y); x1 = Math.max(x1, m.x + m.w); y1 = Math.max(y1, m.y + m.h); });
+      ctx.save(); ctx.setLineDash([8 * dpr, 5 * dpr]); ctx.strokeStyle = cssVar('--accent') || '#0b7d92'; ctx.lineWidth = 1.5 * dpr;
+      ctx.strokeRect(x0 * k - 3, y0 * k - 3, (x1 - x0) * k + 6, (y1 - y0) * k + 6); ctx.restore();
     }
     const sr = selRect();
     if (sr) {
@@ -3432,11 +3531,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const cap = Math.min(12000 / Math.max(c.pw, c.ph), Math.sqrt(25e6 / (c.pw * c.ph)));
     return Math.min(best, cap);
   }
-  async function sheetToCanvas(c, pg, ppm, tileMode) {
+  async function sheetToCanvas(c, pg, ppm, tileMode, transparent) {
     const W = Math.max(1, Math.round(c.pw * ppm)), H = Math.max(1, Math.round(c.ph * ppm));
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const x = cv.getContext('2d');
-    x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
+    if (!transparent) { x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H); }
     x.imageSmoothingQuality = 'high';
     for (let i = 0; i < pg.rects.length; i++) {
       const r = pg.rects[i];
@@ -3473,7 +3572,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       for (let i = 0; i < L.pages.length; i++) {
         setNote('Creando imagen de la hoja ' + (i + 1) + ' de ' + L.pages.length + '…'); setProgress(i / L.pages.length);
         const ppm = q === 'orig' ? originalPpm(c, L.pages[i], tm) : Math.min(parseInt(q, 10) / 25.4, Math.sqrt(25e6 / (c.pw * c.ph)));
-        const cv = await sheetToCanvas(c, L.pages[i], ppm, tm);
+        const cv = await sheetToCanvas(c, L.pages[i], ppm, tm, fmt === 'png');
         const blob = await canvasBlob(cv, fmt, 0.95);
         cv.width = 1; cv.height = 1;
         files.push({ name: base + '-hoja' + (L.pages.length > 1 ? String(i + 1).padStart(2, '0') : '') + '.' + (fmt === 'png' ? 'png' : 'jpg'), blob: blob });
@@ -3552,7 +3651,20 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     if (r.type === 'text') return 1;
     return 1 - ((r.f.edit.f.al) || 0) / 100;
   }
+  function grpMembers(o) { return o && o.gid ? pageRects().filter(function (m) { return m.gid === o.gid; }) : (o ? [o] : []); }
+  function scaleGroupFrom(mem, f) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    mem.forEach(function (m) { x0 = Math.min(x0, m.s.x); y0 = Math.min(y0, m.s.y); x1 = Math.max(x1, m.s.x + m.s.w); y1 = Math.max(y1, m.s.y + m.s.h); });
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    mem.forEach(function (m) {
+      const mx = m.s.x + m.s.w / 2, my = m.s.y + m.s.h / 2;
+      m.o.w = Math.max(MIN_OBJ, m.s.w * f); m.o.h = Math.max(MIN_OBJ, m.s.h * f);
+      m.o.x = cx + (mx - cx) * f - m.o.w / 2; m.o.y = cy + (my - cy) * f - m.o.h / 2;
+    });
+  }
+  function snapGroup(o) { return grpMembers(o).map(function (m) { return { o: m, s: { x: m.x, y: m.y, w: m.w, h: m.h } }; }); }
   function scaleAny(o, f, pw, ph) {
+    if (o.gid && o.type !== 'text') { const mem = snapGroup(o); if (mem.length > 1) { scaleGroupFrom(mem, f); return o; } }
     if (o.type === 'text' && !o.fit) {
       const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
       o.size = cl(o.size * f, 6, 600);
@@ -3596,13 +3708,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     if (r) { const al = Math.round((1 - opacityOf(r)) * 100); $('selAlpha').value = String(al); $('selAlphaO').textContent = al + '%'; }
     $('selEdit').textContent = isTxt ? 'Editar texto' : 'Editar foto';
     if (isTxt) sh.frame = false;
-    if (r && isTxt && sh.loaded !== r.id) { sh.loaded = r.id; loadTextControls(r); $('textGroup').open = true; }
+    if (r && isTxt && sh.loaded !== r.id) { sh.loaded = r.id; loadTextControls(r); }
     if (!isTxt) sh.loaded = null;
     let hint = '';
     if (!r) hint = pageRects().length ? (isFree ? 'Toca una foto para elegirla y moverla.' : 'Toca una foto para encuadrarla dentro de su cuadro.') : '';
     else if (sh.frame) hint = 'Arrastra para mover la foto dentro de su cuadro. Con dos dedos la amplías y la giras (o usa las barras Zoom y Enderezar).';
     else if (isFree) hint = 'Arrastra para mover (o usa las flechas para afinar). Arrastra el círculo para cambiar el tamaño, o usa dos dedos; si es muy chica usa «+ Grande».';
     else hint = 'Pulsa Encuadrar para mover y ampliar la foto dentro de su cuadro.';
+    if (!state.files.length && !r) hint = 'Toca «Fotos» abajo para elegir tus imágenes.';
     $('sheetHint').textContent = hint;
     if (sh.multiOn) {
       ['selFrame', 'selReset', 'selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selEdit', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = true; });
@@ -3620,10 +3733,15 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       $('selAng').value = String(v.a || 0); $('selAngO').textContent = (v.a || 0).toFixed(1) + '°';
     }
     $('selFaRow').hidden = !(isFree && r && !r.poster && !sh.multiOn);
+    $('selSizeRow').hidden = !(isFree && r && !r.poster && !sh.multiOn);
+    if (r && cur) { const mx = Math.round(Math.max(60, 2 * Math.max(cur.c.pw, cur.c.ph))); $('selSize').max = String(mx); $('selSize').value = String(Math.min(mx, Math.round(r.w))); $('selSizeO').textContent = (r.w / 10).toFixed(1) + ' cm'; }
     $('selEnh').hidden = !r || isTxt || sh.multiOn;
+    $('selGroup').hidden = !(isFree && sh.multiOn && sh.multi.size >= 2);
+    $('selUngroup').hidden = !(isFree && ((r && r.gid && !sh.multiOn) || sh.multiOn));
     $('selPad').hidden = !r || sh.multiOn || !!(r && r.poster) || (!isFree && !sh.frame) || (isTxt && sh.frame);
     if (r) { $('selFa').value = String(r.fa || 0); $('selFaO').textContent = (r.fa || 0) + '°'; }
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
+    dockSync();
   }
 
   function selectIdx(i) {
@@ -3750,6 +3868,118 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     return r && r.type !== 'text' ? [r.f] : [];
   }
 
+  // ===== Dock inferior (estilo Canva) =====
+  let dockBuilt = false, dkG = null, dkP = null;
+  const DK_GROUPS = [['🖼', 'Fotos'], ['📄', 'Hoja'], ['▦', 'Acomodo'], ['Aa', 'Letras'], ['📑', 'Documentos'], ['📏', 'Espacios'], ['⚙', 'Opciones']];
+  const DK_SEL = [['mov', '✥', 'Mover'], ['siz', '⤢', 'Tamaño'], ['rot', '↻', 'Girar'], ['edt', '🎨', 'Editar'], ['opa', '◐', 'Transp.'], ['lay', '☰', 'Capas'], ['mul', '▣', 'Varias']];
+  function dkBtn(ic, label, cls) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'dk' + (cls ? ' ' + cls : ''); b.setAttribute('aria-pressed', 'false');
+    const i = document.createElement('b'); i.textContent = ic; i.setAttribute('aria-hidden', 'true');
+    const t = document.createElement('span'); t.textContent = label;
+    b.appendChild(i); b.appendChild(t); return b;
+  }
+  function closeSheet() { if (dkG) { dkG.classList.remove('sheet'); dkG = null; } dockMark(); }
+  function openSheet(g) {
+    if (!g) return;
+    if (g.id === 'aiGroup') renderAi();
+    if (dkG === g) { closeSheet(); return; }
+    closePanel(); closeSheet();
+    g.open = true; g.classList.add('sheet'); dkG = g; g.scrollTop = 0; dockMark();
+  }
+  function closePanel() {
+    dkP = null; document.querySelectorAll('.spanel').forEach(function (p) { p.classList.remove('on'); });
+    const t = $('selTools'); if (t) t.classList.remove('show'); dockMark();
+  }
+  function openPanel(id) {
+    if (dkP === id) { closePanel(); return; }
+    closeSheet();
+    dkP = id; document.querySelectorAll('.spanel').forEach(function (p) { p.classList.toggle('on', p.id === 'sp_' + id); });
+    $('selTools').classList.add('show'); dockMark(); drawSheet();
+  }
+  function dockMark() {
+    document.querySelectorAll('#dockMain .dk[data-g]').forEach(function (b) { b.setAttribute('aria-pressed', String(dkG === document.querySelectorAll('.controls > details.group')[+b.dataset.g])); });
+    document.querySelectorAll('#dockSel .dk[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(dkP === b.dataset.p)); });
+    const sb = document.querySelector('#dockMain .dk[data-sp]'); if (sb) sb.setAttribute('aria-pressed', String(!!sp.open));
+    const bu = $('bui'); if (bu) document.documentElement.style.setProperty('--bui', bu.offsetHeight + 'px');
+  }
+  function dockSync() {
+    if (!dockBuilt) return;
+    const selMode = !!sh.sel || sh.multiOn;
+    $('dockMain').hidden = selMode; $('dockSel').hidden = !selMode;
+    if (selMode) { if (dkG) closeSheet(); }
+    else if (dkP) closePanel();
+    DK_SEL.forEach(function (d) {
+      const pn = $('sp_' + d[0]), b = document.querySelector('#dockSel .dk[data-p="' + d[0] + '"]');
+      const any = Array.from(pn.children).some(function (c) { return !c.hidden; });
+      b.hidden = !any;
+      if (!any && dkP === d[0]) closePanel();
+    });
+    ['selEnh', 'selDup', 'selDel'].forEach(function (id) { const b = document.querySelector('#dockSel .dk[data-a="' + id + '"]'); if (b) b.hidden = $(id).hidden; });
+    dockMark();
+  }
+  const AI_HINT = {
+    enh: 'Agranda la foto al doble y le devuelve detalle (fotos chicas o borrosas). La primera vez descarga un modelo pequeño y necesita internet.',
+    bg: 'Quita el fondo con IA y deja la persona u objeto con fondo transparente. Después puedes corregir con el marcador.',
+    erase: 'Marca lo que sobra (una taza, un objeto) y la IA lo borra rellenando de forma coherente. Es experimental y puede tardar.'
+  };
+  let aiTab = 'enh';
+  function renderAi() {
+    document.querySelectorAll('#aiSeg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === aiTab)); });
+    $('aiHint').textContent = AI_HINT[aiTab];
+    const box = $('aiThumbs'); box.textContent = '';
+    if (!state.files.length) { const m = document.createElement('p'); m.className = 'hint'; m.textContent = 'Primero elige tus fotos en «Fotos».'; box.appendChild(m); return; }
+    state.files.forEach(function (f) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'thumb'; b.setAttribute('aria-label', 'Foto ' + f.name);
+      const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; drawFit(cv.getContext('2d'), f.thumb, 0, 0, 64, 64, 'fit'); b.appendChild(cv);
+      b.addEventListener('click', async function () { closeSheet(); await openEditor(f, false); if (ed.open) showTab(aiTab); });
+      box.appendChild(b);
+    });
+  }
+  function bindDockScroll() {
+    const dk = $('dock');
+    [['dkL', '‹', -1], ['dkR', '›', 1]].forEach(function (a) {
+      const b = document.createElement('button'); b.type = 'button'; b.id = a[0]; b.className = 'dkarrow ' + (a[2] < 0 ? 'l' : 'r'); b.textContent = a[1]; b.setAttribute('aria-label', a[2] < 0 ? 'Más herramientas a la izquierda' : 'Más herramientas a la derecha');
+      b.addEventListener('click', function () { const row = $('dockMain').hidden ? $('dockSel') : $('dockMain'); row.scrollBy({ left: a[2] * 220, behavior: 'smooth' }); });
+      dk.appendChild(b);
+    });
+    function upd() {
+      const row = $('dockMain').hidden ? $('dockSel') : $('dockMain');
+      $('dkL').hidden = row.scrollLeft < 6; $('dkR').hidden = row.scrollLeft + row.clientWidth > row.scrollWidth - 6;
+    }
+    ['dockMain', 'dockSel'].forEach(function (id) {
+      const row = $(id);
+      row.addEventListener('scroll', upd, { passive: true });
+      row.addEventListener('wheel', function (e) { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { row.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+    });
+    window.addEventListener('resize', upd); setInterval(upd, 600); upd();
+  }
+  function bindDock() {
+    const groups = Array.from(document.querySelectorAll('.controls > details.group')), dm = $('dockMain'), ds = $('dockSel');
+    groups.forEach(function (g, i) {
+      const d = (g.dataset.dk || '').split('|'); if (d.length < 2) return;
+      const b = dkBtn(d[0], d[1]); b.dataset.g = String(i);
+      b.addEventListener('click', function () { if (sp.open) closeSp(); openSheet(g); });
+      dm.appendChild(b);
+      const sm = g.querySelector(':scope > summary');
+      if (sm) sm.addEventListener('click', function (e) { e.preventDefault(); closeSheet(); });
+      if (g.dataset.split) { const sb = dkBtn('✂', 'Dividir'); sb.dataset.sp = '1'; sb.addEventListener('click', function () { closeSheet(); if (sp.open) closeSp(); else $('spOpen').click(); dockMark(); }); dm.appendChild(sb); }
+    });
+    const done = dkBtn('✓', 'Listo', 'go'); done.addEventListener('click', function () { closePanel(); $('selDone').click(); }); ds.appendChild(done);
+    DK_SEL.forEach(function (d) {
+      const b = dkBtn(d[1], d[2]); b.dataset.p = d[0]; b.addEventListener('click', function () { openPanel(d[0]); }); ds.appendChild(b);
+    });
+    [['selEnh', '✨', 'IA', ''], ['selDup', '⎘', 'Duplicar', ''], ['selDel', '🗑', 'Eliminar', 'danger']].forEach(function (d) {
+      const b = dkBtn(d[1], d[2], d[3]); b.dataset.a = d[0]; b.addEventListener('click', function () { $(d[0]).click(); }); ds.appendChild(b);
+    });
+    dockBuilt = true;
+    document.querySelectorAll('#aiSeg button').forEach(function (b) { b.addEventListener('click', function () { aiTab = b.dataset.v; renderAi(); }); });
+    bindDockScroll();
+    $('sheet').addEventListener('pointerdown', function () { if (dkG) closeSheet(); }, true);
+    window.addEventListener('resize', function () { dockMark(); });
+    if (window.ResizeObserver) new ResizeObserver(function () { dockMark(); drawSheet(); }).observe($('bui'));
+    dockSync(); dockMark();
+  }
+
   function bindMulti() {
     $('msToggle').addEventListener('click', function () { ms.on = !ms.on; if (!ms.on) { ms.ids.clear(); document.querySelectorAll('#thumbs .thumb.sel').forEach(function (e) { e.classList.remove('sel'); }); } msSync(); setNote(''); });
     $('msAll').addEventListener('click', function () { state.files.forEach(function (f) { ms.ids.add(f.id); }); renderThumbs(); });
@@ -3794,6 +4024,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     }
     $('selZoom').addEventListener('input', function () { const z = parseFloat($('selZoom').value) || 1; $('selZoomO').textContent = Math.round(z * 100) + '%'; setViewParams(z, null); });
     $('selAng').addEventListener('input', function () { const a = parseFloat($('selAng').value) || 0; $('selAngO').textContent = a.toFixed(1) + '°'; setViewParams(null, a); });
+    $('selSize').addEventListener('input', function () {
+      const r = selRect(); if (!r || state.mode !== 'free' || !cur) return;
+      const v = parseFloat($('selSize').value) || r.w;
+      scaleAny(r, v / Math.max(1, r.w), cur.c.pw, cur.c.ph);
+      $('selSizeO').textContent = (r.w / 10).toFixed(1) + ' cm';
+      hideResult(); drawSheet();
+    });
     $('selFa').addEventListener('input', function () {
       const r = selRect(); if (!r || state.mode !== 'free') return;
       const a = parseFloat($('selFa').value) || 0; $('selFaO').textContent = a + '°';
@@ -3860,14 +4097,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       }
       if (r && state.mode === 'free' && !sh.frame) {
         const hk = hitHandle(r, p);
-        if (hk) { sh.g = { t: hk === 'rot' ? 'rotate' : 'resize', k: hk, p0: p, s: { x: r.x, y: r.y, w: r.w, h: r.h }, tl: rotPt(r, r.x, r.y), changed: false }; e.preventDefault(); return; }
+        if (hk) { sh.g = { t: hk === 'rot' ? 'rotate' : 'resize', k: hk, p0: p, s: { x: r.x, y: r.y, w: r.w, h: r.h }, tl: rotPt(r, r.x, r.y), changed: false, mem: r.gid ? snapGroup(r) : null }; e.preventDefault(); return; }
       }
       const i = hitIdx(p);
       if (i < 0) { sh.g = null; if (sh.sel) { clearSel(); drawSheet(); } return; }
       const wasSelBefore = !!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i);
       if (!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i)) { selectIdx(i); if (state.mode !== 'free' && !(pageRects()[i] || {}).poster) sh.frame = true; }
       const r2 = selRect();
-      sh.g = { t: r2.poster ? null : (sh.frame ? 'pan' : (state.mode === 'free' ? 'move' : null)), p0: p, last: p, s: { x: r2.x, y: r2.y }, changed: false, wasSel: wasSelBefore };
+      sh.g = { t: r2.poster ? null : (sh.frame ? 'pan' : (state.mode === 'free' ? 'move' : null)), p0: p, last: p, s: { x: r2.x, y: r2.y }, changed: false, wasSel: wasSelBefore, mem: r2.gid ? snapGroup(r2) : null };
       syncSel(); drawSheet();
     });
 
@@ -3903,6 +4140,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       if (g.t === 'move') {
         r.x = g.s.x + p.x - g.p0.x; r.y = g.s.y + p.y - g.p0.y;
         clampObj(r, pw, ph, MIN_OBJ, true);
+        if (g.mem && g.mem.length > 1) { const ddx = r.x - g.s.x, ddy = r.y - g.s.y; g.mem.forEach(function (m) { if (m.o !== r) { m.o.x = m.s.x + ddx; m.o.y = m.s.y + ddy; } }); }
       } else if (g.t === 'rotate') {
         const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
         let a = Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI + 90;
@@ -3918,7 +4156,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           g.changed = true; drawSheet(); return;
         }
         let w = g.s.w, h = g.s.h;
-        if (g.k === 'se') { w = Math.max(MIN_OBJ, g.s.w + dx); h = g.s.h * w / g.s.w; const sc = Math.min(1, 3 * pw / w, 3 * ph / h); w *= sc; h *= sc; }
+        if (g.k === 'se') { w = Math.max(MIN_OBJ, g.s.w + dx); h = g.s.h * w / g.s.w; const sc = Math.min(1, 3 * pw / w, 3 * ph / h); w *= sc; h *= sc; if (g.mem && g.mem.length > 1) { g.mem.forEach(function (m) { m.o.x = m.s.x; m.o.y = m.s.y; m.o.w = m.s.w; m.o.h = m.s.h; }); scaleGroupFrom(g.mem, w / g.s.w); g.changed = true; drawSheet(); return; } }
         else if (g.k === 'e') w = cl(g.s.w + dx, MIN_OBJ, 3 * pw);
         else h = cl(g.s.h + dy, MIN_OBJ, 3 * ph);
         r.w = w; r.h = h;
@@ -4013,7 +4251,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       function nudge(dx, dy) {
         const r = selRect(); if (!r || !cur || sh.multiOn) return;
         const st = parseFloat($('nudStep').value) || 1;
-        if (state.mode === 'free' && !sh.frame) { r.x += dx * st; r.y += dy * st; clampObj(r, cur.c.pw, cur.c.ph, MIN_OBJ, true); }
+        if (state.mode === 'free' && !sh.frame) { grpMembers(r).forEach(function (m) { m.x += dx * st; m.y += dy * st; clampObj(m, cur.c.pw, cur.c.ph, MIN_OBJ, true); }); }
         else if (sh.frame && r.type !== 'text') applyPan(r, dx * st, dy * st);
         else return;
         hideResult(); drawSheet();
@@ -4029,7 +4267,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     })();
     $('selEdit').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
-      if (r.type === 'text') { $('txt').scrollIntoView({ block: 'center' }); $('txt').focus(); } else openEditor(r.f, false);
+      if (r.type === 'text') { closePanel(); openSheet($('textGroup')); } else { closePanel(); openEditor(r.f, false); }
     });
     $('selAlpha').addEventListener('input', function () {
       const r = selRect(); if (!r) return;
@@ -4039,6 +4277,22 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       hideResult(); drawSheet();
     });
     $('selAlpha').addEventListener('change', function () { if (state.mode !== 'free') renderThumbs(); });
+    $('selGroup').addEventListener('click', function () {
+      if (state.mode !== 'free' || !cur) return;
+      const mem = pageRects().filter(function (m) { return m.type !== 'text' && sh.multi.has(m.f.id); });
+      if (mem.length < 2) { setNote('Primero toca «Varias» y marca al menos 2 fotos en la hoja.', true); return; }
+      const gid = 'g' + (freeSeq++);
+      mem.forEach(function (m) { m.gid = gid; });
+      setNote('Fotos agrupadas: se mueven y cambian de tamaño juntas.');
+      sh.multiOn = false; sh.multi.clear(); sh.sel = { page: state.page, idx: pageRects().indexOf(mem[mem.length - 1]) };
+      hideResult(); syncSel(); drawSheet();
+    });
+    $('selUngroup').addEventListener('click', function () {
+      const r = selRect();
+      if (r && r.gid) { grpMembers(r).forEach(function (m) { delete m.gid; }); setNote('Grupo separado.'); }
+      else if (sh.multiOn) { pageRects().forEach(function (m) { if (m.type !== 'text' && sh.multi.has(m.f.id)) delete m.gid; }); }
+      hideResult(); syncSel(); drawSheet();
+    });
     $('selDone').addEventListener('click', function () { sh.multiOn = false; sh.multi.clear(); clearSel(); drawSheet(); });
     $('rearrange').addEventListener('click', function () {
       free.pages = free.pages.map(function (p) { return p.filter(function (o) { return o.type === 'text'; }); })
@@ -4571,6 +4825,12 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     }
   }
 
+  function caseText(v, k) {
+    if (k === 'upper') return v.toLocaleUpperCase('es');
+    if (k === 'lower') return v.toLocaleLowerCase('es');
+    if (k === 'title') return v.toLocaleLowerCase('es').replace(/(^|[\s¿¡("'\-])(\p{L})/gu, function (m, a, b) { return a + b.toLocaleUpperCase('es'); });
+    return Array.from(v).map(function (ch) { const u = ch.toLocaleUpperCase('es'); return ch === u ? ch.toLocaleLowerCase('es') : u; }).join('');
+  }
   function bindText() {
     const fs = $('txFont');
     FONT_LIST.forEach(function (f) {
@@ -4581,6 +4841,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterW'].forEach(function (id) {
       $(id).addEventListener('input', live);
       $(id).addEventListener('change', live);
+    });
+    document.querySelectorAll('#txCase button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const t = $('txt'), v = t.value, k = b.dataset.case;
+        t.value = caseText(v, k);
+        t.dispatchEvent(new Event('input', { bubbles: true }));
+      });
     });
     $('txSize').addEventListener('input', function () {
       const v = cl(parseFloat($('txSize').value) || 0, 0, 600);
@@ -5681,6 +5948,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   bindDoc();
   bindDocFmt();
   bindMulti();
+  bindDock();
   bindPx();
   bindSp();
   loadPrefs();
