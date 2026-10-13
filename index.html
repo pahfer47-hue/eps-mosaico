@@ -366,6 +366,20 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button type="button" data-v="oficio" aria-pressed="false">Oficio</button>
           <button type="button" data-v="a4" aria-pressed="false">A4</button>
         </div>
+        <p class="hint" style="margin:10px 0 4px">Hojas grandes (para diseñar y luego dividir en hojas normales):</p>
+        <div class="seg" id="paperSeg2" role="group" aria-label="Hojas grandes" style="flex-wrap:wrap">
+          <button type="button" data-v="dcarta" aria-pressed="false">Doble carta</button>
+          <button type="button" data-v="doficio" aria-pressed="false">Doble oficio</button>
+          <button type="button" data-v="da4" aria-pressed="false">Doble A4</button>
+          <button type="button" data-v="tcarta" aria-pressed="false">Triple carta</button>
+          <button type="button" data-v="ta4" aria-pressed="false">Triple A4</button>
+          <button type="button" data-v="custom" aria-pressed="false">Otro tamaño</button>
+        </div>
+        <div class="row" id="customRow" hidden style="margin-top:8px;align-items:center">
+          <label class="sl-inline">Ancho (cm) <input id="pcW" type="text" inputmode="decimal" value="30" style="width:70px"></label>
+          <label class="sl-inline">Alto (cm) <input id="pcH" type="text" inputmode="decimal" value="45" style="width:70px"></label>
+        </div>
+        <p class="hint">Mide la hoja «Vertical»; con «Horizontal» se acuesta. Ej.: Doble carta horizontal = 2 cartas lado a lado. Luego usa «Dividir hoja» → «Usar mi hoja diseñada».</p>
         <div class="seg" id="landSeg" role="group" aria-label="Orientación" style="margin-top:10px">
           <button type="button" data-v="0" aria-pressed="true">Vertical</button>
           <button type="button" data-v="1" aria-pressed="false">Horizontal</button>
@@ -721,6 +735,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <strong>Dividir hoja</strong>
     <span style="width:64px"></span>
   </div>
+  <div class="doc-scroll" id="spScroll" style="padding:0;background:var(--bg)">
   <div class="doc-tools" style="flex-wrap:wrap">
     <label class="btn" for="spFile">Elegir PDF o imagen</label>
     <input id="spFile" class="docin" type="file" accept=".pdf,application/pdf,image/*">
@@ -728,6 +743,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   </div>
   <div class="doc-tools" style="flex-wrap:wrap">
     <select id="spCut" aria-label="Partes">
+      <option value="auto" selected>Automático: hojas exactas</option>
       <option value="1x2">2 partes: arriba y abajo</option>
       <option value="2x1">2 partes: izquierda y derecha</option>
       <option value="1x3">3 partes: franjas horizontales</option>
@@ -743,10 +759,11 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <select id="spFit" aria-label="Ajuste"><option value="fit">Sin recortar (marca de corte)</option><option value="fill">Llenar la hoja (recorta bordes)</option></select>
     <select id="spOv" aria-label="Solape para pegar"><option value="0">Sin solape</option><option value="0.03">Solape pequeño</option><option value="0.06">Solape medio</option></select>
   </div>
-  <div class="doc-scroll" style="text-align:center"><canvas id="spCv" width="10" height="10" style="max-width:96%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.35)"></canvas></div>
+  <div style="text-align:center;padding:12px;background:#8d98a0"><canvas id="spCv" width="10" height="10" style="display:block;margin:0 auto;max-width:100%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.35);touch-action:pan-x pan-y"></canvas></div>
+  </div>
   <div class="doc-bar">
     <div class="row" style="margin-bottom:6px"><button class="btn" id="spPrev" type="button" aria-label="Anterior">‹</button><span class="label" id="spPg">—</span><button class="btn" id="spNext" type="button" aria-label="Siguiente">›</button></div>
-    <div id="spNote" class="note" role="status" aria-live="polite" style="margin:0 0 6px">Elige un PDF o una imagen, o usa la hoja que diseñaste.</div>
+    <div id="spNote" class="note" role="status" aria-live="polite" style="margin:0 0 6px;max-height:4.5em;overflow:auto">Elige un PDF o una imagen, o usa la hoja que diseñaste.</div>
     <div class="row">
       <button class="btn primary" id="spMake" type="button" disabled>Crear PDF dividido</button>
     </div>
@@ -916,7 +933,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   const PAPERS = {
     carta:  { label: 'Carta',  w: 215.9, h: 279.4 },
     oficio: { label: 'Oficio', w: 215.9, h: 330.2 },
-    a4:     { label: 'A4',     w: 210,   h: 297 }
+    a4:     { label: 'A4',     w: 210,   h: 297 },
+    dcarta:  { label: 'Doble carta',  w: 279.4, h: 431.8, base: 'carta' },
+    doficio: { label: 'Doble oficio', w: 330.2, h: 431.8, base: 'oficio' },
+    da4:     { label: 'Doble A4',     w: 297,   h: 420,   base: 'a4' },
+    tcarta:  { label: 'Triple carta', w: 279.4, h: 647.7, base: 'carta' },
+    ta4:     { label: 'Triple A4',    w: 297,   h: 630,   base: 'a4' },
+    custom:  { label: 'Otro tamaño',  w: 300,   h: 450 }
   };
   const EPS = 1e-6;
 
@@ -1421,6 +1444,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   }
 
   function cfg() {
+    if (state.paper === 'custom') { const w = Math.max(5, Math.min(120, parseNum($('pcW').value, 30))), h = Math.max(5, Math.min(200, parseNum($('pcH').value, 45))); PAPERS.custom.w = Math.min(w, h) * 10; PAPERS.custom.h = Math.max(w, h) * 10; }
     const p = PAPERS[state.paper];
     const pw = state.land ? p.h : p.w, ph = state.land ? p.w : p.h;
     return {
@@ -1575,6 +1599,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   function syncControls() {
     function press(sel, fn) { document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', String(fn(b))); }); }
     press('#paperSeg button', function (b) { return b.dataset.v === state.paper; });
+    press('#paperSeg2 button', function (b) { return b.dataset.v === state.paper; });
+    $('customRow').hidden = state.paper !== 'custom';
     press('#landSeg button', function (b) { return (b.dataset.v === '1') === state.land; });
     press('#modeSeg button', function (b) { return b.dataset.v === state.mode; });
     press('#fitSeg button', function (b) { return b.dataset.v === state.fit; });
@@ -4776,7 +4802,24 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   const sp = { open: false, busy: false, kind: '', pdf: null, img: null, n: 0, cur: 0, L: null, c: null, tm: 'fit', base: 'hoja', aw: 1, ah: 1 };
   function spNote(m, err) { const n = $('spNote'); n.textContent = m || ''; n.className = 'note' + (err ? ' err' : ''); n.style.margin = '0 0 6px'; }
   function spProg(f) { $('spProgWrap').hidden = f == null; if (f != null) $('spProg').style.width = Math.round(f * 100) + '%'; }
-  function spCut() { const a = $('spCut').value.split('x'); return { cols: +a[0], rows: +a[1] }; }
+  function spPaperDims() { const P = PAPERS[$('spPaper').value] || PAPERS.carta; return { w: Math.min(P.w, P.h), h: Math.max(P.w, P.h), label: P.label }; }
+  function spAuto() {
+    const P = spPaperDims(), s = sp.aw / sp.ah, mm = sp.mm; // mm: ancho en mm de la hoja si se conoce
+    let best = null;
+    for (let cols = 1; cols <= 8; cols++) for (let rows = 1; rows <= 8; rows++) [0, 1].forEach(function (o) {
+      const ow = o ? P.h : P.w, oh = o ? P.w : P.h;
+      const err = Math.abs(Math.log((cols * ow) / (rows * oh) / s));
+      const sc = err * 100 + (mm ? Math.abs(Math.log(cols * ow / mm)) : 0.001 * cols * rows);
+      if (!best || sc < best.sc) best = { sc: sc, cols: cols, rows: rows, err: err, land: !!o };
+    });
+    best.exact = best.err < 0.02;
+    return best;
+  }
+  function spCut() {
+    const v = $('spCut').value;
+    if (v === 'auto') { if (!sp.n) return { cols: 1, rows: 2 }; sp.plan = spAuto(); return { cols: sp.plan.cols, rows: sp.plan.rows }; }
+    sp.plan = null; const a = v.split('x'); return { cols: +a[0], rows: +a[1] };
+  }
   function spOutPage(cw, ch) {
     const P = PAPERS[$('spPaper').value] || PAPERS.carta;
     const land = cw > ch;
@@ -4836,7 +4879,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       });
       if (src !== sp.img) { src.width = 1; src.height = 1; }
       const c0 = spCells()[0], cw = (c0.x1 - c0.x0) * sp.aw, ch = (c0.y1 - c0.y0) * sp.ah, o = spOutPage(cw, ch);
-      spNote('Cada parte saldrá ampliada en una hoja ' + (o.w > o.h ? 'horizontal' : 'vertical') + ' (' + sp.n * kk.cols * kk.rows + ' hojas en total).');
+      const tot = sp.n * kk.cols * kk.rows;
+      spNote(sp.plan ? (sp.plan.exact ? 'Se divide en ' + kk.cols * kk.rows + ' hojas ' + spPaperDims().label + ' exactas (' + kk.cols + '×' + kk.rows + ')' + (sp.n > 1 ? ' por cada hoja, ' + tot + ' en total' : '') + '. Para que midan justo, usa «Sin margen».' : 'Esta hoja no encaja justo en ' + spPaperDims().label + '. Mejor opción: ' + kk.cols * kk.rows + ' hojas; sobrará un poco de blanco o se recortará (elige «Llenar la hoja»).') : 'Cada parte saldrá ampliada en una hoja ' + (o.w > o.h ? 'horizontal' : 'vertical') + ' (' + tot + ' hojas en total).');
     } catch (e) { spNote('No se pudo mostrar la vista previa (' + (e && e.message ? e.message : 'error') + ').', true); }
     spSync();
   }
@@ -4849,13 +4893,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         const lib = await loadPdfJs();
         sp.pdf = await lib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
         sp.kind = 'pdf'; sp.n = sp.pdf.numPages; sp.img = null;
-        const v = (await sp.pdf.getPage(1)).getViewport({ scale: 1 }); sp.aw = v.width; sp.ah = v.height;
+        const v = (await sp.pdf.getPage(1)).getViewport({ scale: 1 }); sp.aw = v.width; sp.ah = v.height; sp.mm = v.width * 25.4 / 72;
       } else {
         const r = await loadImg(f); const im = r.img;
         const k = Math.min(1, Math.sqrt(25e6 / (im.naturalWidth * im.naturalHeight)));
         const cv = document.createElement('canvas'); cv.width = Math.round(im.naturalWidth * k); cv.height = Math.round(im.naturalHeight * k);
         cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); URL.revokeObjectURL(r.url);
-        sp.img = cv; sp.kind = 'img'; sp.n = 1; sp.pdf = null; sp.aw = cv.width; sp.ah = cv.height;
+        sp.img = cv; sp.kind = 'img'; sp.n = 1; sp.pdf = null; sp.aw = cv.width; sp.ah = cv.height; sp.mm = 0;
       }
       sp.cur = 0;
     } catch (e) { sp.n = 0; spNote('No se pudo abrir (' + (e && e.message ? e.message : 'error') + ').', true); sp.busy = false; spSync(); return; }
@@ -4866,7 +4910,10 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const c = cfg(), L = getLayout(c, items());
     if (!L.pages.length) { spNote('Primero arma una hoja con tus fotos, letras o texto.', true); return; }
     sp.kind = 'sheet'; sp.L = L; sp.c = c; sp.tm = tileModeOf(c); sp.n = L.pages.length; sp.cur = Math.min(state.page, sp.n - 1); sp.pdf = null; sp.img = null;
-    sp.aw = c.pw; sp.ah = c.ph; sp.base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
+    sp.aw = c.pw; sp.ah = c.ph; sp.mm = c.pw;
+    const bp = PAPERS[state.paper].base || state.paper; if (PAPERS[bp] && ['carta', 'oficio', 'a4'].indexOf(bp) >= 0) $('spPaper').value = bp;
+    $('spCut').value = 'auto'; $('spMargin').value = '0'; $('spFit').value = 'fit'; $('spOv').value = '0';
+    sp.base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
     spPreview();
   }
   function spScissors(doc, x, y, s) {
@@ -5490,6 +5537,13 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   $('file').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
   $('clear').addEventListener('click', function () { state.files = []; renderThumbs(); update(); setNote(''); });
   bindSeg('#paperSeg button', function (b) { state.paper = b.dataset.v; });
+  bindSeg('#paperSeg2 button', function (b) { state.paper = b.dataset.v; });
+  function syncCustom() {
+    const w = Math.max(5, Math.min(120, parseNum($('pcW').value, 30))), h = Math.max(5, Math.min(200, parseNum($('pcH').value, 45)));
+    PAPERS.custom.w = Math.min(w, h) * 10; PAPERS.custom.h = Math.max(w, h) * 10;
+  }
+  ['pcW', 'pcH'].forEach(function (id) { $(id).addEventListener('input', function () { syncCustom(); hideResult(); state.page = 0; update(); }); });
+  syncCustom();
   bindSeg('#landSeg button', function (b) { state.land = b.dataset.v === '1'; });
   bindSeg('#modeSeg button', function (b) { state.mode = b.dataset.v; });
   bindSeg('#fitSeg button', function (b) { state.fit = b.dataset.v; });
