@@ -261,6 +261,10 @@ p { margin: 0; }
 .pgguide.ch { border-top: 1px dashed rgba(255,120,0,.65); }
 #docBody.noguides .pgguide { display: none; }
 #docLupaIn { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+input[type="range"] { touch-action: pan-y; }
+.nudge { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.nudge .btn { min-width: 46px; padding-inline: 10px; }
+.nudge select { font: inherit; min-height: 38px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .doc-scroll { flex: 1; min-height: 0; overflow: auto; background: #8d98a0; padding: 12px; position: relative; }
 #docBody { transform-origin: 0 0; width: max-content; }
 #docZoom { overflow: hidden; }
@@ -366,7 +370,16 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button type="button" data-v="oficio" aria-pressed="false">Oficio</button>
           <button type="button" data-v="a4" aria-pressed="false">A4</button>
         </div>
-        <p class="hint" style="margin:10px 0 4px">Hojas grandes (para diseñar y luego dividir en hojas normales):</p>
+        <p class="hint" style="margin:10px 0 4px">Juntar varias hojas en una grande (se imprime en varias hojas):</p>
+        <div class="row" style="align-items:center">
+          <label class="sl-inline">Hojas <input id="combN" type="number" min="1" max="36" step="1" value="1" inputmode="numeric" style="width:64px"></label>
+          <div class="seg" id="combSeg" role="group" aria-label="Forma">
+            <button type="button" data-v="sq" aria-pressed="true">Lo más cuadrada</button>
+            <button type="button" data-v="long" aria-pressed="false">Lo más larga</button>
+          </div>
+        </div>
+        <p class="hint" id="combInfo"></p>
+        <p class="hint" style="margin:10px 0 4px">Hojas grandes ya hechas:</p>
         <div class="seg" id="paperSeg2" role="group" aria-label="Hojas grandes" style="flex-wrap:wrap">
           <button type="button" data-v="dcarta" aria-pressed="false">Doble carta</button>
           <button type="button" data-v="doficio" aria-pressed="false">Doble oficio</button>
@@ -614,6 +627,15 @@ section.docx > article, section.docx > header, section.docx > footer { position:
           <button class="btn" id="selDup" type="button">Duplicar</button>
           <button class="btn" id="selDel" type="button">Eliminar</button>
           <button class="btn" id="selEdit" type="button">Editar foto</button>
+          <button class="btn" id="selEnh" type="button">✨ Mejorar con IA</button>
+          <div class="nudge" id="selPad" hidden>
+            <span class="lbl">Mover:</span>
+            <button class="btn" id="nudL" type="button" aria-label="Izquierda">◀</button>
+            <button class="btn" id="nudU" type="button" aria-label="Arriba">▲</button>
+            <button class="btn" id="nudD" type="button" aria-label="Abajo">▼</button>
+            <button class="btn" id="nudR" type="button" aria-label="Derecha">▶</button>
+            <select id="nudStep" aria-label="Paso"><option value="0.5">0,5 mm</option><option value="1" selected>1 mm</option><option value="2">2 mm</option><option value="5">5 mm</option><option value="10">10 mm</option></select>
+          </div>
           <label class="sl-inline">Transparencia <input type="range" id="selAlpha" min="0" max="90" value="0"><output id="selAlphaO">0%</output></label>
           <div class="layers" id="layerList" hidden></div>
           <button class="btn primary" id="selDone" type="button">Listo</button>
@@ -817,6 +839,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     <div class="seg" id="edTabs" role="group" aria-label="Herramienta">
       <button type="button" data-v="crop" aria-pressed="true">Recortar</button>
       <button type="button" data-v="filters" aria-pressed="false">Filtros</button>
+      <button type="button" data-v="enh" aria-pressed="false">IA ✨</button>
       <button type="button" data-v="bg" aria-pressed="false">Fondo</button>
       <button type="button" data-v="erase" aria-pressed="false">Borrar</button>
     </div>
@@ -903,6 +926,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       <p class="hint" id="edEMsg" role="status"></p>
     </div>
 
+    <div id="edEnhPanel" hidden>
+      <div id="edQRow">
+        <div class="tools"><button class="btn primary" id="edQGo" type="button">Mejorar calidad con IA ✨ (x2)</button></div>
+        <p class="hint">La IA agranda la foto al doble y le devuelve detalle (sirve para fotos chicas, borrosas o enviadas por WhatsApp). La primera vez descarga un modelo pequeño y necesita internet; en celulares modestos puede tardar uno o dos minutos. Si la foto ya es grande, se reduce un poco antes de procesarla.</p>
+        <p class="hint" id="edQMsg" role="status"></p>
+      </div>
+    </div>
+
     <div id="edFilterPanel" hidden>
       <label class="check"><input type="checkbox" id="edBw"> Blanco y negro</label>
       <div class="sl"><label for="edBr">Brillo</label><output id="edBrO">0</output><input type="range" id="edBr" min="-100" max="100" value="0"></div>
@@ -914,11 +945,6 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       <div class="sl"><label for="edSh">Nitidez</label><output id="edShO">0</output><input type="range" id="edSh" min="0" max="100" value="0"></div>
       <div class="sl"><label for="edAl">Transparencia</label><output id="edAlO">0</output><input type="range" id="edAl" min="0" max="90" value="0"></div>
       <div class="tools"><button class="btn" id="edResetF" type="button">Quitar filtros</button></div>
-      <div id="edQRow">
-        <div class="tools"><button class="btn primary" id="edQGo" type="button">Mejorar calidad con IA ✨ (x2)</button></div>
-        <p class="hint">La IA agranda la foto al doble y le devuelve detalle (sirve para fotos chicas, borrosas o enviadas por WhatsApp). La primera vez descarga un modelo pequeño y necesita internet; en celulares modestos puede tardar uno o dos minutos. Si la foto ya es grande, se reduce un poco antes de procesarla.</p>
-        <p class="hint" id="edQMsg" role="status"></p>
-      </div>
       <label class="check" id="edAllRow"><input type="checkbox" id="edAll"> Aplicar estos filtros a todas las fotos</label>
     </div>
   </div>
@@ -1317,7 +1343,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
 
   const $ = function (id) { return document.getElementById(id); };
   const state = {
-    files: [], paper: 'carta', land: false, mode: 'grid', fit: 'fit', by: 'long', dni: 'a', copies: 1, page: 0,
+    files: [], comb: 'sq', paper: 'carta', land: false, mode: 'grid', fit: 'fit', by: 'long', dni: 'a', copies: 1, page: 0,
     busy: false, url: null, blob: null, name: 'mosaico.pdf'
   };
   const PREF = 'epson-mosaico-prefs-v2';
@@ -1443,12 +1469,25 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     };
   }
 
+  function combGrid(n, mode, uw, uh) {
+    if (n <= 1) return { cols: 1, rows: 1 };
+    if (mode === 'long') return state.land ? { cols: n, rows: 1 } : { cols: 1, rows: n };
+    let best = null;
+    for (let c = 1; c <= n; c++) if (n % c === 0) {
+      const r = n / c, e = Math.abs(Math.log((c * uw) / (r * uh)));
+      if (!best || e < best.e - 1e-9) best = { cols: c, rows: r, e: e };
+    }
+    return best;
+  }
+  function combN() { return Math.max(1, Math.min(36, parseInt($('combN').value, 10) || 1)); }
   function cfg() {
     if (state.paper === 'custom') { const w = Math.max(5, Math.min(120, parseNum($('pcW').value, 30))), h = Math.max(5, Math.min(200, parseNum($('pcH').value, 45))); PAPERS.custom.w = Math.min(w, h) * 10; PAPERS.custom.h = Math.max(w, h) * 10; }
     const p = PAPERS[state.paper];
-    const pw = state.land ? p.h : p.w, ph = state.land ? p.w : p.h;
+    let pw = state.land ? p.h : p.w, ph = state.land ? p.w : p.h;
+    let comb = { cols: 1, rows: 1 };
+    if (['carta', 'oficio', 'a4'].indexOf(state.paper) >= 0) { comb = combGrid(combN(), state.comb, pw, ph); pw *= comb.cols; ph *= comb.rows; }
     return {
-      p: p, pw: pw, ph: ph, mode: state.mode,
+      p: p, pw: pw, ph: ph, comb: comb, mode: state.mode,
       tw: parseNum($('w').value, 0) * 10, th: parseNum($('h').value, 0) * 10,
       by: state.by, as: parseNum($('as').value, 0) * 10, rotate: $('rot').checked,
       margin: Math.max(0, parseNum($('margin').value, 0) * 10),
@@ -1600,6 +1639,14 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     function press(sel, fn) { document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', String(fn(b))); }); }
     press('#paperSeg button', function (b) { return b.dataset.v === state.paper; });
     press('#paperSeg2 button', function (b) { return b.dataset.v === state.paper; });
+    press('#combSeg button', function (b) { return b.dataset.v === state.comb; });
+    (function () {
+      const ok = ['carta', 'oficio', 'a4'].indexOf(state.paper) >= 0, n = combN();
+      $('combN').disabled = !ok; document.querySelectorAll('#combSeg button').forEach(function (b) { b.disabled = !ok; });
+      if (!ok) { $('combInfo').textContent = 'Para juntar hojas elige Carta, Oficio o A4 arriba.'; return; }
+      const c = cfg(), g = c.comb;
+      $('combInfo').textContent = n <= 1 ? 'Una sola hoja. Sube el número para juntar varias en una grande.' : n + ' hojas ' + c.p.label + ' → ' + g.cols + ' a lo ancho × ' + g.rows + ' a lo alto (' + (c.pw / 10).toFixed(1) + ' × ' + (c.ph / 10).toFixed(1) + ' cm).' + (state.comb === 'sq' && g.cols * g.rows === n && (g.cols === 1 || g.rows === 1) && n > 3 ? ' Con ese número no se puede hacer más cuadrada; prueba 4, 6, 9, 12 o 16.' : '');
+    })();
     $('customRow').hidden = state.paper !== 'custom';
     press('#landSeg button', function (b) { return (b.dataset.v === '1') === state.land; });
     press('#modeSeg button', function (b) { return b.dataset.v === state.mode; });
@@ -2031,6 +2078,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     ed.tab = tab;
     $('edCropPanel').hidden = tab !== 'crop';
     $('edFilterPanel').hidden = tab !== 'filters';
+    $('edEnhPanel').hidden = tab !== 'enh';
     $('edBgPanel').hidden = tab !== 'bg';
     $('edErasePanel').hidden = tab !== 'erase';
     $('edMask').hidden = tab !== 'erase';
@@ -3183,6 +3231,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     });
   }
 
+  let pdfLow = false;
   async function makePdf() {
     const c = cfg();
     const list = items();
@@ -3199,7 +3248,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
     const tileMode = c.mode === 'grid' ? (state.fit === 'turn' ? 'fill' : state.fit) : c.mode === 'dni' ? 'fill' : 'fit';
     const cache = new Map();
-    let done = 0;
+    let done = 0, retry = false;
     try {
       for (let p = 0; p < L.pages.length; p++) {
         if (p > 0) doc.addPage([short, long], orient);
@@ -3207,7 +3256,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
         for (let i = 0; i < rects.length; i++) {
           const r = rects[i];
           if (r.fa) {
-            const ro = await rotatedPng(r, 300 / 25.4, tileMode), opr = opacityOf(r);
+            const ro = await rotatedPng(r, (pdfLow ? 200 : 300) / 25.4, tileMode), opr = opacityOf(r);
             if (opr < 1) pdfAlpha(doc, opr);
             doc.addImage(ro.data, 'PNG', ro.B.x, ro.B.y, ro.B.w, ro.B.h, undefined, 'FAST');
             if (opr < 1) pdfAlpha(doc, 1);
@@ -3222,12 +3271,12 @@ section.docx > article, section.docx > header, section.docx > footer { position:
             await yieldUI();
             continue;
           }
-          const wPx = Math.max(32, Math.round(r.w / 25.4 * 300));
-          const hPx = Math.max(32, Math.round(r.h / 25.4 * 300));
+          const wPx = Math.max(32, Math.round(r.w / 25.4 * (pdfLow ? 200 : 300)));
+          const hPx = Math.max(32, Math.round(r.h / 25.4 * (pdfLow ? 200 : 300)));
           const v = viewOf(r);
           const key = r.f.id + '|' + (r.f.cut ? (r.f.stk || 0) + (r.f.stkC || '') + (r.f.stkG === false ? 'n' : 'g') : '') + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
           let data = cache.get(key);
-          if (!data) { data = await tileJpeg(r.f, wPx, hPx, tileMode, r.rot, v); cache.set(key, data); }
+          if (!data) { data = await tileJpeg(r.f, wPx, hPx, tileMode, r.rot, v, pdfLow ? 2e6 : undefined, pdfLow ? 2000 : undefined); cache.set(key, data); }
           const op = opacityOf(r);
           if (op < 1) pdfAlpha(doc, op);
           doc.addImage(data, data.indexOf('data:image/png') === 0 ? 'PNG' : 'JPEG', r.x, r.y, r.w, r.h, 'img' + key, 'FAST');
@@ -3246,7 +3295,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       const blob = doc.output('blob');
       state.blob = blob;
       const sz = c.mode === 'grid' ? (c.tw / 10) + 'x' + (c.th / 10) + 'cm' : c.mode === 'dni' ? 'dni-' + (c.dw / 10) + 'x' + (c.dh / 10) + 'cm' : c.mode === 'free' ? 'libre' : 'auto-' + (c.as / 10) + 'cm';
-      state.name = 'mosaico-' + sz + '-' + state.paper + '.pdf';
+      state.name = 'mosaico-' + sz + '-' + state.paper + (c.comb && c.comb.cols * c.comb.rows > 1 ? '-' + c.comb.cols * c.comb.rows + 'hojas' : '') + '.pdf';
       state.url = URL.createObjectURL(blob);
       $('pdfName').value = state.name.replace(/\.pdf$/i, '');
       $('openBtn').href = state.url;
@@ -3254,13 +3303,15 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       $('result').hidden = false;
       setNote('');
     } catch (e) {
-      setNote('No se pudo crear el PDF: ' + (e && e.message ? e.message : 'error desconocido') + '. Prueba con menos imágenes a la vez.', true);
+      if (!pdfLow) retry = true;
+      else setNote('No se pudo crear el PDF: ' + (e && e.message ? e.message : 'error desconocido') + '. Prueba con menos imágenes a la vez.', true);
     } finally {
       state.busy = false;
       setProgress(null);
       $('make').textContent = 'Crear PDF';
       $('make').disabled = state.files.length === 0;
     }
+    if (retry) { setNote('Reintentando con menos calidad…'); pdfLow = true; try { await makePdf(); } finally { pdfLow = false; } }
   }
 
   // Nombre de archivo válido: sin caracteres prohibidos y siempre con .pdf al final.
@@ -3455,10 +3506,15 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     const a = (inv ? -1 : 1) * r.fa * Math.PI / 180, cx = r.x + r.w / 2, cy = r.y + r.h / 2, dx = x - cx, dy = y - cy, co = Math.cos(a), si = Math.sin(a);
     return { x: cx + dx * co - dy * si, y: cy + dx * si + dy * co };
   }
+  function smallObj(r) {
+    if (!cur) return false;
+    const b = $('sheet').getBoundingClientRect(); if (!b.width) return false;
+    return Math.min(r.w, r.h) / (cur.c.pw / b.width) < 70;
+  }
   function handlePts(r) {
     if (r.poster) return [];
     const loc = [{ k: 'se', x: r.x + r.w, y: r.y + r.h }, { k: 'e', x: r.x + r.w, y: r.y + r.h / 2 }, { k: 's', x: r.x + r.w / 2, y: r.y + r.h }];
-    const sel = r.type === 'text' && !r.fit ? loc.slice(0, 2) : loc;
+    const sel = smallObj(r) ? [] : (r.type === 'text' && !r.fit ? loc.slice(0, 2) : loc);
     sel.push({ k: 'rot', x: r.x + r.w / 2, y: r.y - 9 });
     return sel.map(function (h) { const q = rotPt(r, h.x, h.y); return { k: h.k, x: q.x, y: q.y }; });
   }
@@ -3545,7 +3601,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     let hint = '';
     if (!r) hint = pageRects().length ? (isFree ? 'Toca una foto para elegirla y moverla.' : 'Toca una foto para encuadrarla dentro de su cuadro.') : '';
     else if (sh.frame) hint = 'Arrastra para mover la foto dentro de su cuadro. Con dos dedos la amplías y la giras (o usa las barras Zoom y Enderezar).';
-    else if (isFree) hint = 'Arrastra para mover. Arrastra el círculo para cambiar el tamaño, o usa dos dedos.';
+    else if (isFree) hint = 'Arrastra para mover (o usa las flechas para afinar). Arrastra el círculo para cambiar el tamaño, o usa dos dedos; si es muy chica usa «+ Grande».';
     else hint = 'Pulsa Encuadrar para mover y ampliar la foto dentro de su cuadro.';
     $('sheetHint').textContent = hint;
     if (sh.multiOn) {
@@ -3564,6 +3620,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       $('selAng').value = String(v.a || 0); $('selAngO').textContent = (v.a || 0).toFixed(1) + '°';
     }
     $('selFaRow').hidden = !(isFree && r && !r.poster && !sh.multiOn);
+    $('selEnh').hidden = !r || isTxt || sh.multiOn;
+    $('selPad').hidden = !r || sh.multiOn || !!(r && r.poster) || (!isFree && !sh.frame) || (isTxt && sh.frame);
     if (r) { $('selFa').value = String(r.fa || 0); $('selFaO').textContent = (r.fa || 0) + '°'; }
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
   }
@@ -3585,7 +3643,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     return -1;
   }
   function hitHandle(r, p) {
-    const rad = 16 * p.mpp, pts = handlePts(r);
+    const rad = 12 * p.mpp, pts = handlePts(r);
     for (let i = 0; i < pts.length; i++) if (Math.hypot(p.x - pts[i].x, p.y - pts[i].y) <= rad) return pts[i].k;
     return null;
   }
@@ -3756,6 +3814,28 @@ section.docx > article, section.docx > header, section.docx > footer { position:
     });
   }
 
+  (function sliderThumbOnly() {
+    let st = null, clr = 0;
+    function thumbHit(el, e) {
+      const r = el.getBoundingClientRect(), mn = parseFloat(el.min) || 0, mx = el.max === '' ? 100 : parseFloat(el.max), v = parseFloat(el.value);
+      const frac = mx > mn ? (v - mn) / (mx - mn) : 0, tw = 24, cx = r.left + tw / 2 + frac * (r.width - tw);
+      return Math.abs(e.clientX - cx) <= 30 && Math.abs(e.clientY - (r.top + r.height / 2)) <= 34;
+    }
+    document.addEventListener('pointerdown', function (e) {
+      clearTimeout(clr);
+      const t = e.target;
+      st = t && t.tagName === 'INPUT' && t.type === 'range' ? { el: t, ok: thumbHit(t, e), v: t.value } : null;
+    }, true);
+    function end() { clearTimeout(clr); clr = setTimeout(function () { st = null; }, 250); }
+    document.addEventListener('pointerup', end, true);
+    document.addEventListener('pointercancel', end, true);
+    function block(e) {
+      if (st && !st.ok && e.target === st.el) { e.stopImmediatePropagation(); e.stopPropagation(); if (e.type === 'input') st.el.value = st.v; }
+    }
+    document.addEventListener('input', block, true);
+    document.addEventListener('change', block, true);
+  })();
+
   function bindSheet() {
     const cv = $('sheet');
     cv.addEventListener('pointerdown', function (e) {
@@ -3923,6 +4003,30 @@ section.docx > article, section.docx > header, section.docx > footer { position:
       sh.sel = null; sh.frame = false;
       update();
     });
+    $('selEnh').addEventListener('click', async function () {
+      const r = selRect(); if (!r || r.type === 'text') return;
+      await openEditor(r.f, false);
+      if (ed.open) showTab('enh');
+    });
+    (function () {
+      let tmr = null, iv = null;
+      function nudge(dx, dy) {
+        const r = selRect(); if (!r || !cur || sh.multiOn) return;
+        const st = parseFloat($('nudStep').value) || 1;
+        if (state.mode === 'free' && !sh.frame) { r.x += dx * st; r.y += dy * st; clampObj(r, cur.c.pw, cur.c.ph, MIN_OBJ, true); }
+        else if (sh.frame && r.type !== 'text') applyPan(r, dx * st, dy * st);
+        else return;
+        hideResult(); drawSheet();
+      }
+      function stop() { clearTimeout(tmr); clearInterval(iv); tmr = iv = null; }
+      [['nudL', -1, 0], ['nudR', 1, 0], ['nudU', 0, -1], ['nudD', 0, 1]].forEach(function (d) {
+        const b = $(d[0]);
+        b.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); nudge(d[1], d[2]); tmr = setTimeout(function () { iv = setInterval(function () { nudge(d[1], d[2]); }, 70); }, 380); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { b.addEventListener(ev, stop); });
+        b.addEventListener('click', function (e) { e.preventDefault(); });
+        b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nudge(d[1], d[2]); } });
+      });
+    })();
     $('selEdit').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
       if (r.type === 'text') { $('txt').scrollIntoView({ block: 'center' }); $('txt').focus(); } else openEditor(r.f, false);
@@ -4799,6 +4903,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   }
 
   // ===== Dividir hoja =====
+  const spDummy = 0;
   const sp = { open: false, busy: false, kind: '', pdf: null, img: null, n: 0, cur: 0, L: null, c: null, tm: 'fit', base: 'hoja', aw: 1, ah: 1 };
   function spNote(m, err) { const n = $('spNote'); n.textContent = m || ''; n.className = 'note' + (err ? ' err' : ''); n.style.margin = '0 0 6px'; }
   function spProg(f) { $('spProgWrap').hidden = f == null; if (f != null) $('spProg').style.width = Math.round(f * 100) + '%'; }
@@ -4806,7 +4911,7 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   function spAuto() {
     const P = spPaperDims(), s = sp.aw / sp.ah, mm = sp.mm; // mm: ancho en mm de la hoja si se conoce
     let best = null;
-    for (let cols = 1; cols <= 8; cols++) for (let rows = 1; rows <= 8; rows++) [0, 1].forEach(function (o) {
+    for (let cols = 1; cols <= 12; cols++) for (let rows = 1; rows <= 12; rows++) [0, 1].forEach(function (o) {
       const ow = o ? P.h : P.w, oh = o ? P.w : P.h;
       const err = Math.abs(Math.log((cols * ow) / (rows * oh) / s));
       const sc = err * 100 + (mm ? Math.abs(Math.log(cols * ow / mm)) : 0.001 * cols * rows);
@@ -5538,6 +5643,8 @@ section.docx > article, section.docx > header, section.docx > footer { position:
   $('clear').addEventListener('click', function () { state.files = []; renderThumbs(); update(); setNote(''); });
   bindSeg('#paperSeg button', function (b) { state.paper = b.dataset.v; });
   bindSeg('#paperSeg2 button', function (b) { state.paper = b.dataset.v; });
+  bindSeg('#combSeg button', function (b) { state.comb = b.dataset.v; });
+  $('combN').addEventListener('input', function () { hideResult(); state.page = 0; update(); });
   function syncCustom() {
     const w = Math.max(5, Math.min(120, parseNum($('pcW').value, 30))), h = Math.max(5, Math.min(200, parseNum($('pcH').value, 45)));
     PAPERS.custom.w = Math.min(w, h) * 10; PAPERS.custom.h = Math.max(w, h) * 10;
