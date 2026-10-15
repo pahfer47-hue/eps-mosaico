@@ -390,6 +390,24 @@ h1 { font-size: 1.1rem; }
 .dkarrow[hidden] { display: none; }
 @media (pointer: fine) { .dk-row { scrollbar-width: thin; padding-bottom: 8px; } .dk-row::-webkit-scrollbar { display: block; height: 7px; } .dk-row::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; } }
 #sp { bottom: var(--bui, 128px); z-index: 7; }
+/* ventanas flotantes: translúcidas y "fantasma" (lo vacío deja pasar el toque) */
+.controls details.group.sheet, .seltools { background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); pointer-events: none; }
+.controls details.group.sheet :is(button, input, select, textarea, label, a, summary, .thumb, canvas, output),
+.seltools :is(button, input, select, textarea, label, a, canvas, output) { pointer-events: auto; }
+#fbar { border-top: 1px solid var(--line); background: var(--surface); }
+#fbar[hidden] { display: none; }
+#fchips { display: flex; gap: 6px; overflow-x: auto; padding: 6px 10px; scrollbar-width: none; touch-action: pan-x; }
+#fchips::-webkit-scrollbar { display: none; }
+#fbar .frow { display: flex; align-items: center; gap: 8px; padding: 2px 12px 6px; }
+#fbar .frow[hidden] { display: none; }
+#fbar .frow input[type=range] { flex: 1; min-width: 80px; }
+#fbar .flbl { font-weight: 700; font-size: .8125rem; min-width: 74px; }
+#fbar output { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+#fbar .fwho { font-size: .6875rem; color: var(--muted); padding: 0 12px 4px; }
+html.selActive main { touch-action: none; }
+#fchips .sc[disabled], #subbar .sc[disabled] { opacity: .45; }
+.dk[disabled] { opacity: .4; }
+
 .mini { bottom: calc(var(--bui, 128px) + 8px) !important; }
 .sheetwrap { display: flex; justify-content: center; }
 
@@ -424,6 +442,7 @@ h1 { font-size: 1.1rem; }
           <button class="btn" id="bwAll" type="button" hidden aria-pressed="false">Todas en blanco y negro</button>
           <button class="btn" id="filtersAll" type="button" hidden>Más filtros para todas</button>
           <button class="btn" id="pngAll" type="button" hidden>Guardar mis fotos en PNG</button>
+          <button class="btn" id="docQuick" type="button">📄 Limpiar foto de documento</button>
         </div>
         </div>
         <div class="sec" data-sec="▣|Varias">
@@ -465,6 +484,7 @@ h1 { font-size: 1.1rem; }
           <button type="button" data-v="enh" aria-pressed="true">Mejorar calidad</button>
           <button type="button" data-v="bg" aria-pressed="false">Quitar fondo</button>
           <button type="button" data-v="erase" aria-pressed="false">Borrar objeto</button>
+          <button type="button" data-v="doc" aria-pressed="false">Documento</button>
         </div>
         <p class="hint" id="aiHint"></p>
         <p class="hint"><b>Toca la foto</b> que quieres trabajar:</p>
@@ -845,7 +865,18 @@ h1 { font-size: 1.1rem; }
 
 <div id="bui">
 <div id="pgStrip" hidden aria-label="Hojas"></div>
-<div class="dk-row sub" id="subbar" hidden></div>
+<div id="fbar" hidden>
+      <div class="sub" id="fchips"></div>
+      <div class="frow" id="frow" hidden>
+        <span id="fLbl" class="flbl"></span>
+        <button class="sc" id="fMinus" type="button" aria-label="Menos">−</button>
+        <input type="range" id="fRange" min="-100" max="100" value="0" aria-label="Valor del filtro">
+        <button class="sc" id="fPlus" type="button" aria-label="Más">+</button>
+        <output id="fVal">0</output>
+      </div>
+      <div class="fwho" id="fWho"></div>
+    </div>
+    <div class="dk-row sub" id="subbar" hidden></div>
 <div id="dock" aria-label="Herramientas">
   <div class="dk-row" id="dockMain"></div>
   <div class="dk-row" id="dockSel" hidden></div>
@@ -971,6 +1002,24 @@ h1 { font-size: 1.1rem; }
   </div>
 </div>
 
+<div class="ed" id="ocr" role="dialog" aria-modal="true" aria-label="Texto de la foto" hidden style="z-index:40">
+  <div class="ed-top">
+    <button class="btn" id="ocrClose" type="button">Cerrar</button>
+    <strong>Texto leído de la foto</strong>
+    <button class="btn" id="ocrCopy" type="button">Copiar</button>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:8px;padding:10px 14px;min-height:0">
+    <p class="hint" id="ocrMsg" role="status" style="margin:0"></p>
+    <div class="prog" id="ocrProgWrap" hidden><div id="ocrProg"></div></div>
+    <textarea id="ocrText" spellcheck="false" style="flex:1;min-height:120px;font:inherit;font-size:1rem;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);resize:none"></textarea>
+    <div class="row">
+      <button class="btn primary" id="ocrFlow" type="button" disabled>Hoja nueva con este texto</button>
+      <button class="btn" id="ocrSame" type="button" disabled>Hoja igual que la foto</button>
+    </div>
+    <p class="hint" style="margin:0">Corrige el texto si hace falta antes de crear la hoja. La hoja nueva se agrega como una foto más.</p>
+  </div>
+</div>
+
 <div class="ed" id="pe" role="dialog" aria-modal="true" aria-label="Editar PDF" hidden>
   <div class="ed-top">
     <button class="btn" id="peClose" type="button">Cerrar</button>
@@ -1059,6 +1108,7 @@ h1 { font-size: 1.1rem; }
       <button type="button" data-v="enh" aria-pressed="false">IA ✨</button>
       <button type="button" data-v="bg" aria-pressed="false">Fondo</button>
       <button type="button" data-v="erase" aria-pressed="false">Borrar</button>
+      <button type="button" data-v="doc" aria-pressed="false">Documento 📄</button>
     </div>
 
     <div id="edCropPanel">
@@ -1141,6 +1191,21 @@ h1 { font-size: 1.1rem; }
       </div>
       <p class="hint">«Eliminar con IA» rellena de forma coherente (por ejemplo, quita una taza y deja las piernas limpias). Es experimental: descarga un modelo grande (unos 200 MB, una sola vez), necesita internet, y en celulares modestos puede tardar o cerrarse. Si no se puede, usa «Eliminar objeto (rellenar)».</p>
       <p class="hint" id="edEMsg" role="status"></p>
+    </div>
+
+    <div id="edDocPanel" hidden>
+      <div class="tools"><button class="btn primary" id="edDocAll" type="button">Limpiar documento (recomendado)</button></div>
+      <div class="tools">
+        <button class="btn" id="edDocClr" type="button">Aclarar (a color)</button>
+        <button class="btn" id="edDocBw" type="button">Blanco y negro nítido</button>
+        <button class="btn" id="edDocRot" type="button">Enderezar</button>
+        <button class="btn" id="edDocCrop" type="button">Recortar bordes</button>
+        <button class="btn" id="edDocUndo" type="button" hidden>Volver al original</button>
+      </div>
+      <p class="hint">Sin internet: quita sombras y el color amarillento del papel, oscurece las letras, endereza y recorta. Pensado para fotos de documentos que llegan por WhatsApp.</p>
+      <div class="tools"><button class="btn primary" id="edOcrGo" type="button">Leer el texto con IA ✨</button></div>
+      <p class="hint">La IA lee las letras de la foto (necesita internet la primera vez, ~15 MB). Después puedes copiar el texto o crear una hoja nueva con letras limpias y nítidas para imprimir.</p>
+      <p class="hint" id="edDocMsg" role="status"></p>
     </div>
 
     <div id="edEnhPanel" hidden>
@@ -2230,6 +2295,17 @@ h1 { font-size: 1.1rem; }
     f.ar = cropAR(f);
   }
 
+  // ¿La imagen tiene píxeles transparentes? (se mira una copia pequeña)
+  function canvasHasAlpha(cv) {
+    try {
+      const k = Math.min(1, 160 / Math.max(cv.width, cv.height)), w = Math.max(1, Math.round(cv.width * k)), h = Math.max(1, Math.round(cv.height * k));
+      const t = document.createElement('canvas'); t.width = w; t.height = h;
+      const x = t.getContext('2d', { willReadFrequently: true }); x.drawImage(cv, 0, 0, w, h);
+      const d = x.getImageData(0, 0, w, h).data; let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] < 250) n++;
+      t.width = 1; t.height = 1; return n > 0;
+    } catch (e) { return false; }
+  }
   async function tileJpeg(f, wPx, hPx, mode, rot, view, maxPx, maxSrc) {
     const k = Math.min(1, Math.sqrt((maxPx || 4.5e6) / (wPx * hPx)));
     wPx = Math.max(32, Math.round(wPx * k));
@@ -2244,11 +2320,12 @@ h1 { font-size: 1.1rem; }
     const cv = document.createElement('canvas');
     cv.width = wPx; cv.height = hPx;
     const cx = cv.getContext('2d');
-    if (!f.cut) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, wPx, hPx); }
+    const transp = !!f.cut || canvasHasAlpha(crop);
+    if (!transp) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, wPx, hPx); }
     cx.imageSmoothingQuality = 'high';
     drawTile(cx, crop, 0, 0, wPx, hPx, view ? 'view' : mode, rot, view);
     const cvOut = f.cut && f.stk > 0 ? stickerize(cv, stickerR(f.stk, wPx, hPx, 0.06), f.stkC, stickerG(f.stkG, wPx, hPx)) : cv;
-    const data = f.cut ? cvOut.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.92);
+    const data = transp ? cvOut.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.92);
     cv.width = 1; cv.height = 1; crop.width = 1; crop.height = 1;
     if (cvOut !== cv) { cvOut.width = 1; cvOut.height = 1; }
     return data;
@@ -2389,6 +2466,8 @@ h1 { font-size: 1.1rem; }
     $('edCropPanel').hidden = tab !== 'crop';
     $('edFilterPanel').hidden = tab !== 'filters';
     $('edEnhPanel').hidden = tab !== 'enh';
+    $('edDocPanel').hidden = tab !== 'doc';
+    if (tab === 'doc' && ed.f) $('edDocUndo').hidden = !ed.f.origFile;
     $('edBgPanel').hidden = tab !== 'bg';
     $('edErasePanel').hidden = tab !== 'erase';
     $('edMask').hidden = tab !== 'erase';
@@ -3928,8 +4007,8 @@ h1 { font-size: 1.1rem; }
     let hint = '';
     if (!r) hint = pageRects().length ? (isFree ? 'Toca una foto para elegirla y moverla.' : 'Toca una foto para encuadrarla dentro de su cuadro.') : '';
     else if (sh.frame) hint = 'Arrastra para mover la foto dentro de su cuadro. Con dos dedos la amplías y la giras (o usa las barras Zoom y Enderezar).';
-    else if (isFree) hint = 'Arrastra para mover (o usa las flechas para afinar). Arrastra el círculo para cambiar el tamaño, o usa dos dedos; si es muy chica usa «+ Grande».';
-    else hint = 'Pulsa Encuadrar para mover y ampliar la foto dentro de su cuadro.';
+    else if (isFree) hint = 'Arrastra para mover. Con dos dedos (en cualquier parte de la pantalla) agrandas o achicas el cuadro. Para mover la foto DENTRO del cuadro usa «Encuadrar» abajo.';
+    else hint = 'Las flechas de «Mover» y un dedo mueven la foto dentro de su cuadro; con dos dedos la amplías. Para cambiar de lugar el cuadro usa el modo Libre.';
     if (!state.files.length && !r) hint = 'Toca «Fotos» abajo para elegir tus imágenes.';
     $('sheetHint').textContent = hint;
     if (sh.multiOn) {
@@ -3953,9 +4032,10 @@ h1 { font-size: 1.1rem; }
     $('selEnh').hidden = !r || isTxt || sh.multiOn;
     $('selGroup').hidden = !(isFree && sh.multiOn && sh.multi.size >= 2);
     $('selUngroup').hidden = !(isFree && ((r && r.gid && !sh.multiOn) || sh.multiOn));
-    $('selPad').hidden = !r || sh.multiOn || !!(r && r.poster) || (!isFree && !sh.frame) || (isTxt && sh.frame);
+    $('selPad').hidden = !r || sh.multiOn || !!(r && r.poster) || (isTxt && !isFree);
     if (r) { $('selFa').value = String(r.fa || 0); $('selFaO').textContent = (r.fa || 0) + '°'; }
     $('sheet').style.touchAction = r && (isFree || sh.frame) ? 'none' : 'pan-y';
+    document.documentElement.classList.toggle('selActive', !!r && !sh.multiOn && !r.poster);
     dockSync();
   }
 
@@ -4112,7 +4192,7 @@ h1 { font-size: 1.1rem; }
   }
   function buildSubbar(g, secs) {
     const sb = $('subbar'); sb.textContent = ''; sb.hidden = false;
-    const x = chip('✕', 'Cerrar', 'x'); x.addEventListener('click', closeSheet); sb.appendChild(x);
+    histChips(sb);
     secs.forEach(function (sec, i) {
       const d = (sec.dataset.sec || '').split('|'), act = sec.dataset.act;
       const b = chip(d[0], d[1] || d[0], act ? 'act' : ''); b.dataset.i = String(i);
@@ -4124,7 +4204,7 @@ h1 { font-size: 1.1rem; }
   function openSheet(g, secIdx) {
     if (!g) return;
     if (dkG === g && secIdx == null) { closeSheet(); return; }
-    closePanel(); closeSheet();
+    closePanel(); closeSheet(); closeFbar();
     if (g.id === 'aiGroup') renderAi();
     g.open = true; dkG = g;
     const secs = secList(g);
@@ -4138,13 +4218,15 @@ h1 { font-size: 1.1rem; }
   }
   function openPanel(id) {
     if (dkP === id) { closePanel(); return; }
-    closeSheet();
+    closeSheet(); closeFbar();
     dkP = id; document.querySelectorAll('.spanel').forEach(function (p) { p.classList.toggle('on', p.id === 'sp_' + id); });
     $('selTools').classList.add('show'); dockMark(); drawSheet();
   }
   function dockMark() {
     document.querySelectorAll('#dockMain .dk[data-g]').forEach(function (b) { b.setAttribute('aria-pressed', String(dkG === document.querySelectorAll('.controls > details.group')[+b.dataset.g])); });
     document.querySelectorAll('#dockSel .dk[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(dkP === b.dataset.p)); });
+    document.querySelectorAll('.dk[data-fl]').forEach(function (b) { b.setAttribute('aria-pressed', String(FB.open)); });
+    const fr = document.querySelector('#dockSel .dk[data-a="selFrame"]'); if (fr) fr.setAttribute('aria-pressed', String(!!sh.frame));
     const sb = document.querySelector('#dockMain .dk[data-sp]'); if (sb) sb.setAttribute('aria-pressed', String(!!sp.open));
     const bu = $('bui'); if (bu) document.documentElement.style.setProperty('--bui', bu.offsetHeight + 'px');
   }
@@ -4154,18 +4236,20 @@ h1 { font-size: 1.1rem; }
     $('dockMain').hidden = selMode; $('dockSel').hidden = !selMode;
     if (selMode) { if (dkG) closeSheet(); }
     else if (dkP) closePanel();
+    if (FB.open) { fWho(); fShowValue(); }
     DK_SEL.forEach(function (d) {
       const pn = $('sp_' + d[0]), b = document.querySelector('#dockSel .dk[data-p="' + d[0] + '"]');
       const any = Array.from(pn.children).some(function (c) { return !c.hidden; });
       b.hidden = !any;
       if (!any && dkP === d[0]) closePanel();
     });
-    ['selEnh', 'selDup', 'selDel'].forEach(function (id) { const b = document.querySelector('#dockSel .dk[data-a="' + id + '"]'); if (b) b.hidden = $(id).hidden; });
+    ['selFrame', 'selEnh', 'selDup', 'selDel'].forEach(function (id) { const b = document.querySelector('#dockSel .dk[data-a="' + id + '"]'); if (b) b.hidden = $(id).hidden; });
     dockMark();
   }
   const AI_HINT = {
     enh: 'Agranda la foto al doble y le devuelve detalle (fotos chicas o borrosas). La primera vez descarga un modelo pequeño y necesita internet.',
     bg: 'Quita el fondo con IA y deja la persona u objeto con fondo transparente. Después puedes corregir con el marcador.',
+    doc: 'Para fotos de hojas o documentos: quita sombras, aclara el papel, oscurece las letras, endereza y recorta. También puede leer el texto con IA y armar una hoja limpia.',
     erase: 'Marca lo que sobra (una taza, un objeto) y la IA lo borra rellenando de forma coherente. Es experimental y puede tardar.'
   };
   let aiTab = 'enh';
@@ -4199,6 +4283,290 @@ h1 { font-size: 1.1rem; }
     });
     window.addEventListener('resize', upd); setInterval(upd, 600); upd();
   }
+  // ===== Barra de filtros (un botón por filtro) =====
+  const FB = { open: false, key: null };
+  const FKEYS = [['br', '☀', 'Brillo', -100, 100], ['co', '◑', 'Contraste', -100, 100], ['wh', '○', 'Blancos', -100, 100], ['bl', '●', 'Negros', -100, 100], ['sa', '🎨', 'Saturación', -100, 100], ['dn', '✦', 'Ruido', 0, 100], ['sh', '◇', 'Nitidez', 0, 100], ['al', '⌑', 'Transp.', 0, 90]];
+  function fTargets() { const t = sheetTargets(); return t.length ? t : state.files.slice(); }
+  function fWho() {
+    const t = sheetTargets();
+    $('fWho').textContent = !state.files.length ? 'Primero elige fotos.' : t.length ? 'Se aplica a ' + (t.length === 1 ? 'la foto elegida' : t.length + ' fotos elegidas') + '. Toca una foto de la hoja para cambiar.' : 'Se aplica a todas las fotos (' + state.files.length + '). Toca una foto de la hoja para aplicar solo a esa.';
+  }
+  function fShowValue() {
+    if (!FB.key) return; const k = FKEYS.find(function (q) { return q[0] === FB.key; }), t = fTargets(), v = t.length ? (t[0].edit.f[FB.key] || 0) : 0;
+    $('fRange').min = String(k[3]); $('fRange').max = String(k[4]); $('fRange').value = String(v); $('fVal').textContent = String(Math.round(v)); $('fLbl').textContent = k[2];
+  }
+  function fApply(v, fast) {
+    const t = fTargets(); if (!t.length || !FB.key) return;
+    t.forEach(function (f) { f.edit.f[FB.key] = v; if (FB.key !== 'al') refreshThumb(f); });
+    $('fVal').textContent = String(Math.round(v));
+    hideResult(); if (fast) { drawSheet(); } else afterBatch();
+  }
+  function openFbar() {
+    closeSheet(); closePanel(); FB.open = true; $('fbar').hidden = false;
+    const box = $('fchips'); box.textContent = '';
+    histChips(box);
+    const bw = chip('◐', 'Blanco y negro'); bw.addEventListener('click', function () { const t = fTargets(); if (t.length) { bwPhotos(t); afterBatch(); } }); box.appendChild(bw);
+    FKEYS.forEach(function (k) {
+      const b = chip(k[1], k[2]); b.dataset.k = k[0];
+      b.addEventListener('click', function () { FB.key = FB.key === k[0] ? null : k[0]; $('frow').hidden = !FB.key; document.querySelectorAll('#fchips .sc[data-k]').forEach(function (q) { q.setAttribute('aria-pressed', String(q.dataset.k === FB.key)); }); fShowValue(); dockMark(); });
+      box.appendChild(b);
+    });
+    const rs = chip('↺', 'Quitar filtros'); rs.addEventListener('click', function () { const t = fTargets(); t.forEach(function (f) { Object.assign(f.edit.f, DEF_F); refreshThumb(f); }); afterBatch(); fShowValue(); }); box.appendChild(rs);
+    const dq = chip('📄', 'Documento'); dq.addEventListener('click', function () { $('docQuick').click(); }); box.appendChild(dq);
+    const ed2 = chip('⚙', 'Editor completo'); ed2.addEventListener('click', function () { const t = fTargets(); if (t.length && !state.busy && !ed.open) { closeFbar(); ed.targets = t.length === state.files.length && !sheetTargets().length ? null : t; openEditor(t[0], true); } }); box.appendChild(ed2);
+    box.scrollLeft = 0; fWho(); $('frow').hidden = !FB.key; fShowValue(); dockMark(); dockSync();
+  }
+  function closeFbar() { FB.open = false; FB.key = null; $('fbar').hidden = true; $('frow').hidden = true; dockMark(); }
+  function bindFbar() {
+    let tm = 0;
+    $('fRange').addEventListener('input', function () { const v = +$('fRange').value; $('fVal').textContent = String(Math.round(v)); clearTimeout(tm); tm = setTimeout(function () { fApply(v, false); }, 140); });
+    function step(d) { const r = $('fRange'); const v = Math.max(+r.min, Math.min(+r.max, +r.value + d)); r.value = String(v); fApply(v, false); }
+    $('fMinus').addEventListener('click', function () { step(-5); });
+    $('fPlus').addEventListener('click', function () { step(5); });
+  }
+
+  // ===== Documentos: aclarar, enderezar, recortar y leer el texto =====
+  function dMsg(t) { $('edDocMsg').textContent = t; }
+  function gray1(d, n) { const g = new Float32Array(n); for (let i = 0; i < n; i++) g[i] = d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114; return g; }
+  function maxBlur(a, w, h, r) {
+    const t = new Float32Array(a.length), o = new Float32Array(a.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let m = 0; for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) if (a[y * w + k] > m) m = a[y * w + k]; t[y * w + x] = m; }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let m = 0; for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) if (t[k * w + x] > m) m = t[k * w + x]; o[y * w + x] = m; }
+    return o;
+  }
+  function boxBlur(a, w, h, r) {
+    const t = new Float32Array(a.length), o = new Float32Array(a.length);
+    for (let y = 0; y < h; y++) { let sum = 0, n = 0; for (let x = -r; x < w + r; x++) { const ax = x + r, rx = x - r - 1; if (ax < w) { sum += a[y * w + Math.max(0, ax)]; n++; } if (rx >= 0) { sum -= a[y * w + rx]; n--; } if (x >= 0 && x < w) t[y * w + x] = sum / Math.max(1, n); } }
+    for (let x = 0; x < w; x++) { let sum = 0, n = 0; for (let y = -r; y < h + r; y++) { const ay = y + r, ry = y - r - 1; if (ay < h) { sum += t[Math.max(0, ay) * w + x]; n++; } if (ry >= 0) { sum -= t[ry * w + x]; n--; } if (y >= 0 && y < h) o[y * w + x] = sum / Math.max(1, n); } }
+    return o;
+  }
+  // Quita sombras y tono del papel: divide cada punto por el brillo local del fondo.
+  function docFlatten(cv, bw) {
+    const W = cv.width, H = cv.height, cx = cv.getContext('2d', { willReadFrequently: true });
+    const id = cx.getImageData(0, 0, W, H), d = id.data, n = W * H;
+    const sc = Math.max(1, Math.round(Math.max(W, H) / 320)), sw = Math.max(2, Math.round(W / sc)), sh2 = Math.max(2, Math.round(H / sc));
+    const sm = document.createElement('canvas'); sm.width = sw; sm.height = sh2;
+    const sx = sm.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingQuality = 'high'; sx.drawImage(cv, 0, 0, sw, sh2);
+    const sd = sx.getImageData(0, 0, sw, sh2), m = sw * sh2, chs = [];
+    for (let c = 0; c < 3; c++) {
+      let g = new Float32Array(m); for (let i = 0; i < m; i++) g[i] = sd.data[i * 4 + c];
+      g = maxBlur(g, sw, sh2, Math.max(3, Math.round(sw / 28))); g = boxBlur(g, sw, sh2, Math.max(2, Math.round(sw / 40))); chs.push(g);
+    }
+    const bd = sx.createImageData(sw, sh2);
+    for (let i = 0; i < m; i++) {
+      const gy = chs[0][i] * 0.299 + chs[1][i] * 0.587 + chs[2][i] * 0.114;
+      for (let c = 0; c < 3; c++) bd.data[i * 4 + c] = Math.max(40, Math.min(255, bw ? gy : chs[c][i]));
+      bd.data[i * 4 + 3] = 255;
+    }
+    sx.putImageData(bd, 0, 0);
+    const bc = document.createElement('canvas'); bc.width = W; bc.height = H;
+    const bx = bc.getContext('2d', { willReadFrequently: true }); bx.imageSmoothingQuality = 'high'; bx.drawImage(sm, 0, 0, W, H);
+    const b = bx.getImageData(0, 0, W, H).data;
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < n; i++) {
+      for (let c = 0; c < 3; c++) d[i * 4 + c] = Math.min(255, d[i * 4 + c] * 255 / Math.max(40, b[i * 4 + c]));
+      hist[Math.round(d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114)]++;
+    }
+    let acc = 0, lo = 0; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > n * 0.01) { lo = v; break; } }
+    lo = Math.min(lo, 110);
+    const hi = 238, lut = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) { let t = Math.max(0, Math.min(1, (v - lo) / (hi - lo))); t = bw ? Math.max(0, Math.min(1, (t - 0.38) / 0.34)) : Math.pow(t, 1.35); lut[v] = Math.round(t * 255); }
+    for (let i = 0; i < n; i++) {
+      if (bw) { const v = lut[Math.round(d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114)]; d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v; }
+      else for (let c = 0; c < 3; c++) d[i * 4 + c] = lut[d[i * 4 + c]];
+    }
+    cx.putImageData(id, 0, 0); bc.width = 1; bc.height = 1; sm.width = 1; sm.height = 1;
+    return cv;
+  }
+  function docInk(cv) {
+    const k = Math.min(1, 700 / Math.max(cv.width, cv.height)), w = Math.max(8, Math.round(cv.width * k)), h = Math.max(8, Math.round(cv.height * k));
+    const t = document.createElement('canvas'); t.width = w; t.height = h; const x = t.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high'; x.drawImage(cv, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data, g = gray1(d, w * h), ink = new Uint8Array(w * h);
+    let sum = 0; for (let i = 0; i < g.length; i++) sum += g[i]; const thr = Math.min(170, (sum / g.length) * 0.72);
+    const raw = new Float32Array(g.length); for (let i = 0; i < g.length; i++) raw[i] = g[i] < thr ? 1 : 0;
+    const dens = boxBlur(raw, w, h, 4);
+    for (let i = 0; i < g.length; i++) ink[i] = raw[i] && dens[i] < 0.42 ? 1 : 0;
+    t.width = 1; t.height = 1; return { ink: ink, w: w, h: h, k: k };
+  }
+  function docAngle(cv) {
+    const o = docInk(cv), pts = []; const step = Math.max(1, Math.floor(o.ink.length / 60000));
+    for (let i = 0; i < o.ink.length; i += step) if (o.ink[i]) pts.push([i % o.w, Math.floor(i / o.w)]);
+    if (pts.length < 200) return 0;
+    function score(a) { const r = a * Math.PI / 180, sn = Math.sin(r), cs = Math.cos(r), bins = new Float32Array(o.h * 2 + 4); pts.forEach(function (q) { const y = Math.round(-q[0] * sn + q[1] * cs) + o.h; if (y >= 0 && y < bins.length) bins[y]++; }); let m = 0; bins.forEach(function (v) { m += v; }); m /= bins.length; let v = 0; bins.forEach(function (b) { v += (b - m) * (b - m); }); return v; }
+    let best = 0, bs = -1; for (let a = -12; a <= 12; a += 0.5) { const sc = score(a); if (sc > bs) { bs = sc; best = a; } }
+    for (let a = best - 0.5; a <= best + 0.5; a += 0.1) { const sc = score(a); if (sc > bs) { bs = sc; best = a; } }
+    return Math.abs(best) < 0.3 ? 0 : best;
+  }
+  function docRotate(cv, deg) {
+    if (!deg) return cv;
+    const r = deg * Math.PI / 180, c = document.createElement('canvas'); c.width = cv.width; c.height = cv.height;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    x.imageSmoothingQuality = 'high'; x.translate(c.width / 2, c.height / 2); x.rotate(r); x.drawImage(cv, -cv.width / 2, -cv.height / 2);
+    return c;
+  }
+  function docCrop(cv) {
+    const o = docInk(cv), rows = new Uint32Array(o.h), cols = new Uint32Array(o.w);
+    for (let y = 0; y < o.h; y++) for (let x = 0; x < o.w; x++) if (o.ink[y * o.w + x]) { rows[y]++; cols[x]++; }
+    const tr = Math.max(1, o.w * 0.004), tc = Math.max(1, o.h * 0.004);
+    let y0 = 0, y1 = o.h - 1, x0 = 0, x1 = o.w - 1;
+    while (y0 < o.h && rows[y0] < tr) y0++; while (y1 > y0 && rows[y1] < tr) y1--;
+    while (x0 < o.w && cols[x0] < tc) x0++; while (x1 > x0 && cols[x1] < tc) x1--;
+    const mx = Math.round(o.w * 0.03), my = Math.round(o.h * 0.03);
+    x0 = Math.max(0, x0 - mx); y0 = Math.max(0, y0 - my); x1 = Math.min(o.w - 1, x1 + mx); y1 = Math.min(o.h - 1, y1 + my);
+    if ((x1 - x0) < o.w * 0.3 || (y1 - y0) < o.h * 0.3) return cv;
+    const k = 1 / o.k, c = document.createElement('canvas'); c.width = Math.round((x1 - x0 + 1) * k); c.height = Math.round((y1 - y0 + 1) * k);
+    c.getContext('2d').drawImage(cv, x0 * k, y0 * k, c.width, c.height, 0, 0, c.width, c.height);
+    return c;
+  }
+  async function docSource(f) {
+    const r = await loadImg(f.file), iw = r.img.naturalWidth, ih = r.img.naturalHeight, s = Math.min(1, 2400 / Math.max(iw, ih));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(iw * s)); c.height = Math.max(1, Math.round(ih * s));
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = 'high'; x.drawImage(r.img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(r.url); return c;
+  }
+  const dcl = { busy: false };
+  async function docRun(steps) {
+    const f = ed.f; if (!f || dcl.busy) return;
+    dcl.busy = true; ['edDocAll', 'edDocClr', 'edDocBw', 'edDocRot', 'edDocCrop', 'edOcrGo'].forEach(function (id) { $(id).disabled = true; });
+    try {
+      dMsg('Procesando… (puede tardar unos segundos)'); await yieldUI();
+      let c = await docSource(f);
+      if (steps.rot) { dMsg('Enderezando…'); await yieldUI(); const a = docAngle(c); c = docRotate(c, -a); }
+      if (steps.flat) { dMsg('Aclarando el papel y las letras…'); await yieldUI(); c = docFlatten(c, steps.bw); }
+      if (steps.crop) { dMsg('Recortando bordes…'); await yieldUI(); c = docCrop(c); }
+      const blob = await canvasBlob(c, 'jpg', 0.93); c.width = 1; c.height = 1;
+      const file = new File([blob], f.name.replace(/\.[^.]+$/, '').replace(/-limpio$/, '') + '-limpio.jpg', { type: 'image/jpeg' });
+      if (!f.origFile) { f.origFile = f.file; f.origSmall = f.small; f.origSw = f.sw; f.origSh = f.sh; }
+      f.file = file; f.bgTouched = true; f.cut = false;
+      ed.tmp.crop = null; await reloadWork(f); showTab('doc');
+      dMsg('Listo. Si algo no te gusta usa «Volver al original». Toca «Listo» arriba para guardar.');
+    } catch (e) { dMsg('No se pudo procesar (' + (e && e.message ? e.message : 'error') + ').'); }
+    dcl.busy = false; ['edDocAll', 'edDocClr', 'edDocBw', 'edDocRot', 'edDocCrop', 'edOcrGo'].forEach(function (id) { $(id).disabled = false; });
+  }
+  // --- IA: leer el texto (Tesseract) ---
+  const oc = { lines: [], w: 0, h: 0, name: 'documento', busy: false };
+  function loadTess() {
+    if (window.Tesseract) return Promise.resolve(window.Tesseract);
+    return new Promise(function (res, rej) {
+      const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+      sc.onload = function () { window.Tesseract ? res(window.Tesseract) : rej(new Error('no cargó')); }; sc.onerror = function () { rej(new Error('sin conexión')); };
+      document.head.appendChild(sc);
+    });
+  }
+  function ocrMsg(t) { $('ocrMsg').textContent = t; }
+  async function ocrRun() {
+    const f = ed.f; if (!f || oc.busy) return;
+    oc.busy = true; $('ocr').hidden = false; $('ocrText').value = ''; $('ocrFlow').disabled = true; $('ocrSame').disabled = true; $('ocrProgWrap').hidden = false; $('ocrProg').style.width = '2%';
+    ocrMsg('Preparando la IA… (la primera vez descarga el idioma)');
+    try {
+      const T = await loadTess(), src = await docSource(f);
+      oc.w = src.width; oc.h = src.height; oc.name = f.name.replace(/\.[^.]+$/, '').replace(/-limpio$/, '');
+      const wk = await T.createWorker(['spa', 'eng'], 1, { logger: function (m) { if (m && m.progress != null) { $('ocrProg').style.width = Math.max(2, Math.round(m.progress * 100)) + '%'; ocrMsg((m.status || 'Leyendo') + '… ' + Math.round(m.progress * 100) + '%'); } } });
+      const r = await wk.recognize(src); await wk.terminate();
+      const d = r.data; let lines = d.lines;
+      if (!lines || !lines.length) { lines = []; (d.blocks || []).forEach(function (b) { (b.paragraphs || []).forEach(function (p) { (p.lines || []).forEach(function (l) { lines.push(l); }); }); }); }
+      oc.lines = (lines || []).filter(function (l) { return l.text && l.text.trim() && l.bbox; }).map(function (l) { return { t: l.text.replace(/\s+$/, ''), b: l.bbox }; });
+      $('ocrText').value = (d.text || '').replace(/\n{3,}/g, '\n\n').trim();
+      ocrMsg(oc.lines.length ? 'Listo: ' + oc.lines.length + ' líneas leídas. Corrige lo que haga falta.' : 'No se encontró texto. Prueba primero «Limpiar documento».');
+      $('ocrFlow').disabled = !$('ocrText').value; $('ocrSame').disabled = !oc.lines.length; src.width = 1; src.height = 1;
+    } catch (e) { ocrMsg('No se pudo leer el texto (' + (e && e.message ? e.message : 'error') + '). Revisa tu conexión a internet.'); }
+    $('ocrProgWrap').hidden = true; oc.busy = false;
+  }
+  async function ocrAdd(cvs, tag) {
+    const files = [];
+    for (let i = 0; i < cvs.length; i++) { const b = await canvasBlob(cvs[i], 'jpg', 0.95); cvs[i].width = 1; cvs[i].height = 1; files.push(new File([b], oc.name + '-' + tag + (cvs.length > 1 ? (i + 1) : '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() + i })); }
+    $('ocr').hidden = true; await addFiles(files); setNote('Se agregó la hoja nueva (' + files.length + ') a tus fotos.');
+  }
+  function ocrFlow() {
+    const W = 1654, H = 2339, M = 130, FS = 38, LH = Math.round(FS * 1.45), pages = [];
+    let cv, x, y;
+    function np() { cv = document.createElement('canvas'); cv.width = W; cv.height = H; x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.fillStyle = '#000'; x.font = FS + 'px Arial, Helvetica, sans-serif'; x.textBaseline = 'alphabetic'; y = M + FS; pages.push(cv); }
+    np();
+    $('ocrText').value.split('\n').forEach(function (para) {
+      if (!para.trim()) { y += LH * 0.6; return; }
+      let line = ''; para.split(/\s+/).forEach(function (wd) {
+        const t = line ? line + ' ' + wd : wd;
+        if (x.measureText(t).width > W - 2 * M && line) { x.fillText(line, M, y); y += LH; if (y > H - M) np(); line = wd; } else line = t;
+      });
+      if (line) { x.fillText(line, M, y); y += LH; if (y > H - M) np(); }
+    });
+    ocrAdd(pages, 'texto');
+  }
+  function ocrSame() {
+    const cv = document.createElement('canvas'); cv.width = oc.w; cv.height = oc.h; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, oc.w, oc.h); x.fillStyle = '#000'; x.textBaseline = 'alphabetic';
+    oc.lines.forEach(function (l) {
+      const bw = l.b.x1 - l.b.x0, bh = l.b.y1 - l.b.y0; if (bw < 4 || bh < 4) return;
+      const fs = Math.max(8, bh * 0.82); x.font = fs + 'px Arial, Helvetica, sans-serif';
+      const mw = x.measureText(l.t).width || 1, sx = Math.max(0.5, Math.min(1.6, bw / mw));
+      x.save(); x.translate(l.b.x0, l.b.y1 - bh * 0.2); x.scale(sx, 1); x.fillText(l.t, 0, 0); x.restore();
+    });
+    ocrAdd([cv], 'limpia');
+  }
+  function bindDocClean() {
+    $('edDocAll').addEventListener('click', function () { docRun({ rot: true, flat: true, bw: false, crop: true }); });
+    $('edDocClr').addEventListener('click', function () { docRun({ flat: true, bw: false }); });
+    $('edDocBw').addEventListener('click', function () { docRun({ flat: true, bw: true }); });
+    $('edDocRot').addEventListener('click', function () { docRun({ rot: true }); });
+    $('edDocCrop').addEventListener('click', function () { docRun({ crop: true }); });
+    $('edDocUndo').addEventListener('click', bgUndo);
+    $('edOcrGo').addEventListener('click', ocrRun);
+    $('ocrClose').addEventListener('click', function () { if (!oc.busy) $('ocr').hidden = true; });
+    $('ocrCopy').addEventListener('click', async function () { const t = $('ocrText'); try { await navigator.clipboard.writeText(t.value); ocrMsg('Texto copiado.'); } catch (e) { t.select(); document.execCommand('copy'); ocrMsg('Texto copiado.'); } });
+    $('ocrFlow').addEventListener('click', ocrFlow); $('ocrSame').addEventListener('click', ocrSame);
+    $('docQuick').addEventListener('click', function () {
+      const t = sheetTargets(), f = t.length ? t[0] : state.files[0];
+      if (!f) { setNote('Primero elige la foto del documento en «Fotos».', true); return; }
+      closeSheet(); openEditor(f, false).then(function () { if (ed.open) showTab('doc'); });
+    });
+  }
+
+  // ===== Deshacer / Rehacer (hoja y filtros) =====
+  const H = { u: [], r: [], pend: null, tm: 0 };
+  function hCp(o) { return Object.assign({}, o, o.view ? { view: Object.assign({}, o.view) } : {}); }
+  function hSnap() {
+    return { pages: free.pages.map(function (p) { return p.map(function (o) { return { o: o, d: hCp(o) }; }); }), files: state.files.slice().map(function (f) { return { f: f, e: JSON.stringify(f.edit), v: f.view ? JSON.stringify(f.view) : null }; }), page: state.page };
+  }
+  function hSig() {
+    return JSON.stringify([free.pages.map(function (p) { return p.map(function (o) { return Object.assign({}, o, { f: o.f ? o.f.id : 0 }); }); }), state.files.map(function (f) { return [f.id, f.edit, f.view]; })]);
+  }
+  function hBtns() { document.querySelectorAll('.hUndo').forEach(function (b) { b.disabled = !H.u.length; }); document.querySelectorAll('.hRedo').forEach(function (b) { b.disabled = !H.r.length; }); }
+  function hCommit() {
+    H.tm = 0; const p = H.pend; if (!p) return; H.pend = null;
+    if (hSig() !== p.sig) { H.u.push(p.s); if (H.u.length > 40) H.u.shift(); H.r.length = 0; hBtns(); }
+  }
+  function hRestore(s) {
+    free.pages = s.pages.map(function (p) { return p.map(function (x) { const o = x.o; Object.keys(o).forEach(function (k) { delete o[k]; }); Object.assign(o, hCp(x.d)); return o; }); });
+    state.files = s.files.map(function (x) {
+      const f = x.f; free.known.add(f.id);
+      if (JSON.stringify(f.edit) !== x.e) { f.edit = JSON.parse(x.e); refreshThumb(f); }
+      f.view = x.v ? JSON.parse(x.v) : (x.v === null ? null : f.view);
+      return f;
+    });
+    sh.sel = null; sh.frame = false; sh.multiOn = false; sh.multi.clear(); hideResult(); renderThumbs(); update(); syncSel();
+  }
+  function hUndo(redo) {
+    hCommit(); const from = redo ? H.r : H.u, to = redo ? H.u : H.r, s = from.pop();
+    if (!s) { setNote(redo ? 'No hay nada que rehacer.' : 'No hay nada que deshacer.'); return; }
+    to.push(hSnap()); hRestore(s); hBtns(); setNote(redo ? 'Rehecho.' : 'Deshecho.');
+  }
+  function bindHist() {
+    document.addEventListener('pointerdown', function (e) {
+      if (ed.open || dc.open || pe.open || sp.open || px.open || !$('ocr').hidden) return;
+      const t = e.target; if (t.closest && t.closest('.hUndo, .hRedo')) return;
+      hCommit(); H.pend = { s: hSnap(), sig: hSig() }; clearTimeout(H.tm);
+    }, true);
+    ['pointerup', 'pointercancel', 'change'].forEach(function (ev) { document.addEventListener(ev, function () { if (H.pend) { clearTimeout(H.tm); H.tm = setTimeout(hCommit, 700); } }, true); });
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && !(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) && !ed.open) { e.preventDefault(); hUndo(false); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'z' || e.key === 'Z'))) && !(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) && !ed.open) { e.preventDefault(); hUndo(true); }
+    });
+  }
+  function histChips(box) {
+    const u = chip('↶', 'Deshacer', 'hUndo'), r = chip('↷', 'Rehacer', 'hRedo');
+    u.addEventListener('click', function () { hUndo(false); }); r.addEventListener('click', function () { hUndo(true); });
+    box.appendChild(u); box.appendChild(r); hBtns();
+  }
+
   function bindDock() {
     const groups = Array.from(document.querySelectorAll('.controls > details.group')), dm = $('dockMain'), ds = $('dockSel');
     groups.forEach(function (g, i) {
@@ -4210,11 +4578,25 @@ h1 { font-size: 1.1rem; }
       if (sm) sm.addEventListener('click', function (e) { e.preventDefault(); closeSheet(); });
       if (g.dataset.split) { const sb = dkBtn('✂', 'Dividir'); sb.dataset.sp = '1'; sb.addEventListener('click', function () { closeSheet(); if (sp.open) closeSp(); else $('spOpen').click(); dockMark(); }); dm.appendChild(sb); }
     });
+    const mvB = dkBtn('✥', 'Mover'); mvB.dataset.mv = '1';
+    mvB.addEventListener('click', function () {
+      if (!pageRects().length) { setNote('Primero elige tus fotos y toca una en la hoja.', true); return; }
+      if (!sh.sel) { sh.sel = { page: state.page, idx: 0 }; if (state.mode !== 'free') sh.frame = true; syncSel(); drawSheet(); setNote('Elegí la primera foto; toca otra en la hoja para cambiar.'); }
+      openPanel('mov');
+    });
+    dm.insertBefore(mvB, dm.children[1] || null);
+    const flB = dkBtn('🎨', 'Filtros'); flB.dataset.fl = '1'; flB.addEventListener('click', function () { if (FB.open) closeFbar(); else openFbar(); });
+    dm.insertBefore(flB, dm.children[2] || null);
+    const flB2 = dkBtn('🎨', 'Filtros'); flB2.dataset.fl = '1'; flB2.addEventListener('click', function () { if (FB.open) closeFbar(); else openFbar(); });
     const done = dkBtn('✓', 'Listo', 'go'); done.addEventListener('click', function () { closePanel(); $('selDone').click(); }); ds.appendChild(done);
+    const uB = dkBtn('↶', 'Deshacer', 'hUndo'), rB = dkBtn('↷', 'Rehacer', 'hRedo');
+    uB.addEventListener('click', function () { hUndo(false); }); rB.addEventListener('click', function () { hUndo(true); });
+    ds.appendChild(uB); ds.appendChild(rB); hBtns();
     DK_SEL.forEach(function (d) {
       const b = dkBtn(d[1], d[2]); b.dataset.p = d[0]; b.addEventListener('click', function () { openPanel(d[0]); }); ds.appendChild(b);
     });
-    [['selEnh', '✨', 'IA', ''], ['selDup', '⎘', 'Duplicar', ''], ['selDel', '🗑', 'Eliminar', 'danger']].forEach(function (d) {
+    ds.appendChild(flB2);
+    [['selFrame', '⛶', 'Encuadrar', ''], ['selEnh', '✨', 'IA', ''], ['selDup', '⎘', 'Duplicar', ''], ['selDel', '🗑', 'Eliminar', 'danger']].forEach(function (d) {
       const b = dkBtn(d[1], d[2], d[3]); b.dataset.a = d[0]; b.addEventListener('click', function () { $(d[0]).click(); }); ds.appendChild(b);
     });
     dockBuilt = true;
@@ -4319,6 +4701,14 @@ h1 { font-size: 1.1rem; }
     document.addEventListener('change', block, true);
   })();
 
+  const outP = new Set();
+  function beginPinch() {
+    const r = selRect(), canAdjust = state.mode === 'free' || sh.frame;
+    if (r && canAdjust && !r.poster && sh.ptrs.size === 2) {
+      const q0 = Array.from(sh.ptrs.values());
+      sh.g = { t: 'pinch', d0: ptr2(), ang0: Math.atan2(q0[1].y - q0[0].y, q0[1].x - q0[0].x), m0: { x: (q0[0].x + q0[1].x) / 2, y: (q0[0].y + q0[1].y) / 2 }, base: { x: r.x, y: r.y, w: r.w, h: r.h, size: r.size, view: r.type === 'text' ? null : Object.assign({}, ensureView(r)) }, changed: false };
+    } else sh.g = null;
+  }
   function bindSheet() {
     const cv = $('sheet');
     cv.addEventListener('pointerdown', function (e) {
@@ -4328,10 +4718,7 @@ h1 { font-size: 1.1rem; }
       const r = selRect();
       const canAdjust = state.mode === 'free' || sh.frame;
       if (sh.ptrs.size === 2) {
-        if (r && canAdjust && !r.poster) {
-          const q0 = Array.from(sh.ptrs.values());
-          sh.g = { t: 'pinch', d0: ptr2(), ang0: Math.atan2(q0[1].y - q0[0].y, q0[1].x - q0[0].x), m0: { x: (q0[0].x + q0[1].x) / 2, y: (q0[0].y + q0[1].y) / 2 }, base: { x: r.x, y: r.y, w: r.w, h: r.h, size: r.size, view: r.type === 'text' ? null : Object.assign({}, ensureView(r)) }, changed: false };
-        } else sh.g = null;
+        beginPinch();
         return;
       }
       if (sh.ptrs.size > 2) return;
@@ -4354,7 +4741,7 @@ h1 { font-size: 1.1rem; }
       syncSel(); drawSheet();
     });
 
-    cv.addEventListener('pointermove', function (e) {
+    function onMove(e) {
       if (!sh.ptrs.has(e.pointerId)) return;
       sh.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const g = sh.g, r = selRect();
@@ -4413,15 +4800,27 @@ h1 { font-size: 1.1rem; }
       }
       g.changed = true;
       drawSheet();
-    });
+    }
+    cv.addEventListener('pointermove', onMove);
 
     function up(e) {
-      sh.ptrs.delete(e.pointerId);
+      sh.ptrs.delete(e.pointerId); outP.delete(e.pointerId);
       if (sh.ptrs.size === 0) endGesture();
       else if (sh.g && sh.g.t === 'pinch') endGesture();
     }
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointercancel', up);
+    // Pellizcar en cualquier parte de la pantalla (fuera de los botones) mientras hay una foto elegida
+    document.addEventListener('pointerdown', function (e) {
+      if (!cur || e.pointerType === 'mouse' || !sh.sel || sh.multiOn || e.target === cv) return;
+      const t = e.target; if (t.closest && t.closest('#bui, #selTools, .ed, .controls, #sp, button, input, select, textarea, label, a, summary')) return;
+      if (sh.ptrs.size >= 2) return;
+      sh.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); outP.add(e.pointerId);
+      if (sh.ptrs.size === 2) beginPinch();
+    }, true);
+    document.addEventListener('pointermove', function (e) { if (outP.has(e.pointerId)) onMove(e); }, true);
+    document.addEventListener('pointerup', function (e) { if (outP.has(e.pointerId)) up(e); }, true);
+    document.addEventListener('pointercancel', function (e) { if (outP.has(e.pointerId)) up(e); }, true);
 
     cv.addEventListener('wheel', function (e) {
       const r = selRect();
@@ -4444,7 +4843,7 @@ h1 { font-size: 1.1rem; }
     });
     function grow(f) {
       const r = selRect(); if (!r) return;
-      scaleAny(r, f, cur.c.pw, cur.c.ph); hideResult(); drawSheet();
+      scaleAny(r, f, cur.c.pw, cur.c.ph); hideResult(); drawSheet(); syncSel();
     }
     $('selBigger').addEventListener('click', function () { grow(1.1); });
     $('selSmaller').addEventListener('click', function () { grow(1 / 1.1); });
@@ -4498,7 +4897,7 @@ h1 { font-size: 1.1rem; }
         const r = selRect(); if (!r || !cur || sh.multiOn) return;
         const st = parseFloat($('nudStep').value) || 1;
         if (state.mode === 'free' && !sh.frame) { grpMembers(r).forEach(function (m) { m.x += dx * st; m.y += dy * st; clampObj(m, cur.c.pw, cur.c.ph, MIN_OBJ, true); }); }
-        else if (sh.frame && r.type !== 'text') applyPan(r, dx * st, dy * st);
+        else if (r.type !== 'text') applyPan(r, dx * st, dy * st);
         else return;
         hideResult(); drawSheet();
       }
@@ -6538,6 +6937,9 @@ h1 { font-size: 1.1rem; }
   bindPx();
   bindSp();
   bindPe();
+  bindFbar();
+  bindDocClean();
+  bindHist();
   loadPrefs();
   renderThumbs();
   update();
