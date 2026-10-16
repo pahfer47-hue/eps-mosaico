@@ -101,6 +101,7 @@ p { margin: 0; }
   position: fixed; right: 12px; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); z-index: 20; width: 124px; padding: 0;
   border: 2px solid var(--accent); border-radius: 8px; background: var(--sheet); box-shadow: 0 4px 16px rgba(0,0,0,.35); cursor: pointer; overflow: hidden;
 }
+.mini { opacity: calc(var(--fop, 84) / 100); }
 .mini canvas { display: block; width: 100%; height: auto; }
 .mini span { position: absolute; left: 0; right: 0; bottom: 0; font-size: 0.6875rem; background: var(--accent); color: var(--accent-ink); padding: 1px 0; text-align: center; font-weight: 700; }
 .toast { position: fixed; left: 12px; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 60; background: var(--danger); color: #fff; padding: 12px 14px; border-radius: 10px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
@@ -391,7 +392,7 @@ h1 { font-size: 1.1rem; }
 @media (pointer: fine) { .dk-row { scrollbar-width: thin; padding-bottom: 8px; } .dk-row::-webkit-scrollbar { display: block; height: 7px; } .dk-row::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; } }
 #sp { bottom: var(--bui, 128px); z-index: 7; }
 /* ventanas flotantes: translúcidas y "fantasma" (lo vacío deja pasar el toque) */
-.controls details.group.sheet, .seltools { background: color-mix(in srgb, var(--surface) 84%, transparent); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); pointer-events: none; }
+.controls details.group.sheet, .seltools { background: color-mix(in srgb, var(--surface) calc(var(--fop, 84) * 1%), transparent); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); pointer-events: none; }
 .controls details.group.sheet :is(button, input, select, textarea, label, a, summary, .thumb, canvas, output),
 .seltools :is(button, input, select, textarea, label, a, canvas, output) { pointer-events: auto; }
 #fbar { border-top: 1px solid var(--line); background: var(--surface); }
@@ -495,7 +496,7 @@ html.selActive main { touch-action: none; }
       <details class="group" open data-dk="📄|Hoja">
         <summary>Hoja</summary>
         <div class="gbody">
-        <div class="sec" data-sec="📄|Papel">
+        <div class="sec" data-sec="📄|Tamaño de hoja">
         <div class="seg" id="paperSeg" role="group" aria-label="Tamaño de hoja">
           <button type="button" data-v="carta" aria-pressed="true">Carta</button>
           <button type="button" data-v="oficio" aria-pressed="false">Oficio</button>
@@ -505,17 +506,28 @@ html.selActive main { touch-action: none; }
           <button type="button" data-v="0" aria-pressed="true">Vertical</button>
           <button type="button" data-v="1" aria-pressed="false">Horizontal</button>
         </div>
+        <p class="hint" style="margin:14px 0 6px"><b>Cantidad de hojas</b> (se juntan en una grande, del tamaño que elegiste arriba):</p>
+        <div class="chips" id="combChips" role="group" aria-label="Cantidad de hojas">
+          <button class="chip" type="button" data-n="1">1</button>
+          <button class="chip" type="button" data-n="2">2</button>
+          <button class="chip" type="button" data-n="4">4</button>
+          <button class="chip" type="button" data-n="6">6</button>
+          <button class="chip" type="button" data-n="9">9</button>
+          <button class="chip" type="button" data-n="12">12</button>
+          <button class="chip" type="button" data-n="16">16</button>
         </div>
-        <div class="sec" data-sec="▤|Juntar hojas">
-        <p class="hint" style="margin:10px 0 4px">Juntar varias hojas en una grande (se imprime en varias hojas):</p>
-        <div class="row" style="align-items:center">
-          <label class="sl-inline">Hojas <input id="combN" type="number" min="1" max="36" step="1" value="1" inputmode="numeric" style="width:64px"></label>
-          <div class="seg" id="combSeg" role="group" aria-label="Forma">
-            <button type="button" data-v="sq" aria-pressed="true">Lo más cuadrada</button>
-            <button type="button" data-v="long" aria-pressed="false">Lo más larga</button>
-          </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <button class="btn" id="combMinus" type="button" aria-label="Una hoja menos" style="min-width:48px">−</button>
+          <input id="combN" type="number" min="1" max="36" step="1" value="1" inputmode="numeric" aria-label="Cantidad de hojas" style="width:72px;text-align:center;font:inherit;font-size:1.1rem;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)">
+          <button class="btn" id="combPlus" type="button" aria-label="Una hoja más" style="min-width:48px">+</button>
+          <span class="muted">hojas</span>
+        </div>
+        <div class="seg" id="combSeg" role="group" aria-label="Forma" style="margin-top:8px">
+          <button type="button" data-v="sq" aria-pressed="true">Lo más cuadrada</button>
+          <button type="button" data-v="long" aria-pressed="false">Lo más larga</button>
         </div>
         <p class="hint" id="combInfo"></p>
+        <div class="row"><button class="btn primary" id="combSplit" type="button">✂ Dividir esta hoja en hojas sueltas</button></div>
         </div>
         <div class="sec" data-sec="📐|Hojas grandes">
         <p class="hint" style="margin:10px 0 4px">Hojas grandes ya hechas:</p>
@@ -765,6 +777,11 @@ html.selActive main { touch-action: none; }
             <button type="button" id="more" aria-label="Más copias">+</button>
           </span>
         </div>
+        </div>
+        <div class="sec" data-sec="🪟|Ventanas flotantes">
+        <label class="check"><input type="checkbox" id="miniOn" checked> Mostrar la miniatura flotante de la hoja</label>
+        <label class="sl-inline">Transparencia de ventanas y miniatura <input type="range" id="floatOp" min="0" max="80" step="5" value="16"><output id="floatOpO">16%</output></label>
+        <p class="hint">0 % = sólido, 80 % = casi invisible. Las zonas vacías de las ventanas siempre dejan pasar el toque a la hoja.</p>
         </div>
         <div class="sec" data-sec="📐|Guías y reglas">
         <label class="check"><input type="checkbox" id="guides" checked> Líneas guía para cortar</label>
@@ -1986,12 +2003,13 @@ html.selActive main { touch-action: none; }
     press('#paperSeg button', function (b) { return b.dataset.v === state.paper; });
     press('#paperSeg2 button', function (b) { return b.dataset.v === state.paper; });
     press('#combSeg button', function (b) { return b.dataset.v === state.comb; });
+    press('#combChips button', function (b) { return +b.dataset.n === combN(); });
     (function () {
       const ok = ['carta', 'oficio', 'a4'].indexOf(state.paper) >= 0, n = combN();
-      $('combN').disabled = !ok; document.querySelectorAll('#combSeg button').forEach(function (b) { b.disabled = !ok; });
+      $('combN').disabled = !ok; document.querySelectorAll('#combSeg button, #combChips button, #combMinus, #combPlus, #combSplit').forEach(function (b) { b.disabled = !ok; });
       if (!ok) { $('combInfo').textContent = 'Para juntar hojas elige Carta, Oficio o A4 arriba.'; return; }
       const c = cfg(), g = c.comb;
-      $('combInfo').textContent = n <= 1 ? 'Una sola hoja. Sube el número para juntar varias en una grande.' : n + ' hojas ' + c.p.label + ' → ' + g.cols + ' a lo ancho × ' + g.rows + ' a lo alto (' + (c.pw / 10).toFixed(1) + ' × ' + (c.ph / 10).toFixed(1) + ' cm).' + (state.comb === 'sq' && g.cols * g.rows === n && (g.cols === 1 || g.rows === 1) && n > 3 ? ' Con ese número no se puede hacer más cuadrada; prueba 4, 6, 9, 12 o 16.' : '');
+      $('combInfo').textContent = n <= 1 ? 'Una sola hoja. Sube el número para juntar varias en una grande.' : n + ' hojas ' + c.p.label + ' juntas → ' + g.cols + ' a lo ancho × ' + g.rows + ' a lo alto (' + (c.pw / 10).toFixed(1) + ' × ' + (c.ph / 10).toFixed(1) + ' cm).' + (state.comb === 'sq' && g.cols * g.rows === n && (g.cols === 1 || g.rows === 1) && n > 3 ? ' Con ese número no se puede hacer más cuadrada; prueba 4, 6, 9, 12 o 16.' : '');
     })();
     $('customRow').hidden = state.paper !== 'custom';
     press('#landSeg button', function (b) { return (b.dataset.v === '1') === state.land; });
@@ -3907,7 +3925,7 @@ html.selActive main { touch-action: none; }
   function handlePts(r) {
     if (r.poster) return [];
     const loc = [{ k: 'se', x: r.x + r.w, y: r.y + r.h }, { k: 'e', x: r.x + r.w, y: r.y + r.h / 2 }, { k: 's', x: r.x + r.w / 2, y: r.y + r.h }];
-    const sel = smallObj(r) ? [] : (r.type === 'text' && !r.fit ? loc.slice(0, 2) : loc);
+    const sel = smallObj(r) ? [] : loc;
     sel.push({ k: 'rot', x: r.x + r.w / 2, y: r.y - 9 });
     return sel.map(function (h) { const q = rotPt(r, h.x, h.y); return { k: h.k, x: q.x, y: q.y }; });
   }
@@ -4045,7 +4063,7 @@ html.selActive main { touch-action: none; }
 
   function ptMM(e) {
     const b = $('sheet').getBoundingClientRect();
-    return { x: (e.clientX - b.left) / b.width * cur.c.pw, y: (e.clientY - b.top) / b.height * cur.c.ph, mpp: cur.c.pw / b.width };
+    return { x: (e.clientX - b.left) / b.width * cur.c.pw, y: (e.clientY - b.top) / b.height * cur.c.ph, mpp: cur.c.pw / b.width, touch: e.pointerType !== 'mouse' };
   }
   function hitIdx(p) {
     const rs = pageRects();
@@ -4056,7 +4074,7 @@ html.selActive main { touch-action: none; }
     return -1;
   }
   function hitHandle(r, p) {
-    const rad = 12 * p.mpp, pts = handlePts(r);
+    const rad = (p.touch ? 22 : 12) * p.mpp, pts = handlePts(r);
     for (let i = 0; i < pts.length; i++) if (Math.hypot(p.x - pts[i].x, p.y - pts[i].y) <= rad) return pts[i].k;
     return null;
   }
@@ -4077,6 +4095,7 @@ html.selActive main { touch-action: none; }
     const g0 = sh.g, ch = g0 && g0.changed;
     if (ch) hideResult();
     sh.g = null;
+    if (g0 && g0.reflow) { update(); syncSel(); return; }
     if (g0 && !ch && g0.wasSel && state.mode === 'free' && !sh.frame && sh.sel) {
       const rs = pageRects();
       for (let q = sh.sel.idx - 1; q >= 0; q--) {
@@ -4208,7 +4227,7 @@ html.selActive main { touch-action: none; }
     if (g.id === 'aiGroup') renderAi();
     g.open = true; dkG = g;
     const secs = secList(g);
-    if (secs.length >= 2) { g.classList.add('multi'); buildSubbar(g, secs); if (secIdx != null) openSec(g, secs, secIdx); }
+    if (secs.length >= 2) { g.classList.add('multi'); buildSubbar(g, secs); if (secIdx != null) openSec(g, secs, secIdx); else if ((g.dataset.dk || '').indexOf('|Hoja') > 0) openSec(g, secs, 0); }
     else { g.classList.add('sheet'); g.scrollTop = 0; }
     dockMark();
   }
@@ -4234,8 +4253,7 @@ html.selActive main { touch-action: none; }
     if (!dockBuilt) return;
     const selMode = !!sh.sel || sh.multiOn;
     $('dockMain').hidden = selMode; $('dockSel').hidden = !selMode;
-    if (selMode) { if (dkG) closeSheet(); }
-    else if (dkP) closePanel();
+    if (!selMode && dkP) closePanel();
     if (FB.open) { fWho(); fShowValue(); }
     DK_SEL.forEach(function (d) {
       const pn = $('sp_' + d[0]), b = document.querySelector('#dockSel .dk[data-p="' + d[0] + '"]');
@@ -4602,7 +4620,6 @@ html.selActive main { touch-action: none; }
     dockBuilt = true;
     document.querySelectorAll('#aiSeg button').forEach(function (b) { b.addEventListener('click', function () { aiTab = b.dataset.v; renderAi(); }); });
     bindDockScroll();
-    $('sheet').addEventListener('pointerdown', function () { if (dkG) closeSheet(); }, true);
     window.addEventListener('resize', function () { dockMark(); });
     if (window.ResizeObserver) new ResizeObserver(function () { dockMark(); drawSheet(); }).observe($('bui'));
     dockSync(); dockMark();
@@ -4750,7 +4767,11 @@ html.selActive main { touch-action: none; }
       if (g.t === 'pinch') {
         if (sh.ptrs.size < 2) return;
         const f = ptr2() / g.d0;
-        if (state.mode === 'free' && !sh.frame) {
+        if (state.mode === 'free' && !sh.frame && r.type === 'text' && !r.fit && !r.fa && r.grp != null && !r.poster) {
+          const nw = Math.min(pw, g.base.w * f);
+          reflowText(r, { size: g.base.size * f, w: nw, x: g.base.x + (g.base.w - nw) / 2, y: g.base.y });
+          g.reflow = true;
+        } else if (state.mode === 'free' && !sh.frame) {
           r.x = g.base.x; r.y = g.base.y; r.w = g.base.w; r.h = g.base.h;
           if (r.type === 'text') r.size = g.base.size;
           scaleAny(r, f, pw, ph);
@@ -4784,6 +4805,10 @@ html.selActive main { touch-action: none; }
       } else if (g.t === 'resize') {
         let dx = p.x - g.p0.x, dy = p.y - g.p0.y;
         if (r.fa) { const a = r.fa * Math.PI / 180, co = Math.cos(a), si = Math.sin(a), ddx = dx, ddy = dy; dx = ddx * co + ddy * si; dy = -ddx * si + ddy * co; }
+        if (r.type === 'text' && !r.fit && !r.fa && r.grp != null && !r.poster) {
+          reflowText(r, { w: (g.k === 'e' || g.k === 'se') ? g.s.w + dx : g.s.w, capH: (g.k === 's' || g.k === 'se') ? Math.max(1, g.s.h + dy) : null });
+          g.changed = true; g.reflow = true; drawSheet(); return;
+        }
         if (r.type === 'text' && !r.fit) {
           r.w = cl(g.s.w + dx, 10, 3 * pw); layoutOne(r); if (r.fa) reanchor(r, g.tl); clampObj(r, pw, ph, MIN_OBJ, true);
           g.changed = true; drawSheet(); return;
@@ -5056,7 +5081,8 @@ html.selActive main { touch-action: none; }
     const objs = [];
     let i = 0, cap = Math.min(capFirst, capFull);
     while (i < L.length || !objs.length) {
-      const part = L.slice(i, i + cap);
+      const ck = spec.caps && spec.caps[objs.length] != null ? spec.caps[objs.length] : cap;
+      const part = L.slice(i, i + ck);
       const o = Object.assign({}, styleOf(spec), {
         type: 'text', id: objs.length === 0 && firstId ? firstId : freeSeq++, grp: spec.grp, gtext: spec.gtext,
         x: spec.x, y: objs.length === 0 ? y : c.margin, w: spec.w, view: null, rot: false, fit: false,
@@ -5064,10 +5090,27 @@ html.selActive main { touch-action: none; }
       });
       o.h = blockH(o, part.length);
       objs.push(o);
-      i += cap; cap = capFull;
+      i += ck; cap = capFull;
       if (objs.length > 60) break;
     }
     return objs;
+  }
+
+  // Cambia ancho / tamaño de letra / alto de UN cuadro y vuelve a repartir todo el texto
+  // (si lo estiras hacia abajo, regresan las líneas que se habían ido a la hoja siguiente).
+  function reflowText(r, o) {
+    const mem = groupMembers(r.grp); if (!mem.length || r.poster || r.fit) return null;
+    const first = mem[0].o, p0 = mem[0].pi, myIdx = Math.max(0, mem.findIndex(function (m) { return m.o === r; })), c = cur.c;
+    const spec = Object.assign(styleOf(first), o.size != null ? { size: cl(o.size, 6, 600) } : {}, { gtext: first.gtext, grp: r.grp, x: o.x != null ? o.x : first.x, w: o.w != null ? cl(o.w, 10, 3 * c.pw) : first.w, caps: {} });
+    if (o.capH != null) spec.caps[myIdx] = Math.max(1, Math.min(400, Math.floor((o.capH - 2 * padMM(spec)) / (spec.size * MM_PT * lhOf(spec)) + 1e-6)));
+    free.pages = free.pages.map(function (pg) { return pg.filter(function (q) { return !(q.type === 'text' && q.grp === r.grp); }); });
+    const objs = flowText(spec, o.y != null && myIdx === 0 ? o.y : first.y, c, first.id);
+    placeObjs(objs, p0);
+    free.pages = free.pages.filter(function (pg) { return pg.length > 0; });
+    const target = objs[Math.min(myIdx, objs.length - 1)], loc = locate(target);
+    if (loc) { sh.sel = { page: loc.page, idx: loc.idx }; state.page = loc.page; sh.loaded = target.id; }
+    cur.L = getLayout(cur.c, items());
+    return target;
   }
 
   function placeObjs(objs, p0) {
@@ -5527,7 +5570,7 @@ html.selActive main { touch-action: none; }
   function syncMini() {
     const m = $('mini');
     const has = !!cur && cur.L.pages.some(function (p) { return p.rects.length > 0; });
-    const show = !sheetVisible && has && !ed.open && !dc.open;
+    const show = !sheetVisible && has && !ed.open && !dc.open && (!$('miniOn') || $('miniOn').checked);
     m.hidden = !show;
     if (!show) return;
     const src = $('sheet'), cv = $('miniCv');
@@ -5536,7 +5579,17 @@ html.selActive main { touch-action: none; }
     cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
     $('miniLbl').textContent = 'Hoja ' + (state.page + 1) + ' de ' + cur.L.pages.length;
   }
+  function applyFloatPrefs() {
+    const op = Math.max(0, Math.min(80, parseInt($('floatOp').value, 10) || 0));
+    document.documentElement.style.setProperty('--fop', String(Math.max(20, 100 - op)));
+    $('floatOpO').textContent = op + '%';
+    try { localStorage.setItem('mosaico.float', JSON.stringify({ on: $('miniOn').checked, op: op })); } catch (e) { /* sin almacenamiento */ }
+    syncMini();
+  }
   function bindMini() {
+    try { const q = JSON.parse(localStorage.getItem('mosaico.float') || 'null'); if (q) { $('miniOn').checked = q.on !== false; $('floatOp').value = String(q.op != null ? q.op : 16); } } catch (e) { /* ok */ }
+    $('miniOn').addEventListener('change', applyFloatPrefs); $('floatOp').addEventListener('input', applyFloatPrefs);
+    applyFloatPrefs();
     $('mini').addEventListener('click', function () { $('sheet').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(function (es) {
@@ -6897,6 +6950,11 @@ html.selActive main { touch-action: none; }
   bindSeg('#paperSeg2 button', function (b) { state.paper = b.dataset.v; });
   bindSeg('#combSeg button', function (b) { state.comb = b.dataset.v; });
   $('combN').addEventListener('input', function () { hideResult(); state.page = 0; update(); });
+  function setComb(n) { $('combN').value = String(Math.max(1, Math.min(36, n))); $('combN').dispatchEvent(new Event('input', { bubbles: true })); }
+  document.querySelectorAll('#combChips button').forEach(function (b) { b.addEventListener('click', function () { setComb(+b.dataset.n); }); });
+  $('combMinus').addEventListener('click', function () { setComb(combN() - 1); });
+  $('combPlus').addEventListener('click', function () { setComb(combN() + 1); });
+  $('combSplit').addEventListener('click', function () { closeSheet(); $('spOpen').click(); setTimeout(function () { $('spUse').click(); }, 120); });
   function syncCustom() {
     const w = Math.max(5, Math.min(120, parseNum($('pcW').value, 30))), h = Math.max(5, Math.min(200, parseNum($('pcH').value, 45)));
     PAPERS.custom.w = Math.min(w, h) * 10; PAPERS.custom.h = Math.max(w, h) * 10;
