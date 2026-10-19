@@ -382,6 +382,11 @@ h1 { font-size: 1.1rem; }
 .seltools.show:not([hidden]) { display: block; }
 .spanel { display: none; flex-wrap: wrap; gap: 8px; align-items: center; }
 .spanel.on { display: flex; }
+#sp_mov::before { display: none; }
+#sp_mov { gap: 6px; }
+#sp_mov .nudge { flex: 1 1 100%; flex-wrap: nowrap; justify-content: center; }
+.seltools:has(#sp_mov.on) { padding: 8px 12px 10px; }
+.spanel .sc { min-height: 34px; padding: 6px 11px; }
 .spanel::before { content: attr(data-title); flex: 1 1 100%; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .selact { display: none; }
 #dock { position: relative; }
@@ -801,15 +806,14 @@ html.selActive main { touch-action: none; }
         <div class="seltools" id="selTools" hidden>
           <div class="spanel" id="sp_mov" data-title="Mover">
 <div class="nudge" id="selPad" hidden>
-            <span class="lbl">Mover:</span>
             <button class="btn" id="nudL" type="button" aria-label="Izquierda">◀</button>
             <button class="btn" id="nudU" type="button" aria-label="Arriba">▲</button>
             <button class="btn" id="nudD" type="button" aria-label="Abajo">▼</button>
             <button class="btn" id="nudR" type="button" aria-label="Derecha">▶</button>
             <select id="nudStep" aria-label="Paso"><option value="0.5">0,5 mm</option><option value="1" selected>1 mm</option><option value="2">2 mm</option><option value="5">5 mm</option><option value="10">10 mm</option></select>
           </div>
-            <button class="btn" id="selPrevPg" type="button">← A la hoja anterior</button>
-            <button class="btn" id="selNextPg" type="button">A la hoja siguiente →</button>
+            <button class="sc" id="selPrevPg" type="button">← Hoja anterior</button>
+            <button class="sc" id="selNextPg" type="button">Hoja siguiente →</button>
           </div>
           <div class="spanel" id="sp_siz" data-title="Tamaño">
             <label class="sl-inline" id="selSizeRow">Tamaño <input type="range" id="selSize" min="5" max="400" step="1" value="50"><output id="selSizeO">5 cm</output></label>
@@ -824,14 +828,16 @@ html.selActive main { touch-action: none; }
             <label class="sl-inline" id="selFaRow">Girar cuadro <input type="range" id="selFa" min="-180" max="180" step="0.5" value="0"><output id="selFaO">0°</output></label>
           </div>
           <div class="spanel" id="sp_edt" data-title="Editar">
-            <button class="btn" id="selEdit" type="button">Editar foto</button>
-            <button class="btn" id="selEnh" type="button">✨ Mejorar con IA</button>
-            <button class="btn" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
-            <button class="btn" id="selReset" type="button">Quitar encuadre</button>
+            <button class="sc" id="selEdit" type="button">Editar foto</button>
+            <button class="sc" id="selEnh" type="button">✨ IA</button>
+            <button class="sc" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
+            <button class="sc" id="selReset" type="button">Quitar encuadre</button>
+            <button class="sc" id="selFill" type="button">⤢ Rellenar hoja</button>
+            <button class="sc" id="selStretch" type="button" aria-pressed="false">Estirar imagen</button>
             <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
             <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
-            <button class="btn" id="selZm" type="button">－ Zoom</button>
-            <button class="btn" id="selZp" type="button">＋ Zoom</button>
+            <button class="sc" id="selZm" type="button">－ Zoom</button>
+            <button class="sc" id="selZp" type="button">＋ Zoom</button>
           </div>
           <div class="spanel" id="sp_opa" data-title="Transparencia">
             <label class="sl-inline">Transparencia <input type="range" id="selAlpha" min="0" max="90" value="0"><output id="selAlphaO">0%</output></label>
@@ -1659,6 +1665,7 @@ html.selActive main { touch-action: none; }
 
   function drawFit(ctx, src, x, y, w, h, mode, view) {
     const d = dims(src);
+    if (view && view.st) { ctx.drawImage(src, x, y, w, h); return; }
     if (view && (view.a || view.z < 1)) {
       const g = viewGeom(d.w, d.h, w, h, view);
       ctx.save();
@@ -1734,6 +1741,18 @@ html.selActive main { touch-action: none; }
       free.pages = free.pages.filter(function (p) { return p.length > 0; });
       free.copiesAt = state.copies;
     }
+    if (free.dim && (Math.abs(free.dim.pw - c.pw) > 0.01 || Math.abs(free.dim.ph - c.ph) > 0.01)) {
+      const sx = c.pw / free.dim.pw, sy = c.ph / free.dim.ph, k = Math.min(sx, sy);
+      free.pages.forEach(function (p) {
+        p.forEach(function (o) {
+          const cx = (o.x + o.w / 2) * sx, cy = (o.y + o.h / 2) * sy;
+          if (o.type === 'text' && !o.fit) { o.size = cl(o.size * k, 3, 600); o.w = Math.max(MIN_OBJ, o.w * k); layoutOne(o); }
+          else { o.w = Math.max(MIN_OBJ, o.w * k); o.h = Math.max(MIN_OBJ, o.h * k); }
+          o.x = cx - o.w / 2; o.y = cy - o.h / 2;
+        });
+      });
+    }
+    free.dim = { pw: c.pw, ph: c.ph };
     placeNew(c, add).forEach(function (p) { free.pages.push(p); });
     free.pages.forEach(function (p) { p.forEach(function (o) { clampObj(o, c.pw, c.ph, MIN_OBJ, true); }); });
   }
@@ -4015,7 +4034,8 @@ html.selActive main { touch-action: none; }
     $('selFrame').setAttribute('aria-pressed', String(sh.frame));
     ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = !isFree; });
     const isTxt = !!r && r.type === 'text';
-    $('selFrame').hidden = isTxt; $('selReset').hidden = isTxt;
+    $('selFrame').hidden = isTxt; $('selReset').hidden = isTxt; $('selStretch').hidden = isTxt; $('selFill').hidden = isTxt || !isFree;
+    { const hv = r && !isTxt ? holder(r).view : null; $('selStretch').setAttribute('aria-pressed', String(!!(hv && hv.st))); }
     if (r && r.poster) ['selSmaller', 'selBigger', 'selDup', 'selPrevPg', 'selNextPg', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = true; });
     if (r) { const al = Math.round((1 - opacityOf(r)) * 100); $('selAlpha').value = String(al); $('selAlphaO').textContent = al + '%'; }
     $('selEdit').textContent = isTxt ? 'Editar texto' : 'Editar foto';
@@ -4724,7 +4744,28 @@ html.selActive main { touch-action: none; }
     if (r && canAdjust && !r.poster && sh.ptrs.size === 2) {
       const q0 = Array.from(sh.ptrs.values());
       sh.g = { t: 'pinch', d0: ptr2(), ang0: Math.atan2(q0[1].y - q0[0].y, q0[1].x - q0[0].x), m0: { x: (q0[0].x + q0[1].x) / 2, y: (q0[0].y + q0[1].y) / 2 }, base: { x: r.x, y: r.y, w: r.w, h: r.h, size: r.size, view: r.type === 'text' ? null : Object.assign({}, ensureView(r)) }, changed: false };
+    } else if (!r && sh.ptrs.size === 2 && !sh.multiOn) {
+      const q0 = Array.from(sh.ptrs.values());
+      sh.g = { t: 'szoom', d0: ptr2(), m0: { x: (q0[0].x + q0[1].x) / 2, y: (q0[0].y + q0[1].y) / 2 }, z0: SZ.z, tx0: SZ.tx, ty0: SZ.ty, changed: false };
     } else sh.g = null;
+  }
+  const SZ = { z: 1, tx: 0, ty: 0 };
+  function szApply() {
+    const cv = $('sheet'), w = cv.offsetWidth, h = cv.offsetHeight;
+    SZ.z = Math.min(5, Math.max(1, SZ.z));
+    const mx = (SZ.z - 1) * w / 2, my = (SZ.z - 1) * h / 2;
+    SZ.tx = Math.min(mx, Math.max(-mx, SZ.tx)); SZ.ty = Math.min(my, Math.max(-my, SZ.ty));
+    cv.style.transform = SZ.z > 1 ? 'translate(' + SZ.tx + 'px,' + SZ.ty + 'px) scale(' + SZ.z + ')' : '';
+    cv.style.touchAction = SZ.z > 1 ? 'none' : '';
+    const wrap = cv.parentNode; wrap.style.overflow = SZ.z > 1 ? 'hidden' : '';
+    let b = $('szReset');
+    if (!b) {
+      b = document.createElement('button'); b.id = 'szReset'; b.type = 'button'; b.className = 'sc'; b.textContent = '🔍 Vista 100%';
+      b.style.cssText = 'position:absolute;top:8px;right:8px;z-index:2';
+      b.addEventListener('click', function () { SZ.z = 1; SZ.tx = 0; SZ.ty = 0; szApply(); });
+      wrap.style.position = 'relative'; wrap.appendChild(b);
+    }
+    b.hidden = SZ.z <= 1;
   }
   function bindSheet() {
     const cv = $('sheet');
@@ -4735,6 +4776,8 @@ html.selActive main { touch-action: none; }
       const r = selRect();
       const canAdjust = state.mode === 'free' || sh.frame;
       if (sh.ptrs.size === 2) {
+        sh.pendClear = false;
+        if (sh.g && !sh.g.wasSel && !sh.g.changed && sh.g.t !== 'resize' && sh.g.t !== 'rotate') { sh.g = null; clearSel(); drawSheet(); }
         beginPinch();
         return;
       }
@@ -4750,7 +4793,7 @@ html.selActive main { touch-action: none; }
         if (hk) { sh.g = { t: hk === 'rot' ? 'rotate' : 'resize', k: hk, p0: p, s: { x: r.x, y: r.y, w: r.w, h: r.h }, tl: rotPt(r, r.x, r.y), changed: false, mem: r.gid ? snapGroup(r) : null }; e.preventDefault(); return; }
       }
       const i = hitIdx(p);
-      if (i < 0) { sh.g = null; if (sh.sel) { clearSel(); drawSheet(); } return; }
+      if (i < 0) { sh.g = null; sh.pendClear = !!sh.sel; return; }
       const wasSelBefore = !!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i);
       if (!(sh.sel && sh.sel.page === state.page && sh.sel.idx === i)) { selectIdx(i); if (state.mode !== 'free' && !(pageRects()[i] || {}).poster) sh.frame = true; }
       const r2 = selRect();
@@ -4762,6 +4805,13 @@ html.selActive main { touch-action: none; }
       if (!sh.ptrs.has(e.pointerId)) return;
       sh.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const g = sh.g, r = selRect();
+      if (g && g.t === 'szoom') {
+        if (sh.ptrs.size < 2) return;
+        const q = Array.from(sh.ptrs.values());
+        SZ.z = g.z0 * ptr2() / g.d0;
+        SZ.tx = g.tx0 + ((q[0].x + q[1].x) / 2 - g.m0.x); SZ.ty = g.ty0 + ((q[0].y + q[1].y) / 2 - g.m0.y);
+        szApply(); return;
+      }
       if (!g || !r || !cur) return;
       const pw = cur.c.pw, ph = cur.c.ph;
       if (g.t === 'pinch') {
@@ -4830,6 +4880,7 @@ html.selActive main { touch-action: none; }
 
     function up(e) {
       sh.ptrs.delete(e.pointerId); outP.delete(e.pointerId);
+      if (sh.pendClear && sh.ptrs.size === 0) { sh.pendClear = false; if (e.type === 'pointerup' && sh.sel) { clearSel(); drawSheet(); } }
       if (sh.ptrs.size === 0) endGesture();
       else if (sh.g && sh.g.t === 'pinch') endGesture();
     }
@@ -4860,6 +4911,17 @@ html.selActive main { touch-action: none; }
     $('selFrame').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
       sh.frame = !sh.frame; syncSel(); drawSheet();
+    });
+    $('selFill').addEventListener('click', function () {
+      const r = selRect(); if (!r || r.type === 'text' || state.mode !== 'free') return;
+      const pw = cur.c.pw, ph = cur.c.ph;
+      r.rot = false; r.fa = 0; r.x = 0; r.y = 0; r.w = pw; r.h = ph;
+      hideResult(); drawSheet(); syncSel();
+    });
+    $('selStretch').addEventListener('click', function () {
+      const r = selRect(); if (!r || r.type === 'text') return;
+      const v = ensureView(r); v.st = !v.st;
+      hideResult(); drawSheet(); syncSel();
     });
     $('selReset').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
