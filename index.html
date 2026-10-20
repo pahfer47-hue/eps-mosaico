@@ -559,6 +559,7 @@ html.selActive main { touch-action: none; }
         <div class="sec" data-sec="▦|Modo">
         <div class="seg" id="modeSeg" role="group" aria-label="Tipo de acomodo">
           <button type="button" data-v="grid" aria-pressed="true">Tamaño fijo</button>
+          <button type="button" data-v="count" aria-pressed="false">Por hoja</button>
           <button type="button" data-v="auto" aria-pressed="false">Automático</button>
           <button type="button" data-v="free" aria-pressed="false">Libre</button>
           <button type="button" data-v="dni" aria-pressed="false">DNI</button>
@@ -597,6 +598,24 @@ html.selActive main { touch-action: none; }
             <button type="button" data-v="turn" aria-pressed="false">Girar y llenar</button>
           </div>
           <p class="hint" id="fitHint"></p>
+        </div>
+
+        <div id="countPanel" class="sub" hidden>
+          <div class="fields">
+            <div class="field"><label for="cntN">Imágenes en cada hoja</label><input id="cntN" type="number" min="1" max="60" step="1" value="5" inputmode="numeric" autocomplete="off"></div>
+          </div>
+          <div class="chips" id="cchips" role="group" aria-label="Cantidades comunes">
+            <button class="chip" type="button" data-v="1">1</button>
+            <button class="chip" type="button" data-v="2">2</button>
+            <button class="chip" type="button" data-v="3">3</button>
+            <button class="chip" type="button" data-v="4">4</button>
+            <button class="chip" type="button" data-v="6">6</button>
+            <button class="chip" type="button" data-v="8">8</button>
+            <button class="chip" type="button" data-v="9">9</button>
+            <button class="chip" type="button" data-v="12">12</button>
+          </div>
+          <label class="sl-inline" style="margin-top:12px">Tamaño <input type="range" id="cntS" min="30" max="100" step="1" value="100"><output id="cntSO">100%</output></label>
+          <p class="hint">Cada hoja lleva esa cantidad de fotos y se agrandan solas para llenar la hoja (100 %). Baja el tamaño si las quieres más chicas. Los márgenes y la separación se cambian en «Espacios».</p>
         </div>
 
         <div id="autoPanel" class="sub" hidden>
@@ -834,6 +853,7 @@ html.selActive main { touch-action: none; }
             <button class="sc" id="selReset" type="button">Quitar encuadre</button>
             <button class="sc" id="selFill" type="button">⤢ Rellenar hoja</button>
             <button class="sc" id="selStretch" type="button" aria-pressed="false">Estirar imagen</button>
+            <button class="sc" id="selDl" type="button">⬇ Descargar foto</button>
             <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
             <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
             <button class="sc" id="selZm" type="button">－ Zoom</button>
@@ -853,6 +873,7 @@ html.selActive main { touch-action: none; }
             <button class="btn" id="selMulti" type="button" aria-pressed="false">Varias</button>
             <button class="btn" id="selGroup" type="button">Agrupar elegidas</button>
             <button class="btn" id="selUngroup" type="button">Desagrupar</button>
+            <button class="btn" id="selDlM" type="button">⬇ Descargar unión</button>
           </div>
           <div class="selact" id="selAct">
             <button class="btn" id="selDup" type="button">Duplicar</button>
@@ -878,6 +899,7 @@ html.selActive main { touch-action: none; }
           <select id="imgFmt" aria-label="Formato de imagen"><option value="png">PNG</option><option value="jpg">JPG</option></select>
           <select id="imgDpi" aria-label="Calidad de la imagen"><option value="orig" selected>Original (máxima calidad de tus fotos)</option><option value="300">Un poco reducida (300 dpi)</option><option value="200">Reducida (200 dpi)</option><option value="150">Liviana (150 dpi)</option></select>
           <button class="btn" id="imgSave" type="button">Guardar como imagen</button>
+          <label class="check" style="flex:1 1 100%"><input type="checkbox" id="imgTrim"> Recortar el blanco de alrededor (queda solo lo que tiene fotos)</label>
         </div>
       </div>
     </section>
@@ -1410,7 +1432,39 @@ html.selActive main { touch-action: none; }
         }
         pages.push({ rects: rects, empty: empty });
       }
-    } else if (c.as > 0 && list.length) {
+    } else if (c.mode === 'count') {
+      const N = Math.max(1, c.cn | 0), sc = c.cs || 1;
+      const ars = list.map(function (f) { return f.ar; }).filter(function (a) { return a > 0; }).sort(function (a, b) { return a - b; });
+      const med = ars.length ? ars[Math.floor(ars.length / 2)] : 1;
+      const aw = c.pw - 2 * c.margin, ah = c.ph - 2 * c.margin;
+      const fitA = function (cw, ch, ar) { const w = Math.min(cw, ch * ar); return w * w / ar; };
+      let best = null;
+      for (let cl = 1; cl <= N; cl++) {
+        const rw = Math.ceil(N / cl), cw = (aw - (cl - 1) * c.gap) / cl, ch = (ah - (rw - 1) * c.gap) / rw;
+        if (!(cw > 0 && ch > 0)) continue;
+        const a = Math.max(fitA(cw, ch, med), fitA(cw, ch, 1 / med)), slots = cl * rw;
+        if (!best || a > best.a * 1.0001 || (a > best.a * 0.9999 && slots < best.slots)) best = { cols: cl, rows: rw, cw: cw, ch: ch, a: a, slots: slots };
+      }
+      if (best) {
+        cols = best.cols; rows = best.rows; per = N;
+        const gw = cols * best.cw + (cols - 1) * c.gap, gh = rows * best.ch + (rows - 1) * c.gap;
+        const ox = (c.pw - gw) / 2, oy = (c.ph - gh) / 2;
+        const np = pageCount(list.length, N);
+        for (let p = 0; p < np; p++) {
+          const rects = [];
+          for (let i = 0; i < N; i++) {
+            const f = list[p * N + i]; if (!f) break;
+            const rw = Math.floor(i / cols), k = Math.min(cols, N - rw * cols), col = i % cols;
+            const sx = ox + (cols - k) * (best.cw + c.gap) / 2 + col * (best.cw + c.gap), sy = oy + rw * (best.ch + c.gap);
+            const ar = f.ar > 0 ? f.ar : 1, mw = best.cw * sc, mh = best.ch * sc;
+            const w1 = Math.min(mw, mh * ar), h1 = w1 / ar, w2 = Math.min(mw, mh / ar), h2 = w2 * ar;
+            const rot = w2 * h2 > w1 * h1 * 1.02, w = rot ? w2 : w1, h = rot ? h2 : h1;
+            rects.push({ f: f, x: sx + (best.cw - w) / 2, y: sy + (best.ch - h) / 2, w: w, h: h, rot: rot });
+          }
+          pages.push({ rects: rects, empty: [] });
+        }
+      }
+    } else if (c.mode === 'auto' && c.as > 0 && list.length) {
       const sizes = list.map(function (f) { return autoSize(f.ar, c.by, c.as); });
       const res = packPages(sizes, c.pw - 2 * c.margin, c.ph - 2 * c.margin, c.gap, c.rotate);
       unplaced = res.unplaced.length;
@@ -1811,6 +1865,7 @@ html.selActive main { touch-action: none; }
       margin: Math.max(0, parseNum($('margin').value, 0) * 10),
       gap: Math.max(0, parseNum($('gap').value, 0) * 10),
       guides: $('guides').checked,
+      cn: Math.max(1, Math.min(60, parseInt($('cntN').value, 10) || 1)), cs: Math.max(0.3, Math.min(1, (parseInt($('cntS').value, 10) || 100) / 100)),
       turn: state.fit === 'turn',
       dw: state.dni === 'b' ? 90 : 85, dh: state.dni === 'b' ? 60 : 55,
       dtop: Math.max(0, parseNum($('dniTop').value, 3.5) * 10), dgap: Math.max(0, parseNum($('dniGap').value, 5) * 10)
@@ -1992,7 +2047,7 @@ html.selActive main { touch-action: none; }
       const p = JSON.parse(raw);
       if (PAPERS[p.paper]) state.paper = p.paper;
       state.land = !!p.land;
-      state.mode = p.mode === 'auto' || p.mode === 'free' || p.mode === 'dni' ? p.mode : 'grid';
+      state.mode = p.mode === 'auto' || p.mode === 'free' || p.mode === 'dni' || p.mode === 'count' ? p.mode : 'grid';
       state.dni = p.dni === 'b' ? 'b' : 'a';
       if (p.dniTop != null) $('dniTop').value = p.dniTop;
       if (p.dniGap != null) $('dniGap').value = p.dniGap;
@@ -2011,6 +2066,7 @@ html.selActive main { touch-action: none; }
 
   const HINTS = {
     grid: 'Todas las fotos con el mismo tamaño, en cuadrícula.',
+    count: 'Tú eliges cuántas fotos van en cada hoja (por ejemplo 5) y se acomodan y agrandan solas para llenarla.',
     auto: 'Cada foto conserva su forma (cuadrada, alargada, horizontal o vertical) y se acomodan para que entren las máximas por hoja.',
     free: 'Cada foto se mueve y se amplía con el dedo. Toca una foto para elegirla; arrástrala para moverla y usa el círculo de la esquina o dos dedos para cambiar su tamaño.',
     dni: 'Anverso y reverso del documento en una sola hoja: el anverso arriba, centrado, y el reverso abajo. Elige las fotos en orden: anverso, reverso.',
@@ -2042,9 +2098,12 @@ html.selActive main { touch-action: none; }
     const a = parseNum($('as').value, -1);
     press('#achips .chip', function (b) { return parseFloat(b.dataset.v) === a; });
     $('gridPanel').hidden = state.mode !== 'grid';
-    $('autoPanel').hidden = state.mode === 'grid' || state.mode === 'dni';
+    $('countPanel').hidden = state.mode !== 'count';
+    $('cntSO').textContent = $('cntS').value + '%';
+    { const cn = parseInt($('cntN').value, 10); press('#cchips .chip', function (b) { return parseInt(b.dataset.v, 10) === cn; }); }
+    $('autoPanel').hidden = state.mode !== 'auto' && state.mode !== 'free';
     $('dniPanel').hidden = state.mode !== 'dni';
-    $('rotRow').hidden = state.mode === 'free' || state.mode === 'dni';
+    $('rotRow').hidden = state.mode !== 'auto';
     $('freeRow').hidden = state.mode !== 'free';
     $('modeHint').textContent = HINTS[state.mode];
     $('fitHint').textContent = HINTS.fit;
@@ -2078,6 +2137,10 @@ html.selActive main { touch-action: none; }
         $('sumMain').textContent = n === 0 ? 'Sin imágenes' : n + (n === 1 ? ' foto' : ' fotos') + ' · ' + pages + (pages === 1 ? ' hoja' : ' hojas');
         $('sumSub').textContent = L.per + ' por hoja, ' + (c.tw / 10) + ' × ' + (c.th / 10) + ' cm';
       }
+    } else if (c.mode === 'count') {
+      $('gridInfo').textContent = 'Por hoja · ' + c.cn + ' por hoja · ' + sizeTxt;
+      $('sumMain').textContent = n === 0 ? 'Sin imágenes' : n + (n === 1 ? ' foto' : ' fotos') + ' · ' + pages + (pages === 1 ? ' hoja' : ' hojas');
+      $('sumSub').textContent = n === 0 ? '' : c.cn + ' por hoja' + (n % c.cn ? ' (la última hoja lleva ' + (n % c.cn) + ')' : '');
     } else if (c.mode === 'dni') {
       $('gridInfo').textContent = 'DNI ' + (c.dw / 10) + ' × ' + (c.dh / 10) + ' cm · ' + sizeTxt;
       if (!L.dniFits) {
@@ -3723,7 +3786,7 @@ html.selActive main { touch-action: none; }
       }
       const blob = doc.output('blob');
       state.blob = blob;
-      const sz = c.mode === 'grid' ? (c.tw / 10) + 'x' + (c.th / 10) + 'cm' : c.mode === 'dni' ? 'dni-' + (c.dw / 10) + 'x' + (c.dh / 10) + 'cm' : c.mode === 'free' ? 'libre' : 'auto-' + (c.as / 10) + 'cm';
+      const sz = c.mode === 'grid' ? (c.tw / 10) + 'x' + (c.th / 10) + 'cm' : c.mode === 'dni' ? 'dni-' + (c.dw / 10) + 'x' + (c.dh / 10) + 'cm' : c.mode === 'free' ? 'libre' : c.mode === 'count' ? 'por-hoja-' + c.cn : 'auto-' + (c.as / 10) + 'cm';
       state.name = 'mosaico-' + sz + '-' + state.paper + (c.comb && c.comb.cols * c.comb.rows > 1 ? '-' + c.comb.cols * c.comb.rows + 'hojas' : '') + '.pdf';
       state.url = URL.createObjectURL(blob);
       $('pdfName').value = state.name.replace(/\.pdf$/i, '');
@@ -3891,6 +3954,74 @@ html.selActive main { touch-action: none; }
   }
   function tileModeOf(c) { return c.mode === 'grid' ? (state.fit === 'turn' ? 'fill' : state.fit) : c.mode === 'dni' ? 'fill' : 'fit'; }
 
+  // Quita el borde en blanco (o transparente) de un canvas. Lee por franjas para no gastar memoria.
+  function trimCanvas(cv) {
+    const w = cv.width, h = cv.height, cx = cv.getContext('2d');
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    const band = Math.max(1, Math.floor(2e6 / w));
+    for (let y = 0; y < h; y += band) {
+      const bh = Math.min(band, h - y), d = cx.getImageData(0, y, w, bh).data;
+      for (let j = 0; j < bh; j++) {
+        let o = j * w * 4;
+        for (let i = 0; i < w; i++, o += 4) {
+          if (d[o + 3] > 10 && (d[o] < 244 || d[o + 1] < 244 || d[o + 2] < 244)) {
+            if (i < x0) x0 = i; if (i > x1) x1 = i;
+            if (y + j < y0) y0 = y + j; if (y + j > y1) y1 = y + j;
+          }
+        }
+      }
+    }
+    if (x1 < 0 || (x0 === 0 && y0 === 0 && x1 === w - 1 && y1 === h - 1)) return cv;
+    const out = document.createElement('canvas'); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1;
+    out.getContext('2d').drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+    cv.width = 1; cv.height = 1;
+    return out;
+  }
+
+  // Descarga unas fotos (o una sola) como una imagen recortada a su contorno, en la mejor calidad posible.
+  async function exportRects(rects, tm, nm) {
+    if (state.busy || !rects.length) return;
+    const fmt = $('imgFmt').value;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    rects.forEach(function (r) { const B = rotBox(r); x0 = Math.min(x0, B.x); y0 = Math.min(y0, B.y); x1 = Math.max(x1, B.x + B.w); y1 = Math.max(y1, B.y + B.h); });
+    const bw = Math.max(1, x1 - x0), bh = Math.max(1, y1 - y0);
+    let ppm = 150 / 25.4;
+    rects.forEach(function (r) { if (r.type !== 'text') ppm = Math.max(ppm, nativePpm(r, tm)); });
+    ppm = Math.min(ppm, 12000 / Math.max(bw, bh), Math.sqrt(40e6 / (bw * bh)));
+    const moved = rects.map(function (r) { return Object.assign({}, r, { x: r.x - x0, y: r.y - y0 }); });
+    state.busy = true;
+    try {
+      setNote('Creando la imagen…');
+      const cv = await sheetToCanvas({ pw: bw, ph: bh, guides: false }, { rects: moved }, ppm, tm, fmt === 'png');
+      const blob = await canvasBlob(cv, fmt, 0.95);
+      cv.width = 1; cv.height = 1;
+      const base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
+      const r = await saveFile(blob, base + '-' + nm + '.' + (fmt === 'png' ? 'png' : 'jpg'));
+      setNote(r === 'ok' ? 'Imagen guardada.' : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.', r === 'fail');
+    } catch (e) {
+      setNote('No se pudo crear la imagen (' + (e && e.message ? e.message : 'error') + ').', true);
+    }
+    state.busy = false;
+  }
+  function downloadSel() {
+    if (!cur) return;
+    const c = cur.c;
+    let rs = null, one = null;
+    if (sh.multiOn && sh.multi.size > 1) rs = pageRects().filter(function (r) { return r.type !== 'text' && sh.multi.has(r.f.id); });
+    else {
+      const r = selRect() || (sh.multiOn && sh.multi.size === 1 ? pageRects().filter(function (q) { return q.type !== 'text' && sh.multi.has(q.f.id); })[0] : null);
+      if (!r) { setNote('Primero toca una foto.', true); return; }
+      const m = r.gid ? grpMembers(r) : [r];
+      if (m.length > 1) rs = m; else if (r.type === 'text') rs = [r]; else one = r.f;
+    }
+    if (one) {
+      const o = orientedDims(one.sw, one.sh, one.edit.rot), cr = one.edit.crop;
+      const vw = Math.max(1, Math.round((cr ? cr.w : 1) * o.w)), vh = Math.max(1, Math.round((cr ? cr.h : 1) * o.h));
+      exportRects([{ f: one, x: 0, y: 0, w: vw, h: vh, rot: false, view: null }], 'fit', 'foto');
+    } else if (rs && rs.length) exportRects(rs, tileModeOf(c), rs.length > 1 ? 'union' : 'texto');
+    else setNote('Elige al menos una foto.', true);
+  }
+
   async function saveSheetImages() {
     if (state.busy) return;
     const fmt = $('imgFmt').value, q = $('imgDpi').value;
@@ -3903,7 +4034,8 @@ html.selActive main { touch-action: none; }
       for (let i = 0; i < L.pages.length; i++) {
         setNote('Creando imagen de la hoja ' + (i + 1) + ' de ' + L.pages.length + '…'); setProgress(i / L.pages.length);
         const ppm = q === 'orig' ? originalPpm(c, L.pages[i], tm) : Math.min(parseInt(q, 10) / 25.4, Math.sqrt(25e6 / (c.pw * c.ph)));
-        const cv = await sheetToCanvas(c, L.pages[i], ppm, tm, fmt === 'png');
+        let cv = await sheetToCanvas(c, L.pages[i], ppm, tm, fmt === 'png');
+        if ($('imgTrim').checked) cv = trimCanvas(cv);
         const blob = await canvasBlob(cv, fmt, 0.95);
         cv.width = 1; cv.height = 1;
         files.push({ name: base + '-hoja' + (L.pages.length > 1 ? String(i + 1).padStart(2, '0') : '') + '.' + (fmt === 'png' ? 'png' : 'jpg'), blob: blob });
@@ -4918,6 +5050,8 @@ html.selActive main { touch-action: none; }
       r.rot = false; r.fa = 0; r.x = 0; r.y = 0; r.w = pw; r.h = ph;
       hideResult(); drawSheet(); syncSel();
     });
+    $('selDl').addEventListener('click', downloadSel);
+    $('selDlM').addEventListener('click', downloadSel);
     $('selStretch').addEventListener('click', function () {
       const r = selRect(); if (!r || r.type === 'text') return;
       const v = ensureView(r); v.st = !v.st;
@@ -7030,6 +7164,8 @@ html.selActive main { touch-action: none; }
   bindSeg('#dniSeg button', function (b) { state.dni = b.dataset.v; });
   bindSeg('#chips .chip', function (b) { $('w').value = b.dataset.w; $('h').value = b.dataset.h; });
   bindSeg('#achips .chip', function (b) { $('as').value = b.dataset.v; });
+  bindSeg('#cchips .chip', function (b) { $('cntN').value = b.dataset.v; });
+  ['cntN', 'cntS'].forEach(function (id) { $(id).addEventListener('input', function () { hideResult(); state.page = 0; update(); }); });
   ['w', 'h', 'as', 'margin', 'gap', 'dniTop', 'dniGap'].forEach(function (id) { $(id).addEventListener('input', function () { state.page = 0; update(); }); });
   $('guides').addEventListener('change', update);
   $('rot').addEventListener('change', function () { state.page = 0; update(); });
