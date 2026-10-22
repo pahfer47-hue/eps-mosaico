@@ -203,6 +203,12 @@ p { margin: 0; }
 
 /* Editor de foto: pantalla completa */
 .ed { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+#ctRect { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); cursor: move; touch-action: none; }
+#ctRect i { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; background: var(--accent); border: 2px solid #fff; border-radius: 50%; box-sizing: border-box; }
+#ctRect i[data-k="nw"] { left: 0; top: 0; } #ctRect i[data-k="n"] { left: 50%; top: 0; } #ctRect i[data-k="ne"] { left: 100%; top: 0; }
+#ctRect i[data-k="e"] { left: 100%; top: 50%; } #ctRect i[data-k="se"] { left: 100%; top: 100%; } #ctRect i[data-k="s"] { left: 50%; top: 100%; }
+#ctRect i[data-k="sw"] { left: 0; top: 100%; } #ctRect i[data-k="w"] { left: 0; top: 50%; }
+#ctRect.lock i[data-k="n"], #ctRect.lock i[data-k="e"], #ctRect.lock i[data-k="s"], #ctRect.lock i[data-k="w"] { display: none; }
 .ed-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .ed-top strong { flex: 1; min-width: 0; text-align: center; font-size: 0.9375rem; }
 .ed-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: #12181c; position: relative; }
@@ -854,6 +860,7 @@ html.selActive main { touch-action: none; }
             <button class="sc" id="selFill" type="button">⤢ Rellenar hoja</button>
             <button class="sc" id="selStretch" type="button" aria-pressed="false">Estirar imagen</button>
             <button class="sc" id="selDl" type="button">⬇ Descargar foto</button>
+            <button class="sc" id="selCut" type="button">✂ Cortar</button>
             <label class="sl-inline" id="selZoomRow">Zoom <input type="range" id="selZoom" min="0.25" max="6" step="0.01" value="1"><output id="selZoomO">100%</output></label>
             <label class="sl-inline" id="selAngRow">Enderezar <input type="range" id="selAng" min="-45" max="45" step="0.1" value="0"><output id="selAngO">0°</output></label>
             <button class="sc" id="selZm" type="button">－ Zoom</button>
@@ -899,6 +906,8 @@ html.selActive main { touch-action: none; }
           <select id="imgFmt" aria-label="Formato de imagen"><option value="png">PNG</option><option value="jpg">JPG</option></select>
           <select id="imgDpi" aria-label="Calidad de la imagen"><option value="orig" selected>Original (máxima calidad de tus fotos)</option><option value="300">Un poco reducida (300 dpi)</option><option value="200">Reducida (200 dpi)</option><option value="150">Liviana (150 dpi)</option></select>
           <button class="btn" id="imgSave" type="button">Guardar como imagen</button>
+          <select id="saveSplitSep" aria-label="Cómo guardar dividido"><option value="one">Dividido en un solo PDF</option><option value="sep">Un PDF por cada parte (ZIP)</option></select>
+          <button class="btn" id="saveSplit" type="button">✂ Guardar PDF dividido</button>
           <label class="check" style="flex:1 1 100%"><input type="checkbox" id="imgTrim"> Recortar el blanco de alrededor (queda solo lo que tiene fotos)</label>
         </div>
       </div>
@@ -945,6 +954,7 @@ html.selActive main { touch-action: none; }
       <div class="row">
         <button class="btn primary" id="docSave" type="button">Guardar PDF</button>
         <a class="btn" id="docOpen" target="_blank" rel="noopener">Abrir PDF</a>
+        <button class="btn" id="docSplit" type="button">✂ Guardar dividido</button>
       </div>
     </div>
     <div class="prog" id="docProgWrap" hidden><div id="docProg"></div></div>
@@ -1005,7 +1015,7 @@ html.selActive main { touch-action: none; }
   </div>
 </div>
 
-<div class="ed" id="sp" role="dialog" aria-modal="true" aria-label="Dividir hoja" hidden>
+<div class="ed" id="sp" style="z-index:45" role="dialog" aria-modal="true" aria-label="Dividir hoja" hidden>
   <div class="ed-top">
     <button class="btn" id="spClose" type="button">Cerrar</button>
     <strong>Dividir hoja</strong>
@@ -1033,6 +1043,7 @@ html.selActive main { touch-action: none; }
     <select id="spPaper" aria-label="Tamaño de las hojas de salida"><option value="carta">Salida: Carta</option><option value="oficio">Salida: Oficio</option><option value="a4">Salida: A4</option></select>
     <select id="spMargin" aria-label="Margen"><option value="0">Sin margen</option><option value="5" selected>Margen 5 mm</option><option value="10">Margen 10 mm</option></select>
     <select id="spFit" aria-label="Ajuste"><option value="fit">Sin recortar (marca de corte)</option><option value="fill">Llenar la hoja (recorta bordes)</option></select>
+    <select id="spSep" aria-label="Cómo guardar"><option value="one">Guardar en un solo PDF</option><option value="sep">Un PDF por cada parte (ZIP)</option></select>
     <select id="spOv" aria-label="Solape para pegar"><option value="0">Sin solape</option><option value="0.03">Solape pequeño</option><option value="0.06">Solape medio</option></select>
   </div>
   <div style="text-align:center;padding:12px;background:#8d98a0"><canvas id="spCv" width="10" height="10" style="display:block;margin:0 auto;max-width:100%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.35);touch-action:pan-x pan-y"></canvas></div>
@@ -1044,6 +1055,25 @@ html.selActive main { touch-action: none; }
       <button class="btn primary" id="spMake" type="button" disabled>Crear PDF dividido</button>
     </div>
     <div class="prog" id="spProgWrap" hidden><div id="spProg"></div></div>
+  </div>
+</div>
+
+<div class="ed" id="ct" style="z-index:46" role="dialog" aria-modal="true" aria-label="Cortar imagen" hidden>
+  <div class="ed-top">
+    <button class="btn" id="ctClose" type="button">Cerrar</button>
+    <strong>Cortar imagen</strong>
+    <span style="width:64px"></span>
+  </div>
+  <div class="doc-tools">
+    <select id="ctAsp" aria-label="Forma del corte"><option value="0">Corte libre</option><option value="1">Cuadrado 1:1</option><option value="1.3333">4:3 horizontal</option><option value="0.75">3:4 vertical</option><option value="1.7778">16:9 horizontal</option><option value="0.5625">9:16 vertical</option></select>
+  </div>
+  <div class="ed-stage" id="ctStage"><div id="ctBox" style="position:relative;touch-action:none"><canvas id="ctCv" style="display:block;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px"></canvas><div id="ctRect"><i data-k="nw"></i><i data-k="n"></i><i data-k="ne"></i><i data-k="e"></i><i data-k="se"></i><i data-k="s"></i><i data-k="sw"></i><i data-k="w"></i></div></div></div>
+  <div class="doc-bar">
+    <div id="ctNote" class="note" role="status" aria-live="polite" style="margin:0 0 6px">Arrastra el recuadro y sus puntos para elegir qué cortar.</div>
+    <div class="row">
+      <button class="btn primary" id="ctSave" type="button">⬇ Guardar en el dispositivo</button>
+      <button class="btn" id="ctAdd" type="button">＋ Poner en la hoja</button>
+    </div>
   </div>
 </div>
 
@@ -1069,6 +1099,7 @@ html.selActive main { touch-action: none; }
   <div class="ed-top">
     <button class="btn" id="peClose" type="button">Cerrar</button>
     <strong id="peTitle">Editar PDF</strong>
+    <button class="btn" id="peSaveSplit" type="button" disabled>Dividido</button>
     <button class="btn primary" id="peSave" type="button" disabled>Guardar PDF</button>
   </div>
   <div class="doc-scroll" id="peScroll"><div id="peWrap"><div id="pePage"><canvas id="peBg" width="10" height="10"></canvas><div id="peLayer"></div><div id="peCutBox" hidden></div></div></div></div>
@@ -6180,7 +6211,14 @@ html.selActive main { touch-action: none; }
     const bp = PAPERS[state.paper].base || state.paper; if (PAPERS[bp] && ['carta', 'oficio', 'a4'].indexOf(bp) >= 0) $('spPaper').value = bp;
     $('spCut').value = 'auto'; $('spMargin').value = '0'; $('spFit').value = 'fit'; $('spOv').value = '0';
     sp.base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
-    spPreview();
+    return spPreview();
+  }
+  // Abre «Dividir hoja» con un PDF ya hecho y lo guarda dividido de una vez.
+  async function splitFromBlob(blob, name) {
+    sp.open = true; $('sp').hidden = false; document.body.style.overflow = 'hidden';
+    $('spCut').value = 'auto'; $('spMargin').value = '0'; $('spFit').value = 'fit'; $('spOv').value = '0';
+    await spLoadFile(new File([blob], name + '.pdf', { type: 'application/pdf' }));
+    if (sp.n) await spMake();
   }
   function spScissors(doc, x, y, s) {
     doc.setDrawColor(110); doc.setLineWidth(0.25);
@@ -6211,6 +6249,7 @@ html.selActive main { touch-action: none; }
       const jsPDF = window.jspdf.jsPDF, cells = spCells(), kk = spCut();
       const m = parseFloat($('spMargin').value) || 0, total = sp.n * cells.length;
       let doc = null, done = 0;
+      const sep = $('spSep').value === 'sep', files = [];
       for (let i = 0; i < sp.n; i++) {
         const c0 = cells[0], cwf = (c0.x1 - c0.x0), chf = (c0.y1 - c0.y0);
         const o = spOutPage(cwf * sp.aw, chf * sp.ah);
@@ -6235,22 +6274,156 @@ html.selActive main { touch-action: none; }
           x.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
           const data = cv.toDataURL('image/jpeg', 0.92); cv.width = 1; cv.height = 1;
           const short = Math.min(o.w, o.h), long = Math.max(o.w, o.h), orient = o.w > o.h ? 'landscape' : 'portrait';
-          if (!doc) doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
-          else doc.addPage([short, long], orient);
+          let dd;
+          if (sep) dd = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true });
+          else { if (!doc) doc = new jsPDF({ orientation: orient, unit: 'mm', format: [short, long], compress: true }); else doc.addPage([short, long], orient); dd = doc; }
           const ix = (o.w - dw) / 2, iy = (o.h - dh) / 2;
-          doc.addImage(data, 'JPEG', ix, iy, dw, dh);
-          if (!fill) spCutMarks(doc, o, ix, iy, dw, dh);
-          if (m >= 5) { doc.setFontSize(7); doc.setTextColor(150); doc.text((sp.n > 1 ? 'Hoja ' + (i + 1) + ' · ' : '') + 'Parte ' + (j + 1) + ' de ' + cells.length + ' (fila ' + (ce.r + 1) + ', columna ' + (ce.c + 1) + ')', o.w / 2, o.h - 1.8, { align: 'center' }); }
+          dd.addImage(data, 'JPEG', ix, iy, dw, dh);
+          if (!fill) spCutMarks(dd, o, ix, iy, dw, dh);
+          if (m >= 5) { dd.setFontSize(7); dd.setTextColor(150); dd.text((sp.n > 1 ? 'Hoja ' + (i + 1) + ' · ' : '') + 'Parte ' + (j + 1) + ' de ' + cells.length + ' (fila ' + (ce.r + 1) + ', columna ' + (ce.c + 1) + ')', o.w / 2, o.h - 1.8, { align: 'center' }); }
+          if (sep) files.push({ name: sp.base + '-parte' + String(done + 1).padStart(2, '0') + '.pdf', blob: dd.output('blob') });
           done++; await yieldUI();
         }
         if (src !== sp.img) { src.width = 1; src.height = 1; }
       }
       spProg(null);
+      if (sep) {
+        const r2 = await saveMany(files, sp.base + '-partes.zip');
+        spNote(r2 === 'ok' ? 'Listo: ' + total + ' PDF guardados' + (files.length > 1 ? ' en un ZIP' : '') + ' (uno por parte).' : r2 === 'declined' ? 'Guardado cancelado.' : 'Se crearon los PDF pero no se pudo guardar desde aquí.', r2 === 'fail');
+        sp.busy = false; spSync(); return;
+      }
       const blob = doc.output('blob');
       const r = await saveFile(blob, sp.base + '-dividido.pdf');
       spNote(r === 'ok' ? 'Listo: ' + total + ' hojas guardadas en un PDF. Imprime todas y únelas.' : r === 'declined' ? 'Guardado cancelado.' : 'Se creó el PDF pero no se pudo guardar desde aquí.', r === 'fail');
     } catch (e) { spProg(null); spNote('No se pudo crear el PDF (' + (e && e.message ? e.message : 'error') + ').', true); }
     sp.busy = false; spSync();
+  }
+  // ===== Cortar una parte de una foto (opcional): guardarla o ponerla en la hoja =====
+  const ct = { open: false, f: null, cv: null, D: { w: 1, h: 1 }, r: { x: 0, y: 0, w: 1, h: 1 }, asp: 0, drag: null, busy: false };
+  function ctNote(m, err) { const n = $('ctNote'); n.textContent = m || ''; n.className = 'note' + (err ? ' err' : ''); }
+  function ctDraw() {
+    const e = $('ctRect'), r = ct.r;
+    e.style.left = r.x + 'px'; e.style.top = r.y + 'px'; e.style.width = r.w + 'px'; e.style.height = r.h + 'px';
+    e.classList.toggle('lock', ct.asp > 0);
+  }
+  function ctFitAspect() {
+    const D = ct.D, r = ct.r;
+    if (!(ct.asp > 0)) return;
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    let w = Math.sqrt(r.w * r.h * ct.asp), h = w / ct.asp;
+    if (w > D.w) { w = D.w; h = w / ct.asp; } if (h > D.h) { h = D.h; w = h * ct.asp; }
+    r.w = w; r.h = h; r.x = Math.min(D.w - w, Math.max(0, cx - w / 2)); r.y = Math.min(D.h - h, Math.max(0, cy - h / 2));
+  }
+  function ctLayout() {
+    if (!ct.cv) return;
+    const st = $('ctStage'), aw = st.clientWidth - 24, ah = st.clientHeight - 24;
+    const k = Math.min(aw / ct.cv.width, ah / ct.cv.height);
+    const w = Math.max(40, Math.floor(ct.cv.width * k)), h = Math.max(40, Math.floor(ct.cv.height * k));
+    const old = ct.D, sx = w / old.w, sy = h / old.h;
+    ct.r = { x: ct.r.x * sx, y: ct.r.y * sy, w: ct.r.w * sx, h: ct.r.h * sy };
+    ct.D = { w: w, h: h };
+    const cv = $('ctCv'); cv.style.width = w + 'px'; cv.style.height = h + 'px'; $('ctBox').style.width = w + 'px'; $('ctBox').style.height = h + 'px';
+    ctDraw();
+  }
+  async function openCut(f) {
+    if (ct.open || ed.open || dc.open || px.open || sp.open || pe.open || state.busy) return;
+    ct.open = true; ct.f = f; ct.busy = true; $('ct').hidden = false; document.body.style.overflow = 'hidden';
+    ctNote('Preparando la foto…');
+    try {
+      const o = orientedDims(f.sw, f.sh, f.edit.rot), cr = f.edit.crop;
+      const vw = Math.max(1, Math.round((cr ? cr.w : 1) * o.w)), vh = Math.max(1, Math.round((cr ? cr.h : 1) * o.h));
+      const k = Math.min(1, Math.sqrt(30e6 / (vw * vh)));
+      ct.cv = await sheetToCanvas({ pw: vw, ph: vh, guides: false }, { rects: [{ f: f, x: 0, y: 0, w: vw, h: vh, rot: false, view: null }] }, k, 'fit', true);
+      ct.D = { w: 1, h: 1 }; ct.r = { x: 0.1, y: 0.1, w: 0.8, h: 0.8 };
+      const cv = $('ctCv'); cv.width = ct.cv.width; cv.height = ct.cv.height; cv.getContext('2d').drawImage(ct.cv, 0, 0);
+      $('ctAsp').value = '0'; ct.asp = 0;
+      ctLayout();
+      ctNote('Arrastra el recuadro y sus puntos para elegir qué cortar.');
+    } catch (e) { ctNote('No se pudo abrir la foto (' + (e && e.message ? e.message : 'error') + ').', true); }
+    ct.busy = false;
+  }
+  function closeCut() {
+    if (ct.busy) return;
+    ct.open = false; ct.f = null; if (ct.cv) { ct.cv.width = 1; ct.cv.height = 1; } ct.cv = null;
+    $('ctCv').width = 1; $('ctCv').height = 1; $('ct').hidden = true; document.body.style.overflow = '';
+  }
+  async function ctBlob() {
+    const D = ct.D, r = ct.r, W = ct.cv.width, H = ct.cv.height;
+    const sx = Math.round(r.x / D.w * W), sy = Math.round(r.y / D.h * H);
+    const sw = Math.max(1, Math.min(W - sx, Math.round(r.w / D.w * W))), sh2 = Math.max(1, Math.min(H - sy, Math.round(r.h / D.h * H)));
+    const out = document.createElement('canvas'); out.width = sw; out.height = sh2;
+    const x = out.getContext('2d'), png = $('imgFmt').value === 'png';
+    if (!png) { x.fillStyle = '#fff'; x.fillRect(0, 0, sw, sh2); }
+    x.drawImage(ct.cv, sx, sy, sw, sh2, 0, 0, sw, sh2);
+    const blob = await canvasBlob(out, png ? 'png' : 'jpg', 0.95); out.width = 1; out.height = 1;
+    return { blob: blob, ext: png ? 'png' : 'jpg' };
+  }
+  function bindCut() {
+    $('selCut').addEventListener('click', function () {
+      const r = selRect();
+      if (!r || r.type === 'text') { setNote('Primero toca una foto para cortarla.', true); return; }
+      openCut(r.f);
+    });
+    $('ctClose').addEventListener('click', closeCut);
+    $('ctAsp').addEventListener('change', function () { ct.asp = parseFloat($('ctAsp').value) || 0; ctFitAspect(); ctDraw(); });
+    window.addEventListener('resize', function () { if (ct.open) ctLayout(); });
+    $('ctSave').addEventListener('click', async function () {
+      if (!ct.cv || ct.busy) return; ct.busy = true;
+      try {
+        const o = await ctBlob(), base = cleanName($('pdfName').value, state.name).replace(/\.pdf$/i, '');
+        const r = await saveFile(o.blob, base + '-corte.' + o.ext);
+        ctNote(r === 'ok' ? 'Corte guardado.' : r === 'declined' ? 'Guardado cancelado.' : 'No se pudo guardar desde aquí.', r === 'fail');
+      } catch (e) { ctNote('No se pudo cortar (' + (e && e.message ? e.message : 'error') + ').', true); }
+      ct.busy = false;
+    });
+    $('ctAdd').addEventListener('click', async function () {
+      if (!ct.cv || ct.busy) return; ct.busy = true;
+      try {
+        const o = await ctBlob(), nm = String((ct.f.name || 'foto')).replace(/\.[^.]+$/, '') + '-corte-' + Date.now().toString(36) + '.' + o.ext;
+        const file = new File([o.blob], nm, { type: o.blob.type, lastModified: Date.now() });
+        ct.busy = false; closeCut();
+        await addFiles([file]);
+        setNote('El corte se agregó a la hoja como una foto nueva.');
+      } catch (e) { ct.busy = false; ctNote('No se pudo agregar (' + (e && e.message ? e.message : 'error') + ').', true); }
+    });
+    const box = $('ctBox');
+    box.addEventListener('pointerdown', function (e) {
+      if (!ct.cv) return;
+      const b = box.getBoundingClientRect(), p = { x: e.clientX - b.left, y: e.clientY - b.top };
+      const k = e.target && e.target.dataset && e.target.dataset.k;
+      const r = ct.r, inside = p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+      if (!k && !inside) return;
+      try { box.setPointerCapture(e.pointerId); } catch (er) { /* ok */ }
+      ct.drag = { k: k || 'move', p0: p, r0: { x: r.x, y: r.y, w: r.w, h: r.h } };
+      e.preventDefault();
+    });
+    box.addEventListener('pointermove', function (e) {
+      const d = ct.drag; if (!d) return;
+      const b = box.getBoundingClientRect(), p = { x: Math.min(ct.D.w, Math.max(0, e.clientX - b.left)), y: Math.min(ct.D.h, Math.max(0, e.clientY - b.top)) };
+      const D = ct.D, r0 = d.r0, MIN = 24;
+      if (d.k === 'move') {
+        ct.r.x = Math.min(D.w - r0.w, Math.max(0, r0.x + p.x - d.p0.x)); ct.r.y = Math.min(D.h - r0.h, Math.max(0, r0.y + p.y - d.p0.y));
+      } else if (d.k.length === 2) {
+        const ax = d.k.indexOf('w') >= 0 ? r0.x + r0.w : r0.x, ay = d.k.indexOf('n') >= 0 ? r0.y + r0.h : r0.y;
+        let w = Math.max(MIN, Math.abs(p.x - ax)), h = Math.max(MIN, Math.abs(p.y - ay));
+        const maxW = p.x < ax ? ax : D.w - ax, maxH = p.y < ay ? ay : D.h - ay;
+        if (ct.asp > 0) {
+          if (w / h > ct.asp) w = h * ct.asp; else h = w / ct.asp;
+          const sc = Math.min(1, maxW / w, maxH / h); w *= sc; h *= sc;
+        } else { w = Math.min(w, maxW); h = Math.min(h, maxH); }
+        ct.r = { x: p.x < ax ? ax - w : ax, y: p.y < ay ? ay - h : ay, w: w, h: h };
+      } else {
+        const rr = { x: r0.x, y: r0.y, w: r0.w, h: r0.h };
+        if (d.k === 'w') { const x1 = r0.x + r0.w, nx = Math.min(x1 - MIN, p.x); rr.x = nx; rr.w = x1 - nx; }
+        if (d.k === 'e') rr.w = Math.max(MIN, p.x - r0.x);
+        if (d.k === 'n') { const y1 = r0.y + r0.h, ny = Math.min(y1 - MIN, p.y); rr.y = ny; rr.h = y1 - ny; }
+        if (d.k === 's') rr.h = Math.max(MIN, p.y - r0.y);
+        ct.r = rr;
+      }
+      ctDraw();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (n) { box.addEventListener(n, function () { ct.drag = null; }); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && ct.open) closeCut(); });
   }
   function closeSp() {
     if (sp.busy) return;
@@ -6271,6 +6444,14 @@ html.selActive main { touch-action: none; }
     $('spPrev').addEventListener('click', function () { if (sp.cur > 0) { sp.cur--; spPreview(); } });
     $('spNext').addEventListener('click', function () { if (sp.cur < sp.n - 1) { sp.cur++; spPreview(); } });
     $('spMake').addEventListener('click', spMake);
+    $('saveSplit').addEventListener('click', async function () {
+      if (state.busy || sp.busy) return;
+      if (ed.open || dc.open || px.open || pe.open) return;
+      sp.open = true; $('sp').hidden = false; document.body.style.overflow = 'hidden';
+      $('spSep').value = $('saveSplitSep').value;
+      await spUseSheet();
+      if (sp.n) await spMake();
+    });
   }
 
   // ===== Editor de PDF: textos e imágenes como piezas movibles =====
@@ -6431,13 +6612,13 @@ html.selActive main { touch-action: none; }
       $('pePgN').textContent = (i + 1) + '/' + pe.pdf.numPages;
       peNote('Toca un cuadro para moverlo. Doble toque en un texto para escribir. «Cortar cuadro» saca una tabla o dibujo como pieza.');
     } catch (e) { peNote('No se pudo preparar la hoja (' + (e && e.message ? e.message : 'error') + ').', true); }
-    pe.busy = false; $('peSave').disabled = false;
+    pe.busy = false; $('peSave').disabled = false; $('peSaveSplit').disabled = false;
   }
   async function openPe(file) {
     if (pe.busy || ed.open || dc.open || sp.open) return;
     pe.open = true; pe.pdf = null; pe.pages = []; pe.cur = 0; pe.sel = []; pe.cut = false; $('pe').classList.remove('cutting'); $('peCut').setAttribute('aria-pressed', 'false');
     pe.base = (file.name || 'pdf').replace(/\.[^.]+$/, '').replace(/[\\/:*?"<>|]/g, ' ').trim() || 'pdf';
-    document.body.style.overflow = 'hidden'; $('pe').hidden = false; $('peTitle').textContent = file.name || 'Editar PDF'; $('peSave').disabled = true; $('peLayer').textContent = '';
+    document.body.style.overflow = 'hidden'; $('pe').hidden = false; $('peTitle').textContent = file.name || 'Editar PDF'; $('peSave').disabled = true; $('peSaveSplit').disabled = true; $('peLayer').textContent = '';
     peNote('Abriendo PDF…');
     try {
       const lib = await loadPdfJs();
@@ -6472,9 +6653,10 @@ html.selActive main { touch-action: none; }
     const o = { id: pe.seq++, type: 'i', x: (pg.W - w) / 2, y: (pg.H - h) / 3, w: w, h: h, cv: cvSrc };
     pg.objs.push(o); pg.dirty = pg.dirty; peRender(); pe.sel = [o.id]; peMarkSel(); peNote('Imagen agregada. Arrástrala; el círculo cambia el tamaño.');
   }
-  async function peExport() {
+  async function peExport(split) {
+    split = split === true;
     if (pe.busy || !window.jspdf) { if (!window.jspdf) peNote('No cargó la librería de PDF. Revisa tu conexión a internet.', true); return; }
-    pe.busy = true; $('peSave').disabled = true;
+    pe.busy = true; $('peSave').disabled = true; $('peSaveSplit').disabled = true;
     try {
       await peCommit();
       const jsPDF = window.jspdf.jsPDF; let doc = null; const n = pe.pdf.numPages, lib = await loadPdfJs();
@@ -6506,16 +6688,17 @@ html.selActive main { touch-action: none; }
         doc.addImage(data, 'JPEG', 0, 0, wm, hm, undefined, 'FAST');
       }
       peProg(null);
+      if (split) { const bl = doc.output('blob'); pe.busy = false; $('peSave').disabled = false; $('peSaveSplit').disabled = false; $('peSaveSplit').disabled = false; peNote(''); await splitFromBlob(bl, pe.base + '-editado'); return; }
       const r = await saveFile(doc.output('blob'), pe.base + '-editado.pdf');
       peNote(r === 'ok' ? 'PDF guardado.' : r === 'declined' ? 'Guardado cancelado.' : 'Se creó pero no se pudo guardar desde aquí.', r === 'fail');
     } catch (e) { peProg(null); peNote('No se pudo guardar (' + (e && e.message ? e.message : 'error') + ').', true); }
-    pe.busy = false; $('peSave').disabled = false;
+    pe.busy = false; $('peSave').disabled = false; $('peSaveSplit').disabled = false;
   }
   function bindPe() {
     $('peOpenBtn').addEventListener('click', function () { $('peFile').click(); });
     $('peFile').addEventListener('change', function (e) { const f = e.target.files && e.target.files[0]; setTimeout(function () { e.target.value = ''; }, 0); if (f) openPe(f); });
     $('pxEdit').addEventListener('click', function () { if (px.file) { const f = px.file; closePx(); openPe(f); } });
-    $('peClose').addEventListener('click', closePe); $('peSave').addEventListener('click', peExport);
+    $('peClose').addEventListener('click', closePe); $('peSave').addEventListener('click', function () { peExport(false); }); $('peSaveSplit').addEventListener('click', function () { peExport(true); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pe.open && !pe.busy && !document.activeElement.isContentEditable) closePe(); });
     $('pePrev').addEventListener('click', function () { if (pe.cur > 0) peShow(pe.cur - 1); });
     $('peNext').addEventListener('click', function () { if (pe.pdf && pe.cur < pe.pdf.numPages - 1) peShow(pe.cur + 1); });
@@ -7118,6 +7301,10 @@ html.selActive main { touch-action: none; }
     $('docZoomSl').addEventListener('input', function () { dc.zoom = parseFloat($('docZoomSl').value) || 1; fitDoc(); });
     $('docMake').addEventListener('click', makeDocPdf);
     $('docSave').addEventListener('click', saveDocPdf);
+    $('docSplit').addEventListener('click', function () {
+      if (!dc.blob || sp.busy) return;
+      splitFromBlob(dc.blob, cleanName($('docName').value, 'documento').replace(/\.pdf$/i, ''));
+    });
     document.querySelectorAll('#doc [data-cmd]').forEach(function (b) {
       function keep(e) { e.preventDefault(); }
       b.addEventListener('mousedown', keep);
@@ -7193,6 +7380,7 @@ html.selActive main { touch-action: none; }
   bindPx();
   bindSp();
   bindPe();
+  bindCut();
   bindFbar();
   bindDocClean();
   bindHist();
