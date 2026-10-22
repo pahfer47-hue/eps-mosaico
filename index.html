@@ -739,8 +739,9 @@ html.selActive main { touch-action: none; }
         <label class="check"><input type="checkbox" id="txStroke"> Borde</label>
         <div class="fields" id="txStrokeRow" hidden>
           <div class="field"><label for="txStrokeColor">Color del borde</label><input type="color" id="txStrokeColor" value="#15212b"></div>
-          <div class="field"><label for="txStrokeW">Grosor del borde</label><input type="range" id="txStrokeW" min="1" max="20" value="6"></div>
+          <div class="field"><label for="txStrokeW">Grosor del borde</label><input type="range" id="txStrokeW" min="1" max="40" value="6"></div>
         </div>
+        <label class="check"><input type="checkbox" id="txLBox"> Marco de corte en cada línea (para recortar y pegar)</label>
         <label class="check"><input type="checkbox" id="tx3d"> Efecto 3D</label>
         <div class="fields" id="tx3dRow" hidden>
           <div class="field"><label for="tx3dDir">Hacia dónde</label><select id="tx3dDir"><option value="se">↘ abajo a la derecha</option><option value="sw">↙ abajo a la izquierda</option><option value="ne">↗ arriba a la derecha</option><option value="nw">↖ arriba a la izquierda</option></select></div>
@@ -756,6 +757,7 @@ html.selActive main { touch-action: none; }
         </div>
         <div class="sec" data-sec="🗺|Póster">
         <label class="check tx-gap"><input type="checkbox" id="txPoster"> Repartir en varias hojas (póster gigante)</label>
+        <label class="check tx-gap" id="txMarksRow"><input type="checkbox" id="txPosterMarks"> Líneas de corte y guía para unir las hojas (póster y letras gigantes)</label>
         <div class="field" id="txPosterRow" hidden><label for="txPosterW">Ancho total del texto (cm)</label><input type="number" id="txPosterW" min="10" max="600" step="1" value="60" inputmode="numeric">
           <p class="hint">El tamaño de letra sale de este ancho. Se reparte en las hojas que hagan falta; recórtalas por los márgenes y únelas en orden (de izquierda a derecha, fila por fila).</p></div>
         </div>
@@ -2013,6 +2015,7 @@ html.selActive main { touch-action: none; }
     pg.rects.forEach(function (r) {
       ctx.save(); if (r.fa) rotCtx(ctx, r, k);
       try { drawObjMain(r); } finally { ctx.restore(); }
+      if (hasMarks(r)) paintPosterMarks(ctx, r, k, c.pw, c.ph);
     });
     function drawObjMain(r) {
       if (r.type === 'text') {
@@ -3883,6 +3886,7 @@ html.selActive main { touch-action: none; }
           }
           if (r.type === 'text') {
             await pdfText(doc, r);
+            if (hasMarks(r)) pdfPosterMarks(doc, r);
             done++;
             $('make').textContent = 'Procesando ' + done + '/' + total;
             setProgress(done / total);
@@ -4067,6 +4071,7 @@ html.selActive main { touch-action: none; }
         const t = renderText(r, Math.max(2, Math.round(w * k)), Math.max(2, Math.round(h * k)), e ? e.small : null);
         x.globalAlpha = opacityOf(r); x.drawImage(t, r.x * ppm, r.y * ppm, w, h); x.globalAlpha = 1;
         t.width = 1; t.height = 1;
+        if (hasMarks(r)) paintPosterMarks(x, r, ppm, c.pw, c.ph);
       } else {
         const data = await tileJpeg(r.f, w, h, tileMode, r.rot, viewOf(r), 60e6, 8000);
         const im = await loadDataImg(data);
@@ -5406,7 +5411,7 @@ html.selActive main { touch-action: none; }
     return o;
   }
 
-  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg'];
+  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg', 'lbox'];
   function styleOf(o) { const r = {}; STYLE_KEYS.forEach(function (k) { r[k] = o[k]; }); return r; }
 
   // Reparte un texto largo en cuadros: si no cabe en la hoja sigue en la siguiente.
@@ -5493,7 +5498,7 @@ html.selActive main { touch-action: none; }
         const o = Object.assign(styleOf(base), {
           type: 'text', id: objs.length === 0 && firstId ? firstId : freeSeq++, grp: spec.grp, gtext: spec.gtext, fit: false,
           x: c.margin, y: c.margin, w: uw, h: uh, view: null, rot: false, lines: lines, raw: spec.gtext,
-          poster: { W: W, H: H, ix: ix, iy: iy, cols: cols, rows: rows }
+          poster: { W: W, H: H, ix: ix, iy: iy, cols: cols, rows: rows, marks: !!spec.pmarks }
         });
         objs.push(o);
       }
@@ -5552,7 +5557,26 @@ html.selActive main { touch-action: none; }
     if (o.poster) return front;
     if (o.d3 > 0) front = extrude(o, front, w, h);
     if (o.stk > 0) front = stickerize(front, stickerR(o.stk, w, h, 0.1), o.stkc, stickerG(o.stkg, w, h));
+    if (o.lbox && !o.fit) drawLineBoxes(front, o, w, h);
     return front;
+  }
+
+  // Marco punteado alrededor de cada línea del texto: para saber por dónde cortar y pegar.
+  function drawLineBoxes(cv, o, w, h) {
+    const lines = o.lines || []; if (!lines.length) return;
+    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0, lh = fpx * lhOf(o);
+    const align = o.align || 'center', x = align === 'left' ? pad : align === 'right' ? w - pad : w / 2, g = 0.8 * ppm;
+    const lwid = Math.max(1, 0.15 * ppm), cx = cv.getContext('2d');
+    scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx); scratch.textAlign = align;
+    cx.save(); cx.strokeStyle = '#444'; cx.lineWidth = lwid; cx.setLineDash([1.6 * ppm, 1.1 * ppm]);
+    lines.forEach(function (t, i) {
+      if (!String(t).trim()) return;
+      const m = scratch.measureText(t);
+      const x0 = Math.max(lwid / 2, x - m.actualBoundingBoxLeft - pad - g), x1 = Math.min(w - lwid / 2, x + m.actualBoundingBoxRight + pad + g);
+      const y0 = Math.max(lwid / 2, pad + i * lh - (i === 0 ? pad : 0)), y1 = Math.min(h - lwid / 2, pad + (i + 1) * lh + (i === lines.length - 1 ? pad : 0));
+      cx.strokeRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+    });
+    cx.restore();
   }
 
   // Efecto 3D: copia el contorno de las letras en un color oscuro, corrido paso a paso, y pone el frente encima.
@@ -5656,7 +5680,7 @@ html.selActive main { touch-action: none; }
 
   function textKey(o) {
     return [o.fit ? 'F' + o.text + '|' + o.capMM + '|' + o.asc0 : (o.lines || []).join('\u0001'), o.font, o.size, o.align, o.bold ? 1 : 0, o.italic ? 1 : 0,
-      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0,
+      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0,
       o.poster ? [o.poster.W, o.poster.H, o.poster.ix, o.poster.iy].join(',') : ''].join('|');
   }
 
@@ -5680,6 +5704,59 @@ html.selActive main { touch-action: none; }
   }
 
   function pdfAlpha(doc, op) { if (doc.GState && doc.setGState) doc.setGState(new doc.GState({ opacity: op })); }
+
+  // Líneas de corte y guía para unir las hojas de un póster (en mm, sobre la hoja entera).
+  function hasMarks(r) { return !!(r && r.type === 'text' && (r.poster ? r.poster.marks : (r.fit && r.pmarks && r.bn))); }
+  function posterMarks(r, pw, ph) {
+    if (!r.poster) {
+      const X0 = r.x, Y0 = r.y, X1 = r.x + r.w, Y1 = r.y + r.h, B = r.bn;
+      const sz = Math.max(1.6, Math.min(2.6, Y0 * 0.6));
+      return {
+        lines: [[X0, 0, X0, ph], [X1, 0, X1, ph], [0, Y0, pw, Y0], [0, Y1, pw, Y1]],
+        texts: [{ t: 'Letra ' + B.n + ' de ' + B.N + ' (une las hojas en orden)', x: pw / 2, y: Y0 >= 2.8 ? Y0 / 2 + sz * 0.35 : 3, sz: Y0 >= 2.8 ? sz : 2.2, box: Y0 < 2.8 },
+          { t: 'Corta por la línea punteada', x: pw / 2, y: Y1 + (ph - Y1) / 2 + sz * 0.35 > ph - 0.5 ? ph - 1.2 : Y1 + (ph - Y1) / 2 + sz * 0.35, sz: sz, box: ph - Y1 < 2.8 }]
+      };
+    }
+    const P = r.poster, X0 = r.x, Y0 = r.y, X1 = r.x + r.w, Y1 = r.y + r.h, lines = [], texts = [];
+    if (P.ix > 0) lines.push([X0, 0, X0, ph]);
+    if (P.ix < P.cols - 1) lines.push([X1, 0, X1, ph]);
+    if (P.iy > 0) lines.push([0, Y0, pw, Y0]);
+    if (P.iy < P.rows - 1) lines.push([0, Y1, pw, Y1]);
+    const n = P.iy * P.cols + P.ix + 1, N = P.cols * P.rows;
+    const t = 'Hoja ' + n + ' de ' + N + ' · fila ' + (P.iy + 1) + ' de ' + P.rows + ' · columna ' + (P.ix + 1) + ' de ' + P.cols;
+    const sz = Math.max(1.6, Math.min(2.6, Y0 * 0.6));
+    texts.push({ t: t, x: pw / 2, y: Y0 >= 2.8 ? Y0 / 2 + sz * 0.35 : ph - 1.2, sz: Y0 >= 2.8 ? sz : 2.2, box: Y0 < 2.8 });
+    if (lines.length) texts.push({ t: 'Corta por la línea punteada y une con la hoja de al lado', x: pw / 2, y: ph - (r.y + r.h >= ph - 2.8 ? 1.2 : (ph - Y1) / 2 - sz * 0.35 + sz * 0.7), sz: sz, dim: true });
+    return { lines: lines, texts: texts };
+  }
+  function paintPosterMarks(ctx, r, k, pw, ph) {
+    const m = posterMarks(r, pw, ph);
+    ctx.save();
+    ctx.strokeStyle = '#555'; ctx.fillStyle = '#555'; ctx.lineWidth = Math.max(1, 0.15 * k);
+    ctx.setLineDash([1.6 * k, 1.1 * k]);
+    m.lines.forEach(function (l) { ctx.beginPath(); ctx.moveTo(l[0] * k, l[1] * k); ctx.lineTo(l[2] * k, l[3] * k); ctx.stroke(); });
+    ctx.setLineDash([]); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    m.texts.forEach(function (q) {
+      ctx.font = '600 ' + (q.sz * k) + 'px sans-serif';
+      if (q.box) { const w = ctx.measureText(q.t).width + 2 * k; ctx.save(); ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fillRect(q.x * k - w / 2, (q.y - q.sz) * k, w, (q.sz + 0.8) * k); ctx.restore(); }
+      ctx.fillText(q.t, q.x * k, q.y * k);
+    });
+    ctx.restore();
+  }
+  function pdfPosterMarks(doc, r) {
+    const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = posterMarks(r, pw, ph);
+    doc.setDrawColor(85, 85, 85); doc.setTextColor(85, 85, 85); doc.setLineWidth(0.15);
+    if (doc.setLineDashPattern) doc.setLineDashPattern([1.6, 1.1], 0);
+    m.lines.forEach(function (l) { doc.line(l[0], l[1], l[2], l[3]); });
+    if (doc.setLineDashPattern) doc.setLineDashPattern([], 0);
+    doc.setFont('helvetica', 'bold');
+    m.texts.forEach(function (q) {
+      doc.setFontSize(q.sz * 2.835);
+      if (q.box) { const w = doc.getTextWidth(q.t) + 2; pdfAlpha(doc, 0.85); doc.setFillColor(255, 255, 255); doc.rect(q.x - w / 2, q.y - q.sz, w, q.sz + 0.8, 'F'); pdfAlpha(doc, 1); }
+      doc.text(q.t, q.x, q.y, { align: 'center' });
+    });
+    doc.setTextColor(0, 0, 0);
+  }
 
   async function pdfText(doc, r) {
     await loadFont(r);
@@ -5724,6 +5801,7 @@ html.selActive main { touch-action: none; }
       bold: $('txBold').checked, italic: $('txItalic').checked, spacing: cl(parseFloat($('txSpacing').value) || 0, -20, 100),
       lhm: cl(parseFloat($('txLH').value) || 1.18, 0.6, 3),
       fillMode: segVal('txFillMode') || 'color', fillFit: segVal('txFillFit') || 'cover', color: $('txColor').value, fillImg: parseInt($('txFill').value, 10) || 0,
+      pmarks: $('txPosterMarks').checked, lbox: $('txLBox').checked,
       stroke: $('txStroke').checked, strokeColor: $('txStrokeColor').value, strokeW: parseInt($('txStrokeW').value, 10) || 6,
       d3: $('tx3d').checked ? (parseInt($('tx3dD').value, 10) || 40) : 0, d3dir: $('tx3dDir').value, d3color: $('tx3dColor').value,
       stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value, stkg: $('txStkG').checked
@@ -5751,7 +5829,7 @@ html.selActive main { touch-action: none; }
     $('txStroke').checked = !!o.stroke; $('txStrokeColor').value = o.strokeColor; $('txStrokeW').value = o.strokeW;
     $('tx3d').checked = !!o.d3; if (o.d3) $('tx3dD').value = o.d3; $('tx3dDir').value = o.d3dir || 'se'; $('tx3dColor').value = o.d3color || '#7a1642';
     $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff'; $('txStkG').checked = o.stkg !== false;
-    $('txPoster').checked = !!o.poster;
+    $('txPoster').checked = !!o.poster; $('txPosterMarks').checked = o.poster ? !!o.poster.marks : !!o.pmarks; $('txLBox').checked = !!o.lbox;
     if (o.poster) $('txPosterW').value = Math.round(o.poster.W / 10);
     fillOptions(o.fillImg || '');
     syncTextUi();
@@ -5799,8 +5877,8 @@ html.selActive main { touch-action: none; }
     const first = free.pages.length;
     const m = Math.max(c.margin, 5);
     const W = c.pw - 2 * m, H = c.ph - 2 * m;
-    const objs = letters.map(function (ch) {
-      return Object.assign({}, st, { type: 'text', id: freeSeq++, fit: true, text: ch, x: m, y: m, w: W, h: H, view: null, rot: false });
+    const objs = letters.map(function (ch, i) {
+      return Object.assign({}, st, { type: 'text', id: freeSeq++, fit: true, text: ch, x: m, y: m, w: W, h: H, view: null, rot: false, bn: { n: i + 1, N: letters.length } });
     });
     // Mismo alto y misma línea base en todas las hojas: se mide con todas las letras juntas.
     let asc = 0, desc = 0;
@@ -5866,7 +5944,7 @@ html.selActive main { touch-action: none; }
       op.value = f.k; op.textContent = f.n;
       fs.appendChild(op);
     });
-    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterW'].forEach(function (id) {
+    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterMarks', 'txLBox', 'txPosterW'].forEach(function (id) {
       $(id).addEventListener('input', live);
       $(id).addEventListener('change', live);
     });
