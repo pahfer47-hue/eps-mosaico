@@ -431,6 +431,7 @@ html.selActive main { touch-action: none; }
 .mini { bottom: calc(var(--bui, 128px) + 8px) !important; }
 .sheetwrap { display: flex; justify-content: center; }
 
+@media (pointer:coarse){.dkarrow{display:none!important}}
 </style>
 
 <main>
@@ -760,10 +761,14 @@ html.selActive main { touch-action: none; }
           <div class="field"><label for="txStkW">Grosor del borde</label><input type="range" id="txStkW" min="5" max="100" value="35"></div>
           <div class="field"><label for="txStkC">Color del borde</label><input type="color" id="txStkC" value="#ffffff"></div>
           <label class="check"><input type="checkbox" id="txStkG" checked> Línea fina gris por fuera, como guía para la tijera</label>
+          <label class="check"><input type="checkbox" id="txStkL"> Cada letra con su propio sticker cerrado (los bordes no se unen)</label>
+          <div class="field"><label for="txStkR">Espacio entre filas (solo con «cada letra»)</label><input type="range" id="txStkR" min="0" max="100" value="30"></div>
+          <div class="field"><label for="txStkS">Espacio entre stickers (solo con «cada letra»)</label><input type="range" id="txStkS" min="0" max="100" value="0"></div>
         </div>
         <label class="check" style="margin-top:8px"><input type="checkbox" id="txLBox"> ✂ Palabra partida en líneas: marco de corte en cada línea y, con sticker, el borde sigue sin cerrarse al unir las tiras en orden</label>
         </div>
         <div class="sec" data-sec="🗺|Póster">
+        <label class="check tx-gap"><input type="checkbox" id="txFull"> Usar toda la hoja (cuadro sin márgenes, de borde a borde)</label>
         <label class="check tx-gap"><input type="checkbox" id="txPoster"> Repartir en varias hojas (póster gigante)</label>
         <label class="check tx-gap" id="txMarksRow"><input type="checkbox" id="txPosterMarks"> Líneas de corte y guía para unir las hojas (póster y letras gigantes)</label>
         <div class="field" id="txPosterRow" hidden><label for="txPosterW">Ancho total del texto (cm)</label><input type="number" id="txPosterW" min="10" max="600" step="1" value="60" inputmode="numeric">
@@ -5372,14 +5377,17 @@ html.selActive main { touch-action: none; }
   let fillSeq = 1;
   const MM_PT = 0.352778, LH = 1.18, REF = 10;
 
+  // Con «cada letra su sticker» se deja un hueco extra entre letras para que los bordes no se encimen.
+  function stlRel(o) { return o.stkl && o.stk > 0 && !o.fit && !o.poster ? 2 * (o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012) + (strokeOn(o) ? o.strokeW / 100 : 0)) + (o.stks || 0) / 100 * 0.3 : 0; }
+  function stlExtra(o, fpx) { return stlRel(o) * fpx; }
   function setSpacing(c, o, fpx) {
-    if ('letterSpacing' in c) c.letterSpacing = ((o.spacing || 0) / 100 * fpx).toFixed(2) + 'px';
+    if ('letterSpacing' in c) c.letterSpacing = ((o.spacing || 0) / 100 * fpx + stlExtra(o, fpx)).toFixed(2) + 'px';
   }
   // Con «marco de corte» + borde de sticker, cada línea es una tira con su propio borde: necesita más alto.
   // Palabra partida en varias líneas (sin espacios) o marcada con «marco de corte»: el borde del sticker sigue entre las tiras.
   function boxSticker(o) { return !!(o.stk > 0 && !o.fit && !o.poster && (o.lines || []).length > 0 && (o.lbox || (o.jb && o.jb.some(Boolean)))); }
   function stkRel(o) { return o.stk / 100 * 0.22; }
-  function lhOf(o) { return (o.lhm || LH) + (boxSticker(o) && o.lbox ? 2 * (stkRel(o) + (o.stkg === false ? 0 : 0.012)) + 0.1 : 0); }
+  function lhOf(o) { return (o.lhm || LH) + (boxSticker(o) && o.lbox ? 2 * (stkRel(o) + (o.stkg === false ? 0 : 0.012)) + 0.1 : 0) + (stlRel(o) ? 0.9 - (o.lhm || LH) + stlRel(o) - (o.stks || 0) / 100 * 0.3 + (o.stkr == null ? 30 : o.stkr) / 100 * 0.4 : 0); }
   function fontStr(o, size) {
     const f = FONTS[o.font] || FONTS.sans;
     return (o.italic ? 'italic ' : '') + (o.bold ? 'bold ' : '') + size + 'px ' + f.st;
@@ -5401,7 +5409,7 @@ html.selActive main { touch-action: none; }
     const fpx = o.size * MM_PT * REF;
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
     const pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
-    const maxW = Math.max(fpx, wMM * REF - 2 * pad);
+    const maxW = Math.max(fpx, stlExtra(o, fpx) ? wMM * REF - 0.6 * pad : wMM * REF - 2 * pad);
     const out = [];
     String(raw).split('\n').forEach(function (para) {
       if (para === '') { out.push({ t: '', hard: true }); return; }
@@ -5440,7 +5448,13 @@ html.selActive main { touch-action: none; }
     o.ctxNext = jb[len] && L[i + len] ? L[i + len].t : null;
   }
   function padMM(o) { return strokeOn(o) ? o.strokeW / 100 * o.size * MM_PT : 0; }
-  function blockH(o, n) { return n * o.size * MM_PT * lhOf(o) + 2 * padMM(o); }
+  function stlOverMM(o) {
+    if (!o.fit && !o.poster && o.stk > 0 && !stlRel(o) && !boxSticker(o)) return 0.2 * o.size * MM_PT;
+    if (!stlRel(o) && !boxSticker(o)) return 0;
+    const tot = o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012), padr = strokeOn(o) ? o.strokeW / 100 : 0, HP = (o.lhm || LH) + 2 * padr + 0.4;
+    return Math.max(0, tot + HP / 2 - padr - lhOf(o) / 2) * o.size * MM_PT;
+  }
+  function blockH(o, n) { return n * o.size * MM_PT * lhOf(o) + 2 * padMM(o) + 2 * stlOverMM(o); }
 
   // Recalcula renglones y alto de un cuadro de texto después de cambiar su ancho o tamaño.
   function layoutOne(o) {
@@ -5451,18 +5465,19 @@ html.selActive main { touch-action: none; }
     return o;
   }
 
-  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg', 'lbox'];
+  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg', 'stkl', 'stks', 'stkr', 'full', 'lbox'];
   function styleOf(o) { const r = {}; STYLE_KEYS.forEach(function (k) { r[k] = o[k]; }); return r; }
 
   // Reparte un texto largo en cuadros: si no cabe en la hoja sigue en la siguiente.
   function flowText(spec, y0, c, firstId) {
     const L = wrapLines(spec, spec.gtext, spec.w);
+    const mg = spec.full ? 0 : c.margin;
     const lhMM = spec.size * MM_PT * lhOf(spec), pad = padMM(spec);
-    const capFull = Math.max(1, Math.floor((c.ph - 2 * c.margin - 2 * pad) / lhMM));
+    const capFull = Math.max(1, Math.floor((c.ph - 2 * mg - 2 * pad) / lhMM));
     let y = y0;
-    if (y == null) y = L.length <= capFull ? Math.max(0, (c.ph - blockH(spec, L.length)) / 2) : c.margin;
-    if (y > c.ph - c.margin - lhMM - 2 * pad) y = c.margin;
-    const capFirst = Math.max(1, Math.floor((c.ph - c.margin - y - 2 * pad) / lhMM));
+    if (y == null) y = L.length <= capFull ? Math.max(0, (c.ph - blockH(spec, L.length)) / 2) : mg;
+    if (y > c.ph - mg - lhMM - 2 * pad) y = mg;
+    const capFirst = Math.max(1, Math.floor((c.ph - mg - y - 2 * pad) / lhMM));
     const objs = [];
     let i = 0, cap = Math.min(capFirst, capFull);
     while (i < L.length || !objs.length) {
@@ -5470,7 +5485,7 @@ html.selActive main { touch-action: none; }
       const part = L.slice(i, i + ck);
       const o = Object.assign({}, styleOf(spec), {
         type: 'text', id: objs.length === 0 && firstId ? firstId : freeSeq++, grp: spec.grp, gtext: spec.gtext,
-        x: spec.x, y: objs.length === 0 ? y : c.margin, w: spec.w, view: null, rot: false, fit: false,
+        x: spec.x, y: objs.length === 0 ? y : mg, w: spec.w, view: null, rot: false, fit: false,
         lines: part.map(function (l) { return l.t; }), raw: rawOf(part)
       });
       setJoints(o, L, i, part.length);
@@ -5554,7 +5569,7 @@ html.selActive main { touch-action: none; }
     const first = mem[0].o, p0 = mem[0].pi;
     const myIdx = Math.max(0, mem.findIndex(function (m) { return m.o === r; }));
     const c = cur.c;
-    const spec = Object.assign(styleOf(first), st, { gtext: text != null ? text : first.gtext, grp: r.grp, x: first.poster ? c.margin : first.x, w: first.poster ? c.pw - 2 * c.margin : first.w });
+    const spec = Object.assign(styleOf(first), st, { gtext: text != null ? text : first.gtext, grp: r.grp, x: first.poster ? c.margin : (!!st.full !== !!first.full ? (st.full ? 0 : c.margin) : first.x), w: first.poster ? c.pw - 2 * c.margin : (!!st.full !== !!first.full ? (st.full ? c.pw : c.pw - 2 * c.margin) : first.w) });
     free.pages = free.pages.map(function (p) { return p.filter(function (o) { return !(o.type === 'text' && o.grp === r.grp); }); });
     let objs;
     if (st.posterOn) {
@@ -5594,6 +5609,7 @@ html.selActive main { touch-action: none; }
 
   // Dibuja el texto en un canvas w×h (px) con fondo transparente.
   function renderText(o, w, h, fill) {
+    if (o.stkl && o.stk > 0 && !o.fit && !o.poster) return renderLetterSticker(o, w, h, fill);
     if (boxSticker(o)) return renderBoxedSticker(o, w, h, fill);
     let front = renderText0(o, w, h, fill);
     if (o.poster) return front;
@@ -5601,6 +5617,39 @@ html.selActive main { touch-action: none; }
     if (o.stk > 0) front = stickerize(front, stickerR(o.stk, w, h, 0.1), o.stkc, stickerG(o.stkg, w, h));
     if (o.lbox && !o.fit) drawLineBoxes(front, o, w, h);
     return front;
+  }
+
+  // Cada letra se dibuja con su propio sticker cerrado; los bordes de letras vecinas no se fusionan.
+  function renderLetterSticker(o, w, h, fill) {
+    const out = document.createElement('canvas'); out.width = w; out.height = h;
+    const ctx = out.getContext('2d');
+    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
+    const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
+    const lh = fpx * lhOf(o), align = o.align || 'center';
+    scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
+    const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(0.2 * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot);
+    (o.lines || []).forEach(function (line, i) {
+      const chars = Array.from(String(line)), lw = scratch.measureText(line).width - stlExtra(o, fpx);
+      const edge = tot + pad + gpx, x0 = align === 'left' ? edge : align === 'right' ? w - edge - lw : (w - lw) / 2;
+      let pre = '';
+      chars.forEach(function (ch) {
+        const before = scratch.measureText(pre).width; pre += ch;
+        if (!ch.trim()) return;
+        const cw = scratch.measureText(pre).width - before;
+        const wi = Math.max(8, Math.ceil(cw - stlExtra(o, fpx) + 2 * (pad + gpx))), JW = Math.ceil(wi + 2 * tot);
+        const so = Object.assign({}, o, { lines: [ch], fit: false, poster: null, lbox: false, stk: 0, jb: null, align: 'center', w: wi / ppm, h: HP / ppm, lhm: base + 2 * hx / fpx });
+        let cv = renderText0(so, wi, HP, fill);
+        if (o.d3 > 0) cv = extrude(so, cv, wi, HP);
+        const J = document.createElement('canvas'); J.width = JW; J.height = JH;
+        J.getContext('2d').drawImage(cv, tot, tot);
+        const S = stickerize(J, r, o.stkc, guide, true);
+        const cx = x0 + before + (cw - stlExtra(o, fpx)) / 2, dy = pad + stlOverMM(o) * ppm + i * lh + lh / 2 - (tot + HP / 2);
+        ctx.drawImage(S, cx - JW / 2, dy);
+        cv.width = 1; cv.height = 1; J.width = 1; J.height = 1; if (S !== J) { S.width = 1; S.height = 1; }
+      });
+    });
+    if (o.lbox) drawLineBoxes(out, o, w, h);
+    return out;
   }
 
   // Cada línea es una tira con marco de corte. El borde de sticker se calcula con todas las tiras
@@ -5614,13 +5663,13 @@ html.selActive main { touch-action: none; }
     const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
     const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
-    const hp = Math.ceil(fpx * base + 2 * pad), JH = Math.ceil(hp + 2 * tot);
+    const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(0.2 * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot), ov = stlOverMM(o) * ppm;
     const align = o.align || 'center', lh = fpx * lhOf(o);
     const lwid = Math.max(1, 0.15 * ppm);
     function piece(t) {
       const wi = Math.max(8, Math.ceil(scratch.measureText(t).width + 2 * (pad + gpx)));
-      const so = Object.assign({}, o, { lines: [t], fit: false, poster: null, lbox: false, stk: 0, d3: 0, jb: null, align: 'center', w: wi / ppm, h: hp / ppm, lhm: base });
-      return { wi: wi, cv: renderText0(so, wi, hp, fill) };
+      const so = Object.assign({}, o, { lines: [t], fit: false, poster: null, lbox: false, stk: 0, d3: 0, jb: null, align: 'center', w: wi / ppm, h: HP / ppm, lhm: base + 2 * hx / fpx });
+      return { wi: wi, cv: renderText0(so, wi, HP, fill) };
     }
     // Tramos de líneas unidas (partes de una misma palabra).
     let k = 0;
@@ -5643,7 +5692,7 @@ html.selActive main { touch-action: none; }
           if (st.g) return;
           const sx0 = si === 0 ? 0 : st.x0, sx1 = si === strips.length - 1 ? JW : st.x0 + st.p.wi, sw = Math.max(1, Math.round(sx1 - sx0));
           const dx = align === 'left' ? 0 : align === 'right' ? w - sw : (w - sw) / 2;
-          const dy = pad + st.q * lh + (lh - JH) / 2;
+          const dy = pad + ov + st.q * lh + (lh - JH) / 2;
           ctx.drawImage(S, sx0, 0, sw, JH, dx, dy, sw, JH);
           if (o.lbox) { ctx.setLineDash([1.6 * ppm, 1.1 * ppm]); ctx.strokeRect(dx + lwid / 2, dy + lwid / 2, sw - lwid, JH - lwid); }
         });
@@ -5714,12 +5763,12 @@ html.selActive main { touch-action: none; }
     } else {
       const ppm = w / o.w;
       fpx = o.size * MM_PT * ppm;
-      const pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0, lh = fpx * lhOf(o);
+      const pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0, lh = fpx * lhOf(o), ovn = o.stk > 0 && !o.stkl && !boxSticker(o) ? stlOverMM(o) * ppm : 0;
       lw = o.fillMode === 'none' ? pad : 2 * pad;
       align = o.align || 'center';
       if (o.poster) { bw = o.poster.W * ppm; bh = o.poster.H * ppm; offx = o.poster.ix * w; offy = o.poster.iy * h; }
       const x = align === 'left' ? pad : align === 'right' ? bw - pad : bw / 2;
-      items = (o.lines || []).map(function (t, i) { return { t: t, x: x, y: pad + i * lh + lh / 2 + fpx * 0.35 }; });
+      items = (o.lines || []).map(function (t, i) { return { t: t, x: x, y: pad + ovn + i * lh + lh / 2 + fpx * 0.35 }; });
     }
     function setup(c) {
       c.setTransform(1, 0, 0, 1, -offx, -offy);
@@ -5774,7 +5823,7 @@ html.selActive main { touch-action: none; }
 
   function textKey(o) {
     return [o.fit ? 'F' + o.text + '|' + o.capMM + '|' + o.asc0 : (o.lines || []).join('\u0001'), o.font, o.size, o.align, o.bold ? 1 : 0, o.italic ? 1 : 0,
-      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0, (o.jb || []).map(Number).join('') + '~' + (o.ctxPrev || '') + '~' + (o.ctxNext || ''),
+      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.stkl ? 1 : 0, o.stks || 0, o.stkr == null ? 30 : o.stkr, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0, (o.jb || []).map(Number).join('') + '~' + (o.ctxPrev || '') + '~' + (o.ctxNext || ''),
       o.poster ? [o.poster.W, o.poster.H, o.poster.ix, o.poster.iy].join(',') : ''].join('|');
   }
 
@@ -5898,7 +5947,7 @@ html.selActive main { touch-action: none; }
       pmarks: $('txPosterMarks').checked, lbox: $('txLBox').checked,
       stroke: $('txStroke').checked, strokeColor: $('txStrokeColor').value, strokeW: parseInt($('txStrokeW').value, 10) || 6,
       d3: $('tx3d').checked ? (parseInt($('tx3dD').value, 10) || 40) : 0, d3dir: $('tx3dDir').value, d3color: $('tx3dColor').value,
-      stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value, stkg: $('txStkG').checked
+      stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value, stkg: $('txStkG').checked, stkl: $('txStkL').checked, stks: parseInt($('txStkS').value, 10) || 0, stkr: parseInt($('txStkR').value, 10), full: $('txFull').checked
     };
   }
 
@@ -5922,7 +5971,7 @@ html.selActive main { touch-action: none; }
     segSet('txAlign', o.align || 'center'); segSet('txFillMode', o.fillMode || 'color'); segSet('txFillFit', o.fillFit || 'cover');
     $('txStroke').checked = !!o.stroke; $('txStrokeColor').value = o.strokeColor; $('txStrokeW').value = o.strokeW;
     $('tx3d').checked = !!o.d3; if (o.d3) $('tx3dD').value = o.d3; $('tx3dDir').value = o.d3dir || 'se'; $('tx3dColor').value = o.d3color || '#7a1642';
-    $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff'; $('txStkG').checked = o.stkg !== false;
+    $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff'; $('txStkG').checked = o.stkg !== false; $('txStkL').checked = !!o.stkl; $('txStkS').value = o.stks || 0; $('txStkR').value = o.stkr == null ? 30 : o.stkr; $('txFull').checked = !!o.full;
     $('txPoster').checked = !!o.poster; $('txPosterMarks').checked = o.poster ? !!o.poster.marks : !!o.pmarks; $('txLBox').checked = !!o.lbox;
     if (o.poster) $('txPosterW').value = Math.round(o.poster.W / 10);
     fillOptions(o.fillImg || '');
@@ -5946,7 +5995,7 @@ html.selActive main { touch-action: none; }
       if (objs.length > 40) { setNote('Ese ancho necesita ' + objs.length + ' hojas. Usa un ancho menor (máximo 40 hojas).', true); return; }
       p0 = free.pages.length;
     } else {
-      const spec = Object.assign({}, st, { gtext: text, grp: freeSeq++, x: c.margin, w: c.pw - 2 * c.margin });
+      const spec = Object.assign({}, st, { gtext: text, grp: freeSeq++, x: st.full ? 0 : c.margin, w: st.full ? c.pw : c.pw - 2 * c.margin });
       objs = flowText(spec, null, c, 0);
       if (!free.pages.length) free.pages.push([]);
       p0 = Math.min(state.page, free.pages.length - 1);
@@ -6038,7 +6087,7 @@ html.selActive main { touch-action: none; }
       op.value = f.k; op.textContent = f.n;
       fs.appendChild(op);
     });
-    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterMarks', 'txLBox', 'txPosterW'].forEach(function (id) {
+    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txStkL', 'txStkS', 'txStkR', 'txFull', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterMarks', 'txLBox', 'txPosterW'].forEach(function (id) {
       $(id).addEventListener('input', live);
       $(id).addEventListener('change', live);
     });
