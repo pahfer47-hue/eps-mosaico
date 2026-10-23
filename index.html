@@ -690,6 +690,7 @@ html.selActive main { touch-action: none; }
           <label for="txt">Texto (si es largo, sigue en la hoja siguiente)</label>
           <textarea id="txt" rows="3" placeholder="Escribe aquí tu título">Título</textarea>
         </div>
+        <div class="row" style="margin:6px 0"><button class="btn" id="txNew" type="button">＋ Texto nuevo (no cambia el que tienes elegido)</button></div>
         <div class="row" id="txCase" style="margin:8px 0">
           <button class="btn" type="button" data-case="upper">MAYÚSCULAS</button>
           <button class="btn" type="button" data-case="lower">minúsculas</button>
@@ -837,10 +838,11 @@ html.selActive main { touch-action: none; }
           <p class="hint">El botón «Crear PDF» está arriba a la derecha.</p>
         </div>
         <div class="sec" data-sec="💾|Proyectos">
-          <p class="hint" id="pjStatus">Tu trabajo se guarda solo en este dispositivo cada vez que cambias algo.</p>
+          <p class="hint" id="pjStatus">Tu trabajo se guarda solo en este dispositivo cada vez que cambias algo. «Guardar proyecto» actualiza el que tienes abierto; «Guardar como nuevo» crea otro sin borrar los demás.</p>
           <div class="field" style="margin-bottom:8px"><label for="pjName">Nombre del proyecto</label><input id="pjName" type="text" maxlength="60" autocomplete="off" placeholder="Ej.: Letras de María"></div>
           <div class="row">
             <button class="btn primary" id="pjSave" type="button">💾 Guardar proyecto</button>
+            <button class="btn" id="pjSaveNew" type="button">＋ Guardar como nuevo</button>
             <button class="btn" id="pjNew" type="button">Nuevo proyecto</button>
           </div>
           <div id="pjList" style="margin-top:10px"></div>
@@ -2442,7 +2444,7 @@ html.selActive main { touch-action: none; }
         URL.revokeObjectURL(r.url);
         const entry = {
           id: nextId++, key: f.name + '|' + f.size + '|' + f.lastModified, name: f.name, file: f,
-          small: cv, sw: iw, sh: ih, edit: newEdit(), thumb: null, ar: iw / ih
+          small: cv, sw: iw, sh: ih, edit: newEdit(), thumb: null, ar: iw / ih, cut: canvasHasAlpha(cv)
         };
         refreshThumb(entry);
         if (state.dniNext != null) { state.dniSlot.set(entry.id, state.dniNext); state.dniNext = nextFreeSlot(state.dniNext + 1); }
@@ -2543,6 +2545,7 @@ html.selActive main { touch-action: none; }
   }
 
   function refreshThumb(f) {
+    if (f.fill) { f.fsig = null; textCache.clear(); return; }
     f.thumb = filteredCanvas(f.small, f.edit, state.files.length > 40 ? 560 : 800);
     if (f.cut && f.stk > 0) f.thumb = stickerize(f.thumb, stickerR(f.stk, f.thumb.width, f.thumb.height, 0.06), f.stkC, stickerG(f.stkG, f.thumb.width, f.thumb.height));
     f.ar = cropAR(f);
@@ -4092,7 +4095,7 @@ html.selActive main { touch-action: none; }
       if (r.type === 'text') {
         await loadFont(r);
         const k = Math.min(1, Math.sqrt(30e6 / (w * h))), e = fillEntry(r);
-        const t = renderText(r, Math.max(2, Math.round(w * k)), Math.max(2, Math.round(h * k)), e ? e.small : null);
+        const t = renderText(r, Math.max(2, Math.round(w * k)), Math.max(2, Math.round(h * k)), fillSrc(e));
         x.globalAlpha = opacityOf(r); x.drawImage(t, r.x * ppm, r.y * ppm, w, h); x.globalAlpha = 1;
         t.width = 1; t.height = 1;
         if (hasMarks(r)) paintPosterMarks(x, r, ppm, c.pw, c.ph);
@@ -4255,7 +4258,7 @@ html.selActive main { touch-action: none; }
     const w = Math.max(2, Math.round(r.w * ppm)), h = Math.max(2, Math.round(r.h * ppm));
     if (r.type === 'text') {
       await loadFont(r);
-      const e = fillEntry(r), t = renderText(r, w, h, e ? e.small : null);
+      const e = fillEntry(r), t = renderText(r, w, h, fillSrc(e));
       x.drawImage(t, -w / 2, -h / 2, w, h); t.width = 1; t.height = 1;
     } else {
       const im = await loadDataImg(await tileJpeg(r.f, w, h, tileMode, r.rot, viewOf(r)));
@@ -4484,6 +4487,13 @@ html.selActive main { touch-action: none; }
     list.forEach(function (f) { f.edit.f.bw = on; refreshThumb(f); });
   }
   function afterBatch() { hideResult(); renderThumbs(); update(); }
+  function fillTarget() {
+    if (sh.multiOn) return null;
+    const r = selRect(); if (!r || r.type !== 'text') return null;
+    const e = fillEntry(r); if (!e) return null;
+    if (!e.edit) e.edit = { f: Object.assign({}, DEF_F) };
+    e.fill = true; return e;
+  }
   function sheetTargets() {
     if (sh.multiOn) return state.files.filter(function (f) { return sh.multi.has(f.id); });
     const r = selRect();
@@ -4612,9 +4622,10 @@ html.selActive main { touch-action: none; }
   // ===== Barra de filtros (un botón por filtro) =====
   const FB = { open: false, key: null };
   const FKEYS = [['br', '☀', 'Brillo', -100, 100], ['co', '◑', 'Contraste', -100, 100], ['wh', '○', 'Blancos', -100, 100], ['bl', '●', 'Negros', -100, 100], ['sa', '🎨', 'Saturación', -100, 100], ['dn', '✦', 'Ruido', 0, 100], ['sh', '◇', 'Nitidez', 0, 100], ['al', '⌑', 'Transp.', 0, 90]];
-  function fTargets() { const t = sheetTargets(); return t.length ? t : state.files.slice(); }
+  function fTargets() { const t = sheetTargets(); if (t.length) return t; const ft = fillTarget(); return ft ? [ft] : state.files.slice(); }
   function fWho() {
-    const t = sheetTargets();
+    const t = sheetTargets(), ft = fillTarget();
+    if (ft) { $('fWho').textContent = 'Se aplica a la imagen de relleno de estas letras.'; return; }
     $('fWho').textContent = !state.files.length ? 'Primero elige fotos.' : t.length ? 'Se aplica a ' + (t.length === 1 ? 'la foto elegida' : t.length + ' fotos elegidas') + '. Toca una foto de la hoja para cambiar.' : 'Se aplica a todas las fotos (' + state.files.length + '). Toca una foto de la hoja para aplicar solo a esa.';
   }
   function fShowValue() {
@@ -4639,7 +4650,7 @@ html.selActive main { touch-action: none; }
     });
     const rs = chip('↺', 'Quitar filtros'); rs.addEventListener('click', function () { const t = fTargets(); t.forEach(function (f) { Object.assign(f.edit.f, DEF_F); refreshThumb(f); }); afterBatch(); fShowValue(); }); box.appendChild(rs);
     const dq = chip('📄', 'Documento'); dq.addEventListener('click', function () { $('docQuick').click(); }); box.appendChild(dq);
-    const ed2 = chip('⚙', 'Editor completo'); ed2.addEventListener('click', function () { const t = fTargets(); if (t.length && !state.busy && !ed.open) { closeFbar(); ed.targets = t.length === state.files.length && !sheetTargets().length ? null : t; openEditor(t[0], true); } }); box.appendChild(ed2);
+    const ed2 = chip('⚙', 'Editor completo'); ed2.addEventListener('click', function () { const t = fTargets(); if (t.length && !t[0].fill && !state.busy && !ed.open) { closeFbar(); ed.targets = t.length === state.files.length && !sheetTargets().length ? null : t; openEditor(t[0], true); } }); box.appendChild(ed2);
     box.scrollLeft = 0; fWho(); $('frow').hidden = !FB.key; fShowValue(); dockMark(); dockSync();
   }
   function closeFbar() { FB.open = false; FB.key = null; $('fbar').hidden = true; $('frow').hidden = true; dockMark(); }
@@ -5605,6 +5616,17 @@ html.selActive main { touch-action: none; }
   // Proporción (ancho/alto) de las letras gigantes con su borde.
   function fitRatio(o) { const m = textMetrics(o, 200); return m.bw / m.bh; }
 
+  function fillSrc(e) {
+    if (!e) return null;
+    if (!e.edit || filtersAreDefault(e.edit.f)) return e.small;
+    const sig = JSON.stringify(e.edit.f);
+    if (e.fsig !== sig) {
+      const cv = document.createElement('canvas'); cv.width = e.small.width; cv.height = e.small.height;
+      cv.getContext('2d').drawImage(e.small, 0, 0); filterCanvas(cv, e.edit.f); e.fsrc = cv; e.fsig = sig;
+    }
+    return e.fsrc;
+  }
+  function fillSig(e) { return e && e.edit ? JSON.stringify(e.edit.f) : ''; }
   function fillEntry(o) { return o.fillMode === 'image' && o.fillImg ? fillImgs.find(function (f) { return f.id === o.fillImg; }) || null : null; }
 
   // Dibuja el texto en un canvas w×h (px) con fondo transparente.
@@ -5836,10 +5858,10 @@ html.selActive main { touch-action: none; }
       }
     }
     const e = fillEntry(o);
-    const key = textKey(o) + '|' + w + 'x' + h + '|' + (e ? e.id + ':' + e.small.width : '') + '|' + (fontReady(o) ? 1 : 0);
+    const key = textKey(o) + '|' + w + 'x' + h + '|' + (e ? e.id + ':' + e.small.width + ':' + fillSig(e) : '') + '|' + (fontReady(o) ? 1 : 0);
     let cv = textCache.get(key);
     if (!cv) {
-      cv = renderText(o, w, h, e ? e.small : null);
+      cv = renderText(o, w, h, fillSrc(e));
       textCache.set(key, cv);
       if (textCache.size > 60) textCache.delete(textCache.keys().next().value);
     }
@@ -5907,7 +5929,7 @@ html.selActive main { touch-action: none; }
     const k = Math.min(1, Math.sqrt(4.5e6 / (w * h)));
     w = Math.max(32, Math.round(w * k)); h = Math.max(32, Math.round(h * k));
     const e = fillEntry(r);
-    const cv = renderText(r, w, h, e ? e.small : null);
+    const cv = renderText(r, w, h, fillSrc(e));
     const data = cv.toDataURL('image/png');
     pdfAlpha(doc, opacityOf(r));
     doc.addImage(data, 'PNG', r.x, r.y, r.w, r.h, undefined, 'FAST');
@@ -5996,7 +6018,10 @@ html.selActive main { touch-action: none; }
       p0 = free.pages.length;
     } else {
       const spec = Object.assign({}, st, { gtext: text, grp: freeSeq++, x: st.full ? 0 : c.margin, w: st.full ? c.pw : c.pw - 2 * c.margin });
-      objs = flowText(spec, null, c, 0);
+      let y0 = null;
+      const pgObjs = free.pages[Math.min(state.page, free.pages.length - 1)] || [];
+      if (pgObjs.length) { y0 = Math.max.apply(null, pgObjs.map(function (q) { return q.y + q.h; })) + 4; if (y0 > c.ph - c.margin - 20) y0 = null; }
+      objs = flowText(spec, y0, c, 0);
       if (!free.pages.length) free.pages.push([]);
       p0 = Math.min(state.page, free.pages.length - 1);
     }
@@ -6048,7 +6073,7 @@ html.selActive main { touch-action: none; }
       cx.imageSmoothingQuality = 'high';
       cx.drawImage(img, 0, 0, cv.width, cv.height);
       URL.revokeObjectURL(u);
-      const e = { id: fillSeq++, name: file.name, small: cv };
+      const e = { id: fillSeq++, name: file.name, small: cv, fill: true, edit: { f: Object.assign({}, DEF_F) } };
       fillImgs.push(e);
       fillOptions(e.id);
       textCache.clear();
@@ -6122,6 +6147,12 @@ html.selActive main { touch-action: none; }
     });
     $('txFillFile').addEventListener('change', function (e) { const f = e.target.files[0]; e.target.value = ''; if (f) readFillFile(f); });
     $('txAdd').addEventListener('click', addTextObj);
+    $('txNew').addEventListener('click', function () {
+      sh.sel = null; sh.frame = false; sh.loaded = null;
+      $('txt').value = ''; update(); syncSel(); syncTextUi();
+      setNote('Escribe el texto nuevo y toca «Agregar a la hoja». Los textos que ya pusiste no cambian.');
+      $('txt').focus();
+    });
     $('txBanner').addEventListener('click', addBanner);
     syncTextUi();
   }
@@ -7762,7 +7793,7 @@ html.selActive main { touch-action: none; }
       let ot = null; if (f.origFile) { ot = tokOf(f.origFile); blobs.set(ot, f.origFile); }
       return { id: f.id, key: f.key, name: f.name, tok: t, otok: ot, sw: f.sw, sh: f.sh, osw: f.origSw, osh: f.origSh, edit: pjClone(f.edit), view: f.view ? pjClone(f.view) : null, cut: !!f.cut, stk: f.stk || 0, stkC: f.stkC, stkG: f.stkG };
     });
-    const fills = fillImgs.filter(function (e) { return e.blob; }).map(function (e) { const t = tokOf(e.blob); blobs.set(t, e.blob); return { id: e.id, name: e.name, tok: t }; });
+    const fills = fillImgs.filter(function (e) { return e.blob; }).map(function (e) { const t = tokOf(e.blob); blobs.set(t, e.blob); return { id: e.id, name: e.name, tok: t, edit: e.edit ? pjClone(e.edit) : null }; });
     const pages = free.pages.map(function (p) { return p.map(function (o) { return pjClone(Object.assign({}, o, { f: o.f ? o.f.id : 0 })); }); });
     const meta = {
       files: files, fills: fills, pages: pages,
@@ -7843,13 +7874,13 @@ html.selActive main { touch-action: none; }
       state.files = []; free.pages = []; free.known = new Set(); fillImgs.length = 0; textCache.clear();
       for (let i = 0; i < rec.fills.length; i++) {
         const q = rec.fills[i], b = await pjGetBlob(q.tok); if (!b) continue;
-        fillImgs.push({ id: q.id, name: q.name, small: await pjSmall(b), blob: b });
+        fillImgs.push({ id: q.id, name: q.name, small: await pjSmall(b), blob: b, fill: true, edit: q.edit || { f: Object.assign({}, DEF_F) } });
       }
       let maxId = 0;
       for (let i = 0; i < rec.files.length; i++) {
         const q = rec.files[i]; setNote('Recuperando tu proyecto… ' + (i + 1) + ' de ' + rec.files.length);
         const b = await pjGetBlob(q.tok); if (!b) continue;
-        const e = { id: q.id, key: q.key, name: q.name, file: b, small: await pjSmall(b), sw: q.sw, sh: q.sh, edit: q.edit, view: q.view, cut: q.cut, stk: q.stk, stkC: q.stkC, stkG: q.stkG, thumb: null, ar: 1 };
+        const e = { id: q.id, key: q.key, name: q.name, file: b, small: await pjSmall(b), sw: q.sw, sh: q.sh, edit: q.edit, view: q.view, cut: q.cut || canvasHasAlpha(await pjSmall(b)), stk: q.stk, stkC: q.stkC, stkG: q.stkG, thumb: null, ar: 1 };
         if (q.otok) { const ob = await pjGetBlob(q.otok); if (ob) { e.origFile = ob; e.origSmall = await pjSmall(ob); e.origSw = q.osw; e.origSh = q.osh; } }
         refreshThumb(e); state.files.push(e); if (q.id > maxId) maxId = q.id;
         await yieldUI();
@@ -7893,7 +7924,7 @@ html.selActive main { touch-action: none; }
         if (state.busy) return;
         if (state.files.length && PJ.confirm !== 'o' + m.id) { PJ.confirm = 'o' + m.id; o.textContent = '¿Reemplazar?'; return; }
         PJ.confirm = null; o.disabled = true; setNote('Abriendo proyecto…');
-        try { const rec = await idb('meta', 'readonly', function (s) { return s.get(m.id); }); if (rec) { await pjApply(rec); if (m.id !== 'auto') $('pjName').value = m.name; setNote('Proyecto abierto.'); closeSheet(); } }
+        try { const rec = await idb('meta', 'readonly', function (s) { return s.get(m.id); }); if (rec) { await pjApply(rec); if (m.id !== 'auto') $('pjName').value = m.name; PJ.cur = m.id === 'auto' ? null : m.id; setNote('Proyecto abierto.'); closeSheet(); } }
         catch (e) { setNote('No se pudo abrir (' + (e && e.message ? e.message : 'error') + ').', true); }
         o.disabled = false;
       });
@@ -7909,27 +7940,39 @@ html.selActive main { touch-action: none; }
     try { if (navigator.storage && navigator.storage.estimate) { const q = await navigator.storage.estimate(); $('pjUsage').textContent = 'Espacio usado por la app: ' + (q.usage / 1048576).toFixed(1) + ' MB. Borra los proyectos que ya no uses para liberar espacio.'; } } catch (e) { /* ok */ }
   }
   function bindProj() {
-    $('pjSave').addEventListener('click', async function () {
+    async function pjDoSave(forceNew) {
       if (!PJ.db) { setNote('Este navegador no permite guardar proyectos.', true); return; }
       if (!state.files.length && !free.pages.length) { setNote('Primero agrega fotos o letras.', true); return; }
       if (PJ.busy || state.busy) return;
-      const nm = ($('pjName').value || '').trim() || ('Proyecto ' + fmtDate(Date.now()));
-      PJ.busy = true; $('pjSave').disabled = true;
+      let nm = ($('pjName').value || '').trim() || ('Proyecto ' + fmtDate(Date.now()));
+      PJ.busy = true; $('pjSave').disabled = true; $('pjSaveNew').disabled = true;
       try {
         const metas = await idb('meta', 'readonly', function (s) { return s.getAll(); });
-        const same = metas.find(function (m) { return m.id !== 'auto' && m.name === nm; });
-        await pjWrite(same ? same.id : 'p' + Date.now().toString(36), nm);
+        const cur = !forceNew && PJ.cur ? metas.find(function (m) { return m.id === PJ.cur; }) : null;
+        let id;
+        if (cur && cur.name === nm) id = cur.id;
+        else {
+          if (metas.some(function (m) { return m.id !== 'auto' && m.name === nm; })) {
+            let k = 2; while (metas.some(function (m) { return m.name === nm + ' (' + k + ')'; })) k++;
+            nm = nm + ' (' + k + ')';
+          }
+          id = 'p' + Date.now().toString(36);
+        }
+        $('pjName').value = nm;
+        await pjWrite(id, nm); PJ.cur = id;
         setNote('Proyecto «' + nm + '» guardado.');
       } catch (e) { setNote('No se pudo guardar (' + (e && e.message ? e.message : 'error') + ').', true); }
-      PJ.busy = false; $('pjSave').disabled = false; pjRender();
-    });
+      PJ.busy = false; $('pjSave').disabled = false; $('pjSaveNew').disabled = false; pjRender();
+    }
+    $('pjSave').addEventListener('click', function () { pjDoSave(false); });
+    $('pjSaveNew').addEventListener('click', function () { pjDoSave(true); });
     $('pjNew').addEventListener('click', async function () {
       if (state.busy) return;
       if ((state.files.length || free.pages.length) && PJ.confirm !== 'new') { PJ.confirm = 'new'; $('pjNew').textContent = '¿Borrar lo actual?'; setTimeout(function () { if (PJ.confirm === 'new') { PJ.confirm = null; $('pjNew').textContent = 'Nuevo proyecto'; } }, 4000); return; }
       PJ.confirm = null; $('pjNew').textContent = 'Nuevo proyecto';
       state.files = []; free.pages = []; free.known = new Set(); free.dim = null; free.copiesAt = state.copies; fillImgs.length = 0; textCache.clear(); state.dniSlot = new Map();
       H.u.length = 0; H.r.length = 0; H.pend = null; hBtns(); sh.sel = null; sh.frame = false; sh.multiOn = false; sh.multi.clear(); state.page = 0;
-      $('pjName').value = ''; PJ.sig = '';
+      $('pjName').value = ''; PJ.sig = ''; PJ.cur = null;
       try { if (PJ.db) { await idb('meta', 'readwrite', function (s) { return s.delete('auto'); }); await pjGc(); } } catch (e) { /* ok */ }
       renderThumbs(); update(); syncSel(); pjRender(); setNote('Proyecto nuevo, en blanco.');
     });
