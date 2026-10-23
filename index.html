@@ -344,6 +344,13 @@ header .prog { flex: 1 1 100%; margin: 0; }
 .pgt canvas { display: block; background: #fff; border: 1px solid var(--line); border-radius: 3px; }
 .pgt[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
 #subbar { padding: 6px 10px 2px; gap: 6px; border-top: 1px solid var(--line); }
+html, body { overscroll-behavior-y: none; }
+.pj-row { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pj-row img { width: 36px; height: 46px; object-fit: cover; border-radius: 4px; background: #fff; border: 1px solid var(--line); flex: none; }
+.pj-row .pj-t { flex: 1; min-width: 0; font-size: 0.875rem; }
+.pj-row .pj-t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pj-row .pj-t span { color: var(--muted); font-size: 0.75rem; }
+.pj-row .sc.danger { color: #b3261e; border-color: #b3261e; }
 .sc { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 0.8125rem; font-weight: 600; padding: 7px 12px; border-radius: 999px; cursor: pointer; min-height: 36px; }
 .sc[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .sc.act { border-color: var(--accent); color: var(--accent); }
@@ -403,6 +410,7 @@ h1 { font-size: 1.1rem; }
 @media (pointer: fine) { .dk-row { scrollbar-width: thin; padding-bottom: 8px; } .dk-row::-webkit-scrollbar { display: block; height: 7px; } .dk-row::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; } }
 #sp { bottom: var(--bui, 128px); z-index: 7; }
 /* ventanas flotantes: translúcidas y "fantasma" (lo vacío deja pasar el toque) */
+.controls details.group.sheet.scrolls, .seltools.scrolls { pointer-events: auto; }
 .controls details.group.sheet, .seltools { background: color-mix(in srgb, var(--surface) calc(var(--fop, 84) * 1%), transparent); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); pointer-events: none; }
 .controls details.group.sheet :is(button, input, select, textarea, label, a, summary, .thumb, canvas, output),
 .seltools :is(button, input, select, textarea, label, a, canvas, output) { pointer-events: auto; }
@@ -741,7 +749,6 @@ html.selActive main { touch-action: none; }
           <div class="field"><label for="txStrokeColor">Color del borde</label><input type="color" id="txStrokeColor" value="#15212b"></div>
           <div class="field"><label for="txStrokeW">Grosor del borde</label><input type="range" id="txStrokeW" min="1" max="40" value="6"></div>
         </div>
-        <label class="check"><input type="checkbox" id="txLBox"> Marco de corte en cada línea (para recortar y pegar)</label>
         <label class="check"><input type="checkbox" id="tx3d"> Efecto 3D</label>
         <div class="fields" id="tx3dRow" hidden>
           <div class="field"><label for="tx3dDir">Hacia dónde</label><select id="tx3dDir"><option value="se">↘ abajo a la derecha</option><option value="sw">↙ abajo a la izquierda</option><option value="ne">↗ arriba a la derecha</option><option value="nw">↖ arriba a la izquierda</option></select></div>
@@ -754,6 +761,7 @@ html.selActive main { touch-action: none; }
           <div class="field"><label for="txStkC">Color del borde</label><input type="color" id="txStkC" value="#ffffff"></div>
           <label class="check"><input type="checkbox" id="txStkG" checked> Línea fina gris por fuera, como guía para la tijera</label>
         </div>
+        <label class="check" style="margin-top:8px"><input type="checkbox" id="txLBox"> ✂ Palabra partida en líneas: marco de corte en cada línea y, con sticker, el borde sigue sin cerrarse al unir las tiras en orden</label>
         </div>
         <div class="sec" data-sec="🗺|Póster">
         <label class="check tx-gap"><input type="checkbox" id="txPoster"> Repartir en varias hojas (póster gigante)</label>
@@ -822,6 +830,16 @@ html.selActive main { touch-action: none; }
         <div class="sec" data-sec="ℹ|Resumen">
           <div class="sum" id="sumBox"><strong id="sumMain">Sin imágenes</strong><span class="muted" id="sumSub"></span></div>
           <p class="hint">El botón «Crear PDF» está arriba a la derecha.</p>
+        </div>
+        <div class="sec" data-sec="💾|Proyectos">
+          <p class="hint" id="pjStatus">Tu trabajo se guarda solo en este dispositivo cada vez que cambias algo.</p>
+          <div class="field" style="margin-bottom:8px"><label for="pjName">Nombre del proyecto</label><input id="pjName" type="text" maxlength="60" autocomplete="off" placeholder="Ej.: Letras de María"></div>
+          <div class="row">
+            <button class="btn primary" id="pjSave" type="button">💾 Guardar proyecto</button>
+            <button class="btn" id="pjNew" type="button">Nuevo proyecto</button>
+          </div>
+          <div id="pjList" style="margin-top:10px"></div>
+          <p class="hint" id="pjUsage"></p>
         </div>
         <div class="sec" data-sec="⧉|Copias">
         <div class="row" style="justify-content:space-between">
@@ -1066,7 +1084,7 @@ html.selActive main { touch-action: none; }
       <option value="4x4">16 partes (4×4)</option>
     </select>
     <select id="spPaper" aria-label="Tamaño de las hojas de salida"><option value="carta">Salida: Carta</option><option value="oficio">Salida: Oficio</option><option value="a4">Salida: A4</option></select>
-    <select id="spMargin" aria-label="Margen"><option value="0">Sin margen</option><option value="5" selected>Margen 5 mm</option><option value="10">Margen 10 mm</option></select>
+    <select id="spMargin" aria-label="Margen"><option value="0">Sin margen</option><option value="1">Margen 1 mm</option><option value="2">Margen 2 mm</option><option value="5" selected>Margen 5 mm</option><option value="10">Margen 10 mm</option></select>
     <select id="spFit" aria-label="Ajuste"><option value="fit">Sin recortar (marca de corte)</option><option value="fill">Llenar la hoja (recorta bordes)</option></select>
     <select id="spSep" aria-label="Cómo guardar"><option value="one">Guardar en un solo PDF</option><option value="sep">Un PDF por cada parte (ZIP)</option></select>
     <select id="spOv" aria-label="Solape para pegar"><option value="0">Sin solape</option><option value="0.03">Solape pequeño</option><option value="0.06">Solape medio</option></select>
@@ -2309,6 +2327,7 @@ html.selActive main { touch-action: none; }
     syncMini();
     hideResult();
     savePrefs();
+    autosaveSoon();
   }
 
   const ms = { on: false, ids: new Set() };
@@ -2455,12 +2474,12 @@ html.selActive main { touch-action: none; }
   }
 
   // Borde de sticker: contorno de color (blanco) alrededor de lo que no es transparente.
-  function stickerize(src, rpx, color, guide) {
+  function stickerize(src, rpx, color, guide, noScale) {
     const w = src.width, h = src.height;
     rpx = Math.max(1, rpx);
     guide = guide > 0 ? guide : 0;
     const tot = rpx + guide;
-    const sc = Math.min((w - 2 * tot) / w, (h - 2 * tot) / h);
+    const sc = noScale ? 1 : Math.min((w - 2 * tot) / w, (h - 2 * tot) / h);
     if (!(sc > 0.2)) return src;
     const fw = w * sc, fh = h * sc, ox = (w - fw) / 2, oy = (h - fh) / 2;
     const sil = document.createElement('canvas');
@@ -4375,6 +4394,7 @@ html.selActive main { touch-action: none; }
     holder(r).view = zoomView(d.w, d.h, fd.w, fd.h, base, factor);
   }
   function endGesture() {
+    autosaveSoon();
     const g0 = sh.g, ch = g0 && g0.changed;
     if (ch) hideResult();
     sh.g = null;
@@ -5355,7 +5375,11 @@ html.selActive main { touch-action: none; }
   function setSpacing(c, o, fpx) {
     if ('letterSpacing' in c) c.letterSpacing = ((o.spacing || 0) / 100 * fpx).toFixed(2) + 'px';
   }
-  function lhOf(o) { return o.lhm || LH; }
+  // Con «marco de corte» + borde de sticker, cada línea es una tira con su propio borde: necesita más alto.
+  // Palabra partida en varias líneas (sin espacios) o marcada con «marco de corte»: el borde del sticker sigue entre las tiras.
+  function boxSticker(o) { return !!(o.stk > 0 && !o.fit && !o.poster && (o.lines || []).length > 0 && (o.lbox || (o.jb && o.jb.some(Boolean)))); }
+  function stkRel(o) { return o.stk / 100 * 0.22; }
+  function lhOf(o) { return (o.lhm || LH) + (boxSticker(o) && o.lbox ? 2 * (stkRel(o) + (o.stkg === false ? 0 : 0.012)) + 0.1 : 0); }
   function fontStr(o, size) {
     const f = FONTS[o.font] || FONTS.sans;
     return (o.italic ? 'italic ' : '') + (o.bold ? 'bold ' : '') + size + 'px ' + f.st;
@@ -5389,7 +5413,7 @@ html.selActive main { touch-action: none; }
         while (scratch.measureText(line).width > maxW && line.length > 1) {
           let k = line.length - 1;
           while (k > 1 && scratch.measureText(line.slice(0, k)).width > maxW) k--;
-          out.push({ t: line.slice(0, k), hard: false });
+          out.push({ t: line.slice(0, k), hard: false, mid: true });
           line = line.slice(k);
         }
       });
@@ -5400,6 +5424,21 @@ html.selActive main { touch-action: none; }
   function rawOf(lines) {
     return lines.map(function (l, i) { return l.t + (i < lines.length - 1 ? (l.hard ? '\n' : ' ') : ''); }).join('');
   }
+  // ¿El corte entre la línea k y la k+1 parte una palabra (sin espacio)? Entonces el borde del sticker no se cierra ahí.
+  function jointAfter(L, k) {
+    const l = L[k], nx = L[k + 1];
+    if (!l || !nx) return false;
+    if (!l.hard) return !!l.mid;
+    return l.t !== '' && nx.t !== '' && !/\s$/.test(l.t) && !/^\s/.test(nx.t);
+  }
+  // Marca en un cuadro de texto qué cortes de línea unen partes de una misma palabra (también con la hoja anterior o siguiente).
+  function setJoints(o, L, i, len) {
+    const jb = [i > 0 ? jointAfter(L, i - 1) : false];
+    for (let k = 0; k < len; k++) jb.push(i + k < L.length - 1 ? jointAfter(L, i + k) : false);
+    o.jb = jb;
+    o.ctxPrev = jb[0] && L[i - 1] ? L[i - 1].t : null;
+    o.ctxNext = jb[len] && L[i + len] ? L[i + len].t : null;
+  }
   function padMM(o) { return strokeOn(o) ? o.strokeW / 100 * o.size * MM_PT : 0; }
   function blockH(o, n) { return n * o.size * MM_PT * lhOf(o) + 2 * padMM(o); }
 
@@ -5407,6 +5446,7 @@ html.selActive main { touch-action: none; }
   function layoutOne(o) {
     const L = wrapLines(o, o.raw, o.w);
     o.lines = L.map(function (l) { return l.t; });
+    setJoints(o, L, 0, L.length); o.jb[0] = false; o.jb[L.length] = false; o.ctxPrev = o.ctxNext = null;
     o.h = blockH(o, L.length);
     return o;
   }
@@ -5433,6 +5473,7 @@ html.selActive main { touch-action: none; }
         x: spec.x, y: objs.length === 0 ? y : c.margin, w: spec.w, view: null, rot: false, fit: false,
         lines: part.map(function (l) { return l.t; }), raw: rawOf(part)
       });
+      setJoints(o, L, i, part.length);
       o.h = blockH(o, part.length);
       objs.push(o);
       i += ck; cap = capFull;
@@ -5553,12 +5594,65 @@ html.selActive main { touch-action: none; }
 
   // Dibuja el texto en un canvas w×h (px) con fondo transparente.
   function renderText(o, w, h, fill) {
+    if (boxSticker(o)) return renderBoxedSticker(o, w, h, fill);
     let front = renderText0(o, w, h, fill);
     if (o.poster) return front;
     if (o.d3 > 0) front = extrude(o, front, w, h);
     if (o.stk > 0) front = stickerize(front, stickerR(o.stk, w, h, 0.1), o.stkc, stickerG(o.stkg, w, h));
     if (o.lbox && !o.fit) drawLineBoxes(front, o, w, h);
     return front;
+  }
+
+  // Cada línea es una tira con marco de corte. El borde de sticker se calcula con todas las tiras
+  // puestas una al lado de otra, así al cortar y pegar en orden el borde continúa sin cerrarse en los cortes.
+  function renderBoxedSticker(o, w, h, fill) {
+    const out = document.createElement('canvas'); out.width = w; out.height = h;
+    const ctx = out.getContext('2d');
+    const all = o.lines || [], n = all.length;
+    if (!n) return out;
+    const jb = o.jb && o.jb.length === n + 1 ? o.jb : new Array(n + 1).fill(false);
+    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
+    const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
+    scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
+    const hp = Math.ceil(fpx * base + 2 * pad), JH = Math.ceil(hp + 2 * tot);
+    const align = o.align || 'center', lh = fpx * lhOf(o);
+    const lwid = Math.max(1, 0.15 * ppm);
+    function piece(t) {
+      const wi = Math.max(8, Math.ceil(scratch.measureText(t).width + 2 * (pad + gpx)));
+      const so = Object.assign({}, o, { lines: [t], fit: false, poster: null, lbox: false, stk: 0, d3: 0, jb: null, align: 'center', w: wi / ppm, h: hp / ppm, lhm: base });
+      return { wi: wi, cv: renderText0(so, wi, hp, fill) };
+    }
+    // Tramos de líneas unidas (partes de una misma palabra).
+    let k = 0;
+    ctx.save(); ctx.strokeStyle = '#444'; ctx.lineWidth = lwid;
+    while (k < n) {
+      let e = k; while (e + 1 < n && jb[e + 1]) e++;
+      const idx = []; for (let q = k; q <= e; q++) if (String(all[q]).trim() !== '') idx.push(q);
+      const gb = jb[k] && o.ctxPrev ? o.ctxPrev : null, ga = jb[e + 1] && o.ctxNext ? o.ctxNext : null;
+      if (idx.length) {
+        const strips = [];
+        if (gb) strips.push({ g: true, p: piece(gb) });
+        idx.forEach(function (q) { strips.push({ g: false, q: q, p: piece(all[q]) }); });
+        if (ga) strips.push({ g: true, p: piece(ga) });
+        const sumW = strips.reduce(function (a, st) { return a + st.p.wi; }, 0), JW = Math.ceil(sumW + 2 * tot);
+        const J = document.createElement('canvas'); J.width = JW; J.height = JH;
+        const jx = J.getContext('2d'); let xo = tot;
+        strips.forEach(function (st) { st.x0 = xo; jx.drawImage(st.p.cv, xo, tot); xo += st.p.wi; st.p.cv.width = 1; st.p.cv.height = 1; });
+        const S = stickerize(J, r, o.stkc, guide, true);
+        strips.forEach(function (st, si) {
+          if (st.g) return;
+          const sx0 = si === 0 ? 0 : st.x0, sx1 = si === strips.length - 1 ? JW : st.x0 + st.p.wi, sw = Math.max(1, Math.round(sx1 - sx0));
+          const dx = align === 'left' ? 0 : align === 'right' ? w - sw : (w - sw) / 2;
+          const dy = pad + st.q * lh + (lh - JH) / 2;
+          ctx.drawImage(S, sx0, 0, sw, JH, dx, dy, sw, JH);
+          if (o.lbox) { ctx.setLineDash([1.6 * ppm, 1.1 * ppm]); ctx.strokeRect(dx + lwid / 2, dy + lwid / 2, sw - lwid, JH - lwid); }
+        });
+        J.width = 1; J.height = 1; if (S !== J) { S.width = 1; S.height = 1; }
+      }
+      k = e + 1;
+    }
+    ctx.restore();
+    return out;
   }
 
   // Marco punteado alrededor de cada línea del texto: para saber por dónde cortar y pegar.
@@ -5680,7 +5774,7 @@ html.selActive main { touch-action: none; }
 
   function textKey(o) {
     return [o.fit ? 'F' + o.text + '|' + o.capMM + '|' + o.asc0 : (o.lines || []).join('\u0001'), o.font, o.size, o.align, o.bold ? 1 : 0, o.italic ? 1 : 0,
-      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0,
+      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0, (o.jb || []).map(Number).join('') + '~' + (o.ctxPrev || '') + '~' + (o.ctxNext || ''),
       o.poster ? [o.poster.W, o.poster.H, o.poster.ix, o.poster.iy].join(',') : ''].join('|');
   }
 
@@ -7587,6 +7681,232 @@ html.selActive main { touch-action: none; }
     if (mq.addEventListener) mq.addEventListener('change', drawSheet);
   }
 
+  // ===== Proyectos: autoguardado y guardado con nombre (IndexedDB, solo en este dispositivo) =====
+  var PJ = { db: null, ready: false, restoring: false, busy: false, tm: 0, sig: '', tok: new WeakMap(), saved: new Set(), seq: 0, n: 0, confirm: null };
+  function pjOpen() {
+    return new Promise(function (res) {
+      try {
+        const rq = indexedDB.open('mosaico-proyectos', 1);
+        rq.onupgradeneeded = function () { const d = rq.result; d.createObjectStore('meta', { keyPath: 'id' }); d.createObjectStore('blob'); };
+        rq.onsuccess = function () { res(rq.result); };
+        rq.onerror = function () { res(null); }; rq.onblocked = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  }
+  function idb(store, mode, fn) {
+    return new Promise(function (res, rej) {
+      const tx = PJ.db.transaction(store, mode), r = fn(tx.objectStore(store));
+      tx.oncomplete = function () { res(r ? r.result : undefined); };
+      tx.onerror = tx.onabort = function () { rej(tx.error || new Error('idb')); };
+    });
+  }
+  function tokOf(b) {
+    let t = PJ.tok.get(b);
+    if (!t) { t = 'b' + Date.now().toString(36) + (PJ.seq++).toString(36) + Math.random().toString(36).slice(2, 6); PJ.tok.set(b, t); }
+    return t;
+  }
+  function pjClone(o) { return JSON.parse(JSON.stringify(o)); }
+  function pjSnap() {
+    const blobs = new Map();
+    const files = state.files.map(function (f) {
+      const t = tokOf(f.file); blobs.set(t, f.file);
+      let ot = null; if (f.origFile) { ot = tokOf(f.origFile); blobs.set(ot, f.origFile); }
+      return { id: f.id, key: f.key, name: f.name, tok: t, otok: ot, sw: f.sw, sh: f.sh, osw: f.origSw, osh: f.origSh, edit: pjClone(f.edit), view: f.view ? pjClone(f.view) : null, cut: !!f.cut, stk: f.stk || 0, stkC: f.stkC, stkG: f.stkG };
+    });
+    const fills = fillImgs.filter(function (e) { return e.blob; }).map(function (e) { const t = tokOf(e.blob); blobs.set(t, e.blob); return { id: e.id, name: e.name, tok: t }; });
+    const pages = free.pages.map(function (p) { return p.map(function (o) { return pjClone(Object.assign({}, o, { f: o.f ? o.f.id : 0 })); }); });
+    const meta = {
+      files: files, fills: fills, pages: pages,
+      state: { comb: state.comb, copies: state.copies, page: state.page, dniLay: state.dniLay, paper: state.paper, land: state.land, mode: state.mode },
+      combN: $('combN').value, pdfName: $('pdfName').value,
+      prefs: (function () { try { return localStorage.getItem(PREF) || ''; } catch (e) { return ''; } })(),
+      dniSlot: Array.from(state.dniSlot.entries()), known: Array.from(free.known), copiesAt: free.copiesAt, dim: free.dim || null,
+      fillSeq: fillSeq
+    };
+    return { blobs: blobs, meta: meta };
+  }
+  function pjThumb() {
+    try {
+      const cv = $('sheet'), t = document.createElement('canvas'); t.width = 90; t.height = Math.max(20, Math.round(90 * cv.height / cv.width));
+      const x = t.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height); x.drawImage(cv, 0, 0, t.width, t.height);
+      return t.toDataURL('image/jpeg', 0.6);
+    } catch (e) { return ''; }
+  }
+  async function pjWrite(id, name) {
+    for (let i = 0; i < fillImgs.length; i++) if (!fillImgs[i].blob) fillImgs[i].blob = await canvasBlob(fillImgs[i].small, 'png');
+    const sn = pjSnap();
+    for (const kv of sn.blobs) { if (!PJ.saved.has(kv[0])) { await idb('blob', 'readwrite', function (s) { return s.put(kv[1], kv[0]); }); PJ.saved.add(kv[0]); } }
+    const rec = Object.assign({ id: id, name: name, updated: Date.now(), thumb: pjThumb(), n: state.files.length }, sn.meta);
+    await idb('meta', 'readwrite', function (s) { return s.put(rec); });
+    return JSON.stringify(sn.meta);
+  }
+  async function pjGc() {
+    try {
+      const metas = await idb('meta', 'readonly', function (s) { return s.getAll(); }), used = new Set();
+      metas.forEach(function (m) { m.files.forEach(function (f) { used.add(f.tok); if (f.otok) used.add(f.otok); }); m.fills.forEach(function (f) { used.add(f.tok); }); });
+      const keys = await idb('blob', 'readonly', function (s) { return s.getAllKeys(); });
+      for (const k of keys) if (!used.has(k)) { await idb('blob', 'readwrite', function (s) { return s.delete(k); }); PJ.saved.delete(k); }
+    } catch (e) { /* nada */ }
+  }
+  function pjStatus(m) { const e = $('pjStatus'); if (e) e.textContent = m; }
+  function hhmm() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function autosaveSoon() {
+    if (!PJ.ready || PJ.restoring || !PJ.db) return;
+    clearTimeout(PJ.tm); PJ.tm = setTimeout(pjAuto, 1200);
+  }
+  async function pjAuto() {
+    if (!PJ.ready || PJ.restoring || !PJ.db) return;
+    if (PJ.busy) { autosaveSoon(); return; }
+    if (!state.files.length && !free.pages.length) return;
+    PJ.busy = true;
+    try {
+      const sig = JSON.stringify([pjSnapSig()]);
+      if (sig !== PJ.sig) {
+        PJ.sig = await pjWrite('auto', 'Autoguardado');
+        PJ.sig = sig;
+        pjStatus('Guardado automáticamente a las ' + hhmm() + ' ✓ (solo en este dispositivo).');
+        if (++PJ.n % 15 === 0) pjGc();
+      }
+    } catch (e) { pjStatus('No se pudo autoguardar (' + (e && e.message ? e.message : 'error') + ').'); }
+    PJ.busy = false;
+  }
+  function pjSnapSig() {
+    return [state.files.map(function (f) { return [f.id, f.edit, f.view, f.cut, f.stk, f.stkC, f.stkG, f.origFile ? 1 : 0, f.file && f.file.size]; }),
+      free.pages.map(function (p) { return p.map(function (o) { return Object.assign({}, o, { f: o.f ? o.f.id : 0 }); }); }),
+      state.comb, state.copies, state.page, state.dniLay, state.mode, state.paper, state.land, Array.from(state.dniSlot.entries()), $('pdfName').value,
+      (function () { try { return localStorage.getItem(PREF); } catch (e) { return ''; } })(), fillImgs.map(function (e) { return e.id; })];
+  }
+  async function pjSmall(blob) {
+    const r = await loadImg(blob), iw = r.img.naturalWidth, ih = r.img.naturalHeight, s = Math.min(1, 800 / Math.max(iw, ih));
+    const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(iw * s)); cv.height = Math.max(1, Math.round(ih * s));
+    const x = cv.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(r.img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(r.url);
+    return cv;
+  }
+  async function pjGetBlob(tok) {
+    const b = await idb('blob', 'readonly', function (s) { return s.get(tok); });
+    if (b) { PJ.tok.set(b, tok); PJ.saved.add(tok); }
+    return b;
+  }
+  async function pjApply(rec) {
+    PJ.restoring = true; state.busy = true;
+    try {
+      state.files = []; free.pages = []; free.known = new Set(); fillImgs.length = 0; textCache.clear();
+      for (let i = 0; i < rec.fills.length; i++) {
+        const q = rec.fills[i], b = await pjGetBlob(q.tok); if (!b) continue;
+        fillImgs.push({ id: q.id, name: q.name, small: await pjSmall(b), blob: b });
+      }
+      let maxId = 0;
+      for (let i = 0; i < rec.files.length; i++) {
+        const q = rec.files[i]; setNote('Recuperando tu proyecto… ' + (i + 1) + ' de ' + rec.files.length);
+        const b = await pjGetBlob(q.tok); if (!b) continue;
+        const e = { id: q.id, key: q.key, name: q.name, file: b, small: await pjSmall(b), sw: q.sw, sh: q.sh, edit: q.edit, view: q.view, cut: q.cut, stk: q.stk, stkC: q.stkC, stkG: q.stkG, thumb: null, ar: 1 };
+        if (q.otok) { const ob = await pjGetBlob(q.otok); if (ob) { e.origFile = ob; e.origSmall = await pjSmall(ob); e.origSw = q.osw; e.origSh = q.osh; } }
+        refreshThumb(e); state.files.push(e); if (q.id > maxId) maxId = q.id;
+        await yieldUI();
+      }
+      nextId = Math.max(nextId, maxId + 1);
+      const byId = new Map(state.files.map(function (f) { return [f.id, f]; }));
+      let maxO = 0;
+      free.pages = rec.pages.map(function (p) {
+        return p.map(function (o) { const f = o.f ? byId.get(o.f) : null; if (o.id > maxO) maxO = o.id; return Object.assign({}, o, { f: f || undefined }); })
+          .filter(function (o) { return o.type === 'text' || o.f; });
+      }).filter(function (p) { return p.length > 0; });
+      freeSeq = Math.max(freeSeq, maxO + 1);
+      fillSeq = Math.max(fillSeq, rec.fillSeq || 1);
+      free.known = new Set(rec.known || []); free.copiesAt = rec.copiesAt || 1; free.dim = rec.dim || null;
+      state.dniSlot = new Map(rec.dniSlot || []);
+      try { if (rec.prefs) localStorage.setItem(PREF, rec.prefs); } catch (e) { /* ok */ }
+      loadPrefs();
+      Object.assign(state, rec.state || {}); state.page = (rec.state && rec.state.page) || 0;
+      if (rec.combN) $('combN').value = rec.combN;
+      if (rec.pdfName) $('pdfName').value = rec.pdfName;
+      H.u.length = 0; H.r.length = 0; H.pend = null; hBtns();
+      sh.sel = null; sh.frame = false; sh.multiOn = false; sh.multi.clear();
+    } finally { state.busy = false; PJ.restoring = false; }
+    renderThumbs(); update(); syncSel();
+  }
+  function fmtDate(t) { const d = new Date(t); return d.toLocaleDateString('es', { day: 'numeric', month: 'short' }) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  async function pjRender() {
+    const box = $('pjList'); if (!box) return; box.textContent = '';
+    if (!PJ.db) { box.textContent = 'Este navegador no permite guardar proyectos (¿modo privado?).'; return; }
+    let metas = []; try { metas = await idb('meta', 'readonly', function (s) { return s.getAll(); }); } catch (e) { metas = []; }
+    metas.sort(function (a, b) { return b.updated - a.updated; });
+    if (!metas.length) { const p = document.createElement('p'); p.className = 'hint'; p.textContent = 'Aún no hay proyectos guardados.'; box.appendChild(p); }
+    metas.forEach(function (m) {
+      const row = document.createElement('div'); row.className = 'pj-row';
+      const im = document.createElement('img'); im.alt = ''; if (m.thumb) im.src = m.thumb; row.appendChild(im);
+      const t = document.createElement('div'); t.className = 'pj-t';
+      const b = document.createElement('b'); b.textContent = m.id === 'auto' ? 'Último trabajo (autoguardado)' : m.name; t.appendChild(b);
+      const sp2 = document.createElement('span'); sp2.textContent = m.n + (m.n === 1 ? ' foto' : ' fotos') + ' · ' + fmtDate(m.updated); t.appendChild(sp2); row.appendChild(t);
+      const o = document.createElement('button'); o.type = 'button'; o.className = 'sc'; o.textContent = 'Abrir';
+      o.addEventListener('click', async function () {
+        if (state.busy) return;
+        if (state.files.length && PJ.confirm !== 'o' + m.id) { PJ.confirm = 'o' + m.id; o.textContent = '¿Reemplazar?'; return; }
+        PJ.confirm = null; o.disabled = true; setNote('Abriendo proyecto…');
+        try { const rec = await idb('meta', 'readonly', function (s) { return s.get(m.id); }); if (rec) { await pjApply(rec); if (m.id !== 'auto') $('pjName').value = m.name; setNote('Proyecto abierto.'); closeSheet(); } }
+        catch (e) { setNote('No se pudo abrir (' + (e && e.message ? e.message : 'error') + ').', true); }
+        o.disabled = false;
+      });
+      const d = document.createElement('button'); d.type = 'button'; d.className = 'sc danger'; d.textContent = 'Borrar';
+      d.addEventListener('click', async function () {
+        if (PJ.confirm !== 'd' + m.id) { PJ.confirm = 'd' + m.id; d.textContent = '¿Seguro?'; return; }
+        PJ.confirm = null;
+        try { await idb('meta', 'readwrite', function (s) { return s.delete(m.id); }); await pjGc(); } catch (e) { /* ok */ }
+        pjRender();
+      });
+      row.appendChild(o); row.appendChild(d); box.appendChild(row);
+    });
+    try { if (navigator.storage && navigator.storage.estimate) { const q = await navigator.storage.estimate(); $('pjUsage').textContent = 'Espacio usado por la app: ' + (q.usage / 1048576).toFixed(1) + ' MB. Borra los proyectos que ya no uses para liberar espacio.'; } } catch (e) { /* ok */ }
+  }
+  function bindProj() {
+    $('pjSave').addEventListener('click', async function () {
+      if (!PJ.db) { setNote('Este navegador no permite guardar proyectos.', true); return; }
+      if (!state.files.length && !free.pages.length) { setNote('Primero agrega fotos o letras.', true); return; }
+      if (PJ.busy || state.busy) return;
+      const nm = ($('pjName').value || '').trim() || ('Proyecto ' + fmtDate(Date.now()));
+      PJ.busy = true; $('pjSave').disabled = true;
+      try {
+        const metas = await idb('meta', 'readonly', function (s) { return s.getAll(); });
+        const same = metas.find(function (m) { return m.id !== 'auto' && m.name === nm; });
+        await pjWrite(same ? same.id : 'p' + Date.now().toString(36), nm);
+        setNote('Proyecto «' + nm + '» guardado.');
+      } catch (e) { setNote('No se pudo guardar (' + (e && e.message ? e.message : 'error') + ').', true); }
+      PJ.busy = false; $('pjSave').disabled = false; pjRender();
+    });
+    $('pjNew').addEventListener('click', async function () {
+      if (state.busy) return;
+      if ((state.files.length || free.pages.length) && PJ.confirm !== 'new') { PJ.confirm = 'new'; $('pjNew').textContent = '¿Borrar lo actual?'; setTimeout(function () { if (PJ.confirm === 'new') { PJ.confirm = null; $('pjNew').textContent = 'Nuevo proyecto'; } }, 4000); return; }
+      PJ.confirm = null; $('pjNew').textContent = 'Nuevo proyecto';
+      state.files = []; free.pages = []; free.known = new Set(); free.dim = null; free.copiesAt = state.copies; fillImgs.length = 0; textCache.clear(); state.dniSlot = new Map();
+      H.u.length = 0; H.r.length = 0; H.pend = null; hBtns(); sh.sel = null; sh.frame = false; sh.multiOn = false; sh.multi.clear(); state.page = 0;
+      $('pjName').value = ''; PJ.sig = '';
+      try { if (PJ.db) { await idb('meta', 'readwrite', function (s) { return s.delete('auto'); }); await pjGc(); } } catch (e) { /* ok */ }
+      renderThumbs(); update(); syncSel(); pjRender(); setNote('Proyecto nuevo, en blanco.');
+    });
+    ['pointerup', 'change', 'input', 'keyup'].forEach(function (ev) { document.addEventListener(ev, autosaveSoon, true); });
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && PJ.ready) { clearTimeout(PJ.tm); pjAuto(); } });
+    window.addEventListener('pagehide', function () { if (PJ.ready) { clearTimeout(PJ.tm); pjAuto(); } });
+    document.querySelectorAll('[data-sec="💾|Proyectos"]').forEach(function (sc) { sc.addEventListener('pointerdown', function () { /* refresco al abrir */ }); });
+    const og = document.querySelector('[data-dk="⚙|Opciones"]'); if (og) og.addEventListener('toggle', pjRender);
+    document.addEventListener('click', function (e) { const b = e.target && e.target.closest && e.target.closest('#dockMain .dk'); if (b) setTimeout(pjRender, 300); }, true);
+  }
+  async function projInit() {
+    PJ.db = await pjOpen();
+    if (PJ.db) {
+      try {
+        const rec = await idb('meta', 'readonly', function (s) { return s.get('auto'); });
+        if (rec && rec.files && rec.files.length && !state.files.length) {
+          await pjApply(rec);
+          setNote('Se recuperó tu último trabajo (' + rec.n + (rec.n === 1 ? ' foto' : ' fotos') + '). Para empezar de cero: Opciones → Proyectos → Nuevo proyecto.');
+          PJ.sig = JSON.stringify([pjSnapSig()]);
+        }
+      } catch (e) { setNote('No se pudo recuperar el trabajo anterior (' + (e && e.message ? e.message : 'error') + ').', true); }
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ok */ }
+    } else pjStatus('Este navegador no permite guardar proyectos (¿modo privado?).');
+    PJ.ready = true; pjRender();
+  }
+
   bindEditor();
   bindSheet();
   bindText();
@@ -7605,5 +7925,15 @@ html.selActive main { touch-action: none; }
   loadPrefs();
   renderThumbs();
   update();
+  bindProj();
+  projInit();
+  // Si una ventana flotante es más alta que su espacio, deja de ser "fantasma" para poder deslizarla con el dedo en cualquier parte.
+  function fixScroll() {
+    document.querySelectorAll('.controls details.group.sheet, .seltools').forEach(function (el) {
+      el.classList.toggle('scrolls', el.scrollHeight > el.clientHeight + 2);
+    });
+  }
+  setInterval(fixScroll, 400);
+  ['click', 'change', 'pointerup'].forEach(function (ev) { document.addEventListener(ev, function () { setTimeout(fixScroll, 60); }, true); });
 })();
 </script>
