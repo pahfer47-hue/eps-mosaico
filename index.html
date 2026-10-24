@@ -905,6 +905,7 @@ html.selActive main { touch-action: none; }
           <div class="spanel" id="sp_edt" data-title="Editar">
             <button class="sc" id="selEdit" type="button">Editar foto</button>
             <button class="sc" id="selEnh" type="button">✨ IA</button>
+            <button class="sc" id="selStk" type="button">🏷 Sticker</button>
             <button class="sc" id="selFrame" type="button" aria-pressed="false">Encuadrar</button>
             <button class="sc" id="selReset" type="button">Quitar encuadre</button>
             <button class="sc" id="selFill" type="button">⤢ Rellenar hoja</button>
@@ -1271,7 +1272,7 @@ html.selActive main { touch-action: none; }
         <div class="field"><label for="edStkC">Color del borde</label><input type="color" id="edStkC" value="#ffffff"></div>
         <label class="check"><input type="checkbox" id="edStkG" checked> Línea fina gris por fuera, como guía para la tijera</label>
       </div>
-      <p class="hint">El borde solo se ve en fotos a las que ya les quitaste el fondo. Si quedaron restos del fondo, usa la pestaña «Borrar» con «Dejar transparente».</p>
+      <p class="hint">El borde sigue la silueta si la imagen tiene fondo transparente (PNG o con «Quitar fondo»). Si la foto tiene fondo, el borde queda alrededor de toda la foto. Si quedaron restos del fondo, usa la pestaña «Borrar» con «Dejar transparente».</p>
       <div class="tools"><button class="btn" id="edSavePng" type="button">Guardar esta foto en PNG</button></div>
     </div>
 
@@ -2547,7 +2548,7 @@ html.selActive main { touch-action: none; }
   function refreshThumb(f) {
     if (f.fill) { f.fsig = null; textCache.clear(); return; }
     f.thumb = filteredCanvas(f.small, f.edit, state.files.length > 40 ? 560 : 800);
-    if (f.cut && f.stk > 0) f.thumb = stickerize(f.thumb, stickerR(f.stk, f.thumb.width, f.thumb.height, 0.06), f.stkC, stickerG(f.stkG, f.thumb.width, f.thumb.height));
+    if (f.stk > 0) f.thumb = stickerize(f.thumb, stickerR(f.stk, f.thumb.width, f.thumb.height, 0.06), f.stkC, stickerG(f.stkG, f.thumb.width, f.thumb.height));
     f.ar = cropAR(f);
   }
 
@@ -2576,11 +2577,11 @@ html.selActive main { touch-action: none; }
     const cv = document.createElement('canvas');
     cv.width = wPx; cv.height = hPx;
     const cx = cv.getContext('2d');
-    const transp = !!f.cut || canvasHasAlpha(crop);
+    const transp = !!f.cut || f.stk > 0 || canvasHasAlpha(crop);
     if (!transp) { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, wPx, hPx); }
     cx.imageSmoothingQuality = 'high';
     drawTile(cx, crop, 0, 0, wPx, hPx, view ? 'view' : mode, rot, view);
-    const cvOut = f.cut && f.stk > 0 ? stickerize(cv, stickerR(f.stk, wPx, hPx, 0.06), f.stkC, stickerG(f.stkG, wPx, hPx)) : cv;
+    const cvOut = f.stk > 0 ? stickerize(cv, stickerR(f.stk, wPx, hPx, 0.06), f.stkC, stickerG(f.stkG, wPx, hPx)) : cv;
     const data = transp ? cvOut.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.92);
     cv.width = 1; cv.height = 1; crop.width = 1; crop.height = 1;
     if (cvOut !== cv) { cvOut.width = 1; cvOut.height = 1; }
@@ -2699,7 +2700,7 @@ html.selActive main { touch-action: none; }
     const cx = cv.getContext('2d');
     cx.drawImage(b, 0, 0);
     filterCanvas(cv, ed.tmp.f);
-    if (ed.tab === 'bg' && ed.f.cut && ed.tmp.stk > 0) {
+    if (ed.tab === 'bg' && ed.tmp.stk > 0) {
       const so = stickerize(cv, stickerR(ed.tmp.stk, cv.width, cv.height, 0.06), ed.tmp.stkC, stickerG(ed.tmp.stkG, cv.width, cv.height));
       if (so !== cv) { const c2 = cv.getContext('2d'); c2.clearRect(0, 0, cv.width, cv.height); c2.drawImage(so, 0, 0); }
     }
@@ -3300,7 +3301,7 @@ html.selActive main { touch-action: none; }
     const r = await loadImg(f.file);
     let cv = filteredCanvas(r.img, edit, 4096);
     URL.revokeObjectURL(r.url);
-    if (f.cut && stk > 0) cv = stickerize(cv, stickerR(stk, cv.width, cv.height, 0.06), stkC, stickerG(f.stkG, cv.width, cv.height));
+    if (stk > 0) cv = stickerize(cv, stickerR(stk, cv.width, cv.height, 0.06), stkC, stickerG(f.stkG, cv.width, cv.height));
     const blob = await canvasBlob(cv, 'png');
     cv.width = 1; cv.height = 1;
     return blob;
@@ -3771,7 +3772,7 @@ html.selActive main { touch-action: none; }
       ed.tmp.stk = $('edStk').checked ? (parseInt($('edStkW').value, 10) || 40) : 0;
       ed.tmp.stkC = $('edStkC').value; ed.tmp.stkG = $('edStkG').checked;
       $('edStkRow').hidden = !$('edStk').checked;
-      if (ed.f && !ed.f.cut && ed.tmp.stk > 0) $('edBgMsg').textContent = 'Primero toca «Quitar fondo»; el borde se pone alrededor de lo que queda.';
+      if (ed.f && !ed.f.cut && ed.tmp.stk > 0) $('edBgMsg').textContent = 'La foto no tiene fondo transparente: el borde queda alrededor de toda la foto. Para que siga la silueta, toca «Quitar fondo».'; else if (ed.f && ed.tmp.stk > 0) $('edBgMsg').textContent = '';
       scheduleFiltered();
     }
     ['edStk', 'edStkW', 'edStkC', 'edStkG'].forEach(function (id) { $(id).addEventListener('input', stkChange); $(id).addEventListener('change', stkChange); });
@@ -3923,7 +3924,7 @@ html.selActive main { touch-action: none; }
           const wPx = Math.max(32, Math.round(r.w / 25.4 * (pdfLow ? 200 : 300)));
           const hPx = Math.max(32, Math.round(r.h / 25.4 * (pdfLow ? 200 : 300)));
           const v = viewOf(r);
-          const key = r.f.id + '|' + (r.f.cut ? (r.f.stk || 0) + (r.f.stkC || '') + (r.f.stkG === false ? 'n' : 'g') : '') + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
+          const key = r.f.id + '|' + ((r.f.stk || 0) + (r.f.stkC || '') + (r.f.stkG === false ? 'n' : 'g')) + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
           let data = cache.get(key);
           if (!data) { data = await tileJpeg(r.f, wPx, hPx, tileMode, r.rot, v, pdfLow ? 2e6 : undefined, pdfLow ? 2000 : undefined); cache.set(key, data); }
           const op = opacityOf(r);
@@ -4357,7 +4358,7 @@ html.selActive main { touch-action: none; }
     $('selFaRow').hidden = !(isFree && r && !r.poster && !sh.multiOn);
     $('selSizeRow').hidden = !(isFree && r && !r.poster && !sh.multiOn);
     if (r && cur) { const mx = Math.round(Math.max(60, 2 * Math.max(cur.c.pw, cur.c.ph))); $('selSize').max = String(mx); $('selSize').value = String(Math.min(mx, Math.round(r.w))); $('selSizeO').textContent = (r.w / 10).toFixed(1) + ' cm'; }
-    $('selEnh').hidden = !r || isTxt || sh.multiOn;
+    $('selEnh').hidden = !r || isTxt || sh.multiOn; $('selStk').hidden = $('selEnh').hidden;
     $('selGroup').hidden = !(isFree && sh.multiOn && sh.multi.size >= 2);
     $('selUngroup').hidden = !(isFree && ((r && r.gid && !sh.multiOn) || sh.multiOn));
     $('selPad').hidden = !r || sh.multiOn || !!(r && r.poster) || (isTxt && !isFree);
@@ -4579,7 +4580,7 @@ html.selActive main { touch-action: none; }
       b.hidden = !any;
       if (!any && dkP === d[0]) closePanel();
     });
-    ['selFrame', 'selEnh', 'selDup', 'selDel'].forEach(function (id) { const b = document.querySelector('#dockSel .dk[data-a="' + id + '"]'); if (b) b.hidden = $(id).hidden; });
+    ['selFrame', 'selEnh', 'selStk', 'selDup', 'selDel'].forEach(function (id) { const b = document.querySelector('#dockSel .dk[data-a="' + id + '"]'); if (b) b.hidden = $(id).hidden; });
     dockMark();
   }
   const AI_HINT = {
@@ -4933,7 +4934,7 @@ html.selActive main { touch-action: none; }
       const b = dkBtn(d[1], d[2]); b.dataset.p = d[0]; b.addEventListener('click', function () { openPanel(d[0]); }); ds.appendChild(b);
     });
     ds.appendChild(flB2);
-    [['selFrame', '⛶', 'Encuadrar', ''], ['selEnh', '✨', 'IA', ''], ['selDup', '⎘', 'Duplicar', ''], ['selDel', '🗑', 'Eliminar', 'danger']].forEach(function (d) {
+    [['selFrame', '⛶', 'Encuadrar', ''], ['selEnh', '✨', 'IA', ''], ['selStk', '🏷', 'Sticker', ''], ['selDup', '⎘', 'Duplicar', ''], ['selDel', '🗑', 'Eliminar', 'danger']].forEach(function (d) {
       const b = dkBtn(d[1], d[2], d[3]); b.dataset.a = d[0]; b.addEventListener('click', function () { $(d[0]).click(); }); ds.appendChild(b);
     });
     dockBuilt = true;
@@ -5292,6 +5293,10 @@ html.selActive main { touch-action: none; }
       sh.sel = null; sh.frame = false;
       update();
     });
+    $('selStk').addEventListener('click', async function () {
+      const r = selRect(); if (!r || r.type === 'text' || state.busy || ed.open) return;
+      await openEditor(r.f, false); if (ed.open) showTab('bg');
+    });
     $('selEnh').addEventListener('click', async function () {
       const r = selRect(); if (!r || r.type === 'text') return;
       await openEditor(r.f, false);
@@ -5458,11 +5463,23 @@ html.selActive main { touch-action: none; }
     o.ctxPrev = jb[0] && L[i - 1] ? L[i - 1].t : null;
     o.ctxNext = jb[len] && L[i + len] ? L[i + len].t : null;
   }
+  const scratch2 = document.createElement('canvas').getContext('2d'), extCache = new Map();
+  function fontExt(o, fpx) {
+    const key = fontStr(o, 100); let r = extCache.get(key);
+    if (!r) {
+      scratch2.font = key; scratch2.textAlign = 'left';
+      const m = scratch2.measureText('ÁÉÍÓÚÑÜgjpqy|ÇQ[]');
+      r = { A: (m.actualBoundingBoxAscent || 78) / 100, D: (m.actualBoundingBoxDescent || 22) / 100 };
+      if (fontReady(o)) extCache.set(key, r);
+    }
+    return { A: r.A * fpx, D: r.D * fpx, a: r.A, d: r.D };
+  }
+  function hxRel(o) { const e = fontExt(o, 1); return Math.max(0.1, (e.a + e.d - (o.lhm || LH)) / 2 + 0.08); }
   function padMM(o) { return strokeOn(o) ? o.strokeW / 100 * o.size * MM_PT : 0; }
   function stlOverMM(o) {
-    if (!o.fit && !o.poster && o.stk > 0 && !stlRel(o) && !boxSticker(o)) return 0.2 * o.size * MM_PT;
+    if (!o.fit && !o.poster && o.stk > 0 && !stlRel(o) && !boxSticker(o)) return Math.max(0.1, (fontExt(o, 1).a + fontExt(o, 1).d - lhOf(o)) / 2 + 0.08) * o.size * MM_PT;
     if (!stlRel(o) && !boxSticker(o)) return 0;
-    const tot = o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012), padr = strokeOn(o) ? o.strokeW / 100 : 0, HP = (o.lhm || LH) + 2 * padr + 0.4;
+    const tot = o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012), padr = strokeOn(o) ? o.strokeW / 100 : 0, HP = (o.lhm || LH) + 2 * padr + 2 * hxRel(o);
     return Math.max(0, tot + HP / 2 - padr - lhOf(o) / 2) * o.size * MM_PT;
   }
   function blockH(o, n) { return n * o.size * MM_PT * lhOf(o) + 2 * padMM(o) + 2 * stlOverMM(o); }
@@ -5549,8 +5566,8 @@ html.selActive main { touch-action: none; }
     const lines = String(spec.gtext).split('\n');
     const fpx = 100;
     scratch.font = fontStr(spec, fpx); setSpacing(scratch, spec, fpx);
-    let maxW = 1;
-    lines.forEach(function (t) { maxW = Math.max(maxW, scratch.measureText(t || ' ').width); });
+    let maxW = 1; scratch.textAlign = 'left';
+    lines.forEach(function (t) { const m = scratch.measureText(t || ' '); maxW = Math.max(maxW, (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) || m.width); });
     const pk = spec.stroke || spec.fillMode === 'none' ? 2 * spec.strokeW / 100 : 0;
     const fontMM = spec.posterW / (maxW / fpx + pk);
     const size = fontMM / MM_PT;
@@ -5649,7 +5666,7 @@ html.selActive main { touch-action: none; }
     const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
     const lh = fpx * lhOf(o), align = o.align || 'center';
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
-    const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(0.2 * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot);
+    const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(hxRel(o) * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot);
     (o.lines || []).forEach(function (line, i) {
       const chars = Array.from(String(line)), lw = scratch.measureText(line).width - stlExtra(o, fpx);
       const edge = tot + pad + gpx, x0 = align === 'left' ? edge : align === 'right' ? w - edge - lw : (w - lw) / 2;
@@ -5659,7 +5676,7 @@ html.selActive main { touch-action: none; }
         if (!ch.trim()) return;
         const cw = scratch.measureText(pre).width - before;
         const wi = Math.max(8, Math.ceil(cw - stlExtra(o, fpx) + 2 * (pad + gpx))), JW = Math.ceil(wi + 2 * tot);
-        const so = Object.assign({}, o, { lines: [ch], fit: false, poster: null, lbox: false, stk: 0, jb: null, align: 'center', w: wi / ppm, h: HP / ppm, lhm: base + 2 * hx / fpx });
+        const so = Object.assign({}, o, { noInk: true, lines: [ch], fit: false, poster: null, lbox: false, stk: 0, jb: null, align: 'center', w: wi / ppm, h: HP / ppm, lhm: base + 2 * hx / fpx });
         let cv = renderText0(so, wi, HP, fill);
         if (o.d3 > 0) cv = extrude(so, cv, wi, HP);
         const J = document.createElement('canvas'); J.width = JW; J.height = JH;
@@ -5685,12 +5702,12 @@ html.selActive main { touch-action: none; }
     const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
     const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
-    const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(0.2 * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot), ov = stlOverMM(o) * ppm;
+    const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(hxRel(o) * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot), ov = stlOverMM(o) * ppm;
     const align = o.align || 'center', lh = fpx * lhOf(o);
     const lwid = Math.max(1, 0.15 * ppm);
     function piece(t) {
       const wi = Math.max(8, Math.ceil(scratch.measureText(t).width + 2 * (pad + gpx)));
-      const so = Object.assign({}, o, { lines: [t], fit: false, poster: null, lbox: false, stk: 0, d3: 0, jb: null, align: 'center', w: wi / ppm, h: HP / ppm, lhm: base + 2 * hx / fpx });
+      const so = Object.assign({}, o, { noInk: true, lines: [t], fit: false, poster: null, lbox: false, stk: 0, d3: 0, jb: null, align: 'center', w: wi / ppm, h: HP / ppm, lhm: base + 2 * hx / fpx });
       return { wi: wi, cv: renderText0(so, wi, HP, fill) };
     }
     // Tramos de líneas unidas (partes de una misma palabra).
@@ -5790,7 +5807,13 @@ html.selActive main { touch-action: none; }
       align = o.align || 'center';
       if (o.poster) { bw = o.poster.W * ppm; bh = o.poster.H * ppm; offx = o.poster.ix * w; offy = o.poster.iy * h; }
       const x = align === 'left' ? pad : align === 'right' ? bw - pad : bw / 2;
-      items = (o.lines || []).map(function (t, i) { return { t: t, x: x, y: pad + ovn + i * lh + lh / 2 + fpx * 0.35 }; });
+      const fe = fontExt(o, fpx), boff = (fe.A - fe.D) / 2;
+      scratch2.font = fontStr(o, fpx); scratch2.textAlign = 'center'; setSpacing(scratch2, o, fpx);
+      items = (o.lines || []).map(function (t, i) {
+        let dx = 0;
+        if (align === 'center' && !o.noInk && t.trim()) { const m = scratch2.measureText(t); dx = -((m.actualBoundingBoxRight || 0) - (m.actualBoundingBoxLeft || 0)) / 2; }
+        return { t: t, x: x + dx, y: pad + ovn + i * lh + lh / 2 + boff };
+      });
     }
     function setup(c) {
       c.setTransform(1, 0, 0, 1, -offx, -offy);
