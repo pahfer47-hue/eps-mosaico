@@ -690,6 +690,7 @@ html.selActive main { touch-action: none; }
           <label for="txt">Texto (si es largo, sigue en la hoja siguiente)</label>
           <textarea id="txt" rows="3" placeholder="Escribe aquí tu título">Título</textarea>
         </div>
+        <label class="check" style="margin:6px 0"><input type="checkbox" id="txTop"> Empezar el texto desde arriba (para cartas)</label>
         <div class="row" style="margin:6px 0"><button class="btn" id="txNew" type="button">＋ Texto nuevo (no cambia el que tienes elegido)</button></div>
         <div class="row" id="txCase" style="margin:8px 0">
           <button class="btn" type="button" data-case="upper">MAYÚSCULAS</button>
@@ -866,7 +867,10 @@ html.selActive main { touch-action: none; }
         <div class="sec" data-sec="📐|Guías y reglas">
         <label class="check"><input type="checkbox" id="guides" checked> Líneas guía para cortar</label>
         <label class="check"><input type="checkbox" id="rulerOn"> Reglas en los costados (cm)</label>
-        <label class="check"><input type="checkbox" id="ctrGuides"> Guías de centro y márgenes</label>
+        <label class="check"><input type="checkbox" id="gC"> Guía de centro (cruz rosa, solo para ver)</label>
+        <label class="check"><input type="checkbox" id="gM"> Guía de margen (marco azul, solo para ver)</label>
+        <div class="field"><label for="gMmm">Margen de referencia (mm)</label><input type="number" id="gMmm" min="0" max="80" step="1" value="20" inputmode="numeric"></div>
+        <p class="hint">Estas guías ayudan a acomodar, por ejemplo una carta. No salen en el PDF. También las activas con el botón 📐 junto al número de hoja.</p>
         </div>
         </div>
       </details>
@@ -887,6 +891,9 @@ html.selActive main { touch-action: none; }
             <button class="btn" id="nudR" type="button" aria-label="Derecha">▶</button>
             <select id="nudStep" aria-label="Paso"><option value="0.5">0,5 mm</option><option value="1" selected>1 mm</option><option value="2">2 mm</option><option value="5">5 mm</option><option value="10">10 mm</option></select>
           </div>
+            <button class="sc" id="selCenH" type="button">↔ Centrar</button>
+            <button class="sc" id="selCenV" type="button">↕ Centrar</button>
+            <button class="sc" id="selMargin" type="button">▭ Ajustar al margen</button>
             <button class="sc" id="selPrevPg" type="button">← Hoja anterior</button>
             <button class="sc" id="selNextPg" type="button">Hoja siguiente →</button>
           </div>
@@ -940,6 +947,7 @@ html.selActive main { touch-action: none; }
           </div>
         </div>
         <div class="pager">
+          <button class="btn" id="gdQuick" type="button" aria-label="Guías de margen y centro" aria-pressed="false" title="Guías de margen y centro">📐</button>
           <button class="btn" id="prev" type="button" aria-label="Hoja anterior">‹</button>
           <span class="label" id="pageLabel">Hoja 1 de 1</span>
           <button class="btn" id="next" type="button" aria-label="Hoja siguiente">›</button>
@@ -2015,6 +2023,10 @@ html.selActive main { touch-action: none; }
 
   function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
+  function refMargin() { const v = parseFloat($('gMmm') && $('gMmm').value); return isFinite(v) ? Math.max(0, Math.min(80, v)) : 20; }
+  let kbLock = 0;
+  document.addEventListener('focusin', function (e) { const t = e.target; if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search)$/.test(t.type)))) kbLock = Math.max(kbLock || 0, window.innerHeight); });
+  document.addEventListener('focusout', function () { setTimeout(function () { const a = document.activeElement; if (!a || !(a.tagName === 'TEXTAREA' || a.tagName === 'INPUT')) { kbLock = 0; if (typeof drawSheet === 'function' && cur) drawSheet(); } }, 350); });
   function drawSheet() { drawSheetMain(); syncMini(); }
 
   function drawSheetMain() {
@@ -2023,7 +2035,7 @@ html.selActive main { touch-action: none; }
     const cv = $('sheet');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const bui = ($('bui') && $('bui').offsetHeight) || 128;
-    const availH = Math.max(260, window.innerHeight - 150 - bui);
+    const availH = Math.max(260, (kbLock || window.innerHeight) - 150 - bui);
     const cssW = Math.max(180, Math.min(cv.parentElement.clientWidth - 8, availH * (c.pw / c.ph), 900)) || 300;
     const cssH = cssW * (c.ph / c.pw);
     cv.width = Math.round(cssW * dpr);
@@ -2084,11 +2096,14 @@ html.selActive main { touch-action: none; }
         ctx.strokeStyle = ac; ctx.lineWidth = 3 * dpr; ctx.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k);
       });
     }
-    if ($('ctrGuides') && $('ctrGuides').checked) {
+    if ($('gC') && $('gC').checked) {
       ctx.save(); ctx.lineWidth = Math.max(1, dpr); ctx.setLineDash([7 * dpr, 5 * dpr]);
       ctx.strokeStyle = '#d81b60'; ctx.beginPath(); ctx.moveTo(cv.width / 2, 0); ctx.lineTo(cv.width / 2, cv.height); ctx.moveTo(0, cv.height / 2); ctx.lineTo(cv.width, cv.height / 2); ctx.stroke();
-      if (c.margin > 0) { ctx.strokeStyle = '#1e88e5'; ctx.strokeRect(c.margin * k, c.margin * k, (c.pw - 2 * c.margin) * k, (c.ph - 2 * c.margin) * k); }
       ctx.restore();
+    }
+    if ($('gM') && $('gM').checked) {
+      const gm = refMargin();
+      if (gm > 0) { ctx.save(); ctx.lineWidth = Math.max(1, dpr); ctx.setLineDash([7 * dpr, 5 * dpr]); ctx.strokeStyle = '#1e88e5'; ctx.strokeRect(gm * k, gm * k, (c.pw - 2 * gm) * k, (c.ph - 2 * gm) * k); ctx.restore(); }
     }
     if ($('rulerOn') && $('rulerOn').checked) {
       const rw = Math.round(15 * dpr), cmPx = 10 * k; let step = 1;
@@ -2180,7 +2195,7 @@ html.selActive main { touch-action: none; }
       localStorage.setItem(PREF, JSON.stringify({
         paper: state.paper, land: state.land, mode: state.mode, fit: state.fit, by: state.by, copies: state.copies,
         w: $('w').value, h: $('h').value, as: $('as').value, rot: $('rot').checked,
-        margin: $('margin').value, gap: $('gap').value, guides: $('guides').checked,
+        margin: $('margin').value, gap: $('gap').value, guides: $('guides').checked, gC: $('gC').checked, gM: $('gM').checked, gMmm: $('gMmm').value,
         dni: state.dni, dniTop: $('dniTop').value, dniGap: $('dniGap').value,
         dniLay: state.dniLay, dniN: $('dniN').value, dniMT: $('dniMT').value, dniCG: $('dniCG').value, dniRG: $('dniRG').value
       }));
@@ -2213,6 +2228,7 @@ html.selActive main { touch-action: none; }
       if (p.gap != null) $('gap').value = p.gap;
       $('rot').checked = p.rot !== false;
       $('guides').checked = p.guides !== false;
+      $('gC').checked = !!p.gC; $('gM').checked = !!p.gM; if (p.gMmm != null) $('gMmm').value = p.gMmm;
     } catch (e) { /* ignorar */ }
   }
 
@@ -4323,7 +4339,8 @@ html.selActive main { touch-action: none; }
     $('selMulti').setAttribute('aria-pressed', String(sh.multiOn));
     $('selMulti').textContent = sh.multiOn ? 'Varias: ' + sh.multi.size : 'Varias';
     $('selFrame').setAttribute('aria-pressed', String(sh.frame));
-    ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selFront', 'selUp', 'selDown', 'selBack'].forEach(function (id) { $(id).hidden = !isFree; });
+    ['selSmaller', 'selBigger', 'selDup', 'selDel', 'selPrevPg', 'selNextPg', 'selFront', 'selUp', 'selDown', 'selBack', 'selCenH', 'selCenV'].forEach(function (id) { $(id).hidden = !isFree; });
+    $('selMargin').hidden = !isFree || !r || r.type !== 'text' || !!r.poster || !!r.fit;
     const isTxt = !!r && r.type === 'text';
     $('selFrame').hidden = isTxt; $('selReset').hidden = isTxt; $('selStretch').hidden = isTxt; $('selFill').hidden = isTxt || !isFree;
     { const hv = r && !isTxt ? holder(r).view : null; $('selStretch').setAttribute('aria-pressed', String(!!(hv && hv.st))); }
@@ -5321,6 +5338,18 @@ html.selActive main { touch-action: none; }
         b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nudge(d[1], d[2]); } });
       });
     })();
+    $('selCenH').addEventListener('click', function () {
+      const r = selRect(); if (!r || state.mode !== 'free') return;
+      grpMembers(r).forEach(function (m) { m.x = (cur.c.pw - m.w) / 2; }); hideResult(); drawSheet();
+    });
+    $('selCenV').addEventListener('click', function () {
+      const r = selRect(); if (!r || state.mode !== 'free') return;
+      r.y = (cur.c.ph - r.h) / 2; hideResult(); drawSheet();
+    });
+    $('selMargin').addEventListener('click', function () {
+      const r = selRect(); if (!r || r.type !== 'text' || state.mode !== 'free') return;
+      const gm = refMargin(); reflowText(r, { x: gm, w: cur.c.pw - 2 * gm }); hideResult(); update();
+    });
     $('selEdit').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
       if (r.type === 'text') { closePanel(); openSheet($('textGroup')); } else { closePanel(); openEditor(r.f, false); }
@@ -6042,8 +6071,9 @@ html.selActive main { touch-action: none; }
     } else {
       const spec = Object.assign({}, st, { gtext: text, grp: freeSeq++, x: st.full ? 0 : c.margin, w: st.full ? c.pw : c.pw - 2 * c.margin });
       let y0 = null;
+      if ($('txTop').checked || text.length > 200) y0 = Math.max(refMargin(), c.margin);
       const pgObjs = free.pages[Math.min(state.page, free.pages.length - 1)] || [];
-      if (pgObjs.length) { y0 = Math.max.apply(null, pgObjs.map(function (q) { return q.y + q.h; })) + 4; if (y0 > c.ph - c.margin - 20) y0 = null; }
+      if (pgObjs.length && !$('txTop').checked) { y0 = Math.max.apply(null, pgObjs.map(function (q) { return q.y + q.h; })) + 4; if (y0 > c.ph - c.margin - 20) y0 = null; }
       objs = flowText(spec, y0, c, 0);
       if (!free.pages.length) free.pages.push([]);
       p0 = Math.min(state.page, free.pages.length - 1);
@@ -7770,6 +7800,8 @@ html.selActive main { touch-action: none; }
   ['cntN', 'cntS'].forEach(function (id) { $(id).addEventListener('input', function () { hideResult(); state.page = 0; update(); }); });
   ['w', 'h', 'as', 'margin', 'gap', 'dniTop', 'dniGap'].forEach(function (id) { $(id).addEventListener('input', function () { state.page = 0; update(); }); });
   $('guides').addEventListener('change', update);
+  ['gC', 'gM', 'gMmm'].forEach(function (id) { $(id).addEventListener('input', function () { savePrefs(); drawSheet(); }); $(id).addEventListener('change', function () { savePrefs(); drawSheet(); }); });
+  $('gdQuick').addEventListener('click', function () { const on = !($('gC').checked && $('gM').checked); $('gC').checked = on; $('gM').checked = on; $('gdQuick').setAttribute('aria-pressed', String(on)); savePrefs(); drawSheet(); });
   $('rot').addEventListener('change', function () { state.page = 0; update(); });
   $('less').addEventListener('click', function () { if (state.copies > 1) { state.copies--; update(); } });
   $('more').addEventListener('click', function () { if (state.copies < 99) { state.copies++; update(); } });
