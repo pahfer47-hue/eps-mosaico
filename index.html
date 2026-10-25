@@ -786,6 +786,55 @@ html.selActive main { touch-action: none; }
         </div>
       </details>
 
+      <details class="group" id="objGroup" data-dk="▭|Objetos">
+        <summary>Líneas, cuadros y tablas</summary>
+        <div class="gbody">
+        <div class="sec" data-sec="┈|Línea">
+          <p class="hint">Para firmas, separadores o subrayados. Toca una línea ya puesta en la hoja para cambiarla aquí mismo.</p>
+          <div class="field"><label for="obLnType">Tipo</label><select id="obLnType"><option value="dots">Punteada (puntos)</option><option value="dashes">Rayas</option><option value="solid">Normal</option></select></div>
+          <div class="fields">
+            <div class="field"><label for="obLnLen">Largo (mm)</label><input type="number" id="obLnLen" min="5" max="600" step="1" value="80" inputmode="decimal"></div>
+            <div class="field"><label for="obLnTh">Grosor (mm)</label><input type="number" id="obLnTh" min="0.2" max="20" step="0.1" value="0.6" inputmode="decimal"></div>
+            <div class="field"><label for="obLnGap">Separación (mm)</label><input type="number" id="obLnGap" min="0.5" max="20" step="0.1" value="1.6" inputmode="decimal"></div>
+            <div class="field"><label for="obLnColor">Color</label><input type="color" id="obLnColor" value="#000000"></div>
+          </div>
+          <div class="row tx-gap"><button class="btn primary" id="obLnAdd" type="button">Agregar línea a la hoja</button></div>
+        </div>
+        <div class="sec" data-sec="▭|Cuadro">
+          <p class="hint">Rectángulo o cuadrado, con borde visible y esquinas que puedes redondear. Sin color de fondo queda transparente.</p>
+          <div class="fields">
+            <div class="field"><label for="obRcW">Ancho (mm)</label><input type="number" id="obRcW" min="3" max="600" step="1" value="60" inputmode="decimal"></div>
+            <div class="field"><label for="obRcH">Alto (mm)</label><input type="number" id="obRcH" min="3" max="800" step="1" value="30" inputmode="decimal"></div>
+            <div class="field"><label for="obRcB">Grosor del borde (mm, 0 = sin borde)</label><input type="number" id="obRcB" min="0" max="20" step="0.1" value="0.6" inputmode="decimal"></div>
+            <div class="field"><label for="obRcBC">Color del borde</label><input type="color" id="obRcBC" value="#000000"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="obRcDash"> Borde punteado</label>
+          <label class="check"><input type="checkbox" id="obRcFillOn"> Con color de fondo</label>
+          <div class="field" id="obRcFillRow" hidden><label for="obRcFill">Color de fondo</label><input type="color" id="obRcFill" value="#fff2a8"></div>
+          <div class="field"><label for="obRcR">Esquinas redondeadas (mm)</label><input type="range" id="obRcR" min="0" max="40" step="1" value="0"></div>
+          <div class="row tx-gap"><button class="btn primary" id="obRcAdd" type="button">Agregar cuadro a la hoja</button></div>
+        </div>
+        <div class="sec" data-sec="▦|Tabla">
+          <p class="hint">Pega aquí el contenido copiado (de Excel, Sheets o Word) y la tabla se llena sola. Si escribes a mano, separa las columnas con «;» y las filas con Enter.</p>
+          <div class="field"><label for="obTbData">Contenido de la tabla</label><textarea id="obTbData" rows="4" placeholder="Pega aquí el texto copiado"></textarea></div>
+          <label class="check"><input type="checkbox" id="obTbFit" checked> Ajustar filas y columnas a lo que pegue</label>
+          <div class="fields">
+            <div class="field"><label for="obTbR">Filas</label><input type="number" id="obTbR" min="1" max="60" step="1" value="3" inputmode="numeric"></div>
+            <div class="field"><label for="obTbC">Columnas</label><input type="number" id="obTbC" min="1" max="20" step="1" value="3" inputmode="numeric"></div>
+            <div class="field"><label for="obTbW">Ancho total (mm)</label><input type="number" id="obTbW" min="20" max="600" step="1" value="150" inputmode="decimal"></div>
+            <div class="field"><label for="obTbH">Alto mínimo de fila (mm)</label><input type="number" id="obTbH" min="4" max="100" step="1" value="10" inputmode="decimal"></div>
+            <div class="field"><label for="obTbFs">Tamaño de letra (pt)</label><input type="number" id="obTbFs" min="5" max="60" step="1" value="12" inputmode="numeric"></div>
+            <div class="field"><label for="obTbB">Grosor de líneas (mm)</label><input type="number" id="obTbB" min="0" max="5" step="0.1" value="0.4" inputmode="decimal"></div>
+            <div class="field"><label for="obTbBC">Color de líneas</label><input type="color" id="obTbBC" value="#000000"></div>
+            <div class="field"><label for="obTbAlign">Alineación del texto</label><select id="obTbAlign"><option value="left">Izquierda</option><option value="center">Centro</option></select></div>
+          </div>
+          <label class="check"><input type="checkbox" id="obTbHead"> Primera fila como encabezado (negrita y color)</label>
+          <div class="field" id="obTbHeadRow" hidden><label for="obTbHeadC">Color del encabezado</label><input type="color" id="obTbHeadC" value="#dfe7ee"></div>
+          <div class="row tx-gap"><button class="btn primary" id="obTbAdd" type="button">Agregar tabla a la hoja</button></div>
+        </div>
+        </div>
+      </details>
+
       <details class="group" data-dk="📑|Documentos" data-split="1">
         <summary>Documentos Word, Excel o PDF</summary>
         <div class="gbody">
@@ -1166,11 +1215,21 @@ html.selActive main { touch-action: none; }
   <div class="pe-bar">
     <div class="note" id="peNote" role="status" aria-live="polite">Abre un PDF para empezar.</div>
     <div class="prog" id="peProgWrap" hidden><div id="peProg"></div></div>
+    <div class="nudge" id="pePad" hidden style="justify-content:center;margin:0 0 6px">
+      <button class="btn" id="peNL" type="button" aria-label="Izquierda">◀</button>
+      <button class="btn" id="peNU" type="button" aria-label="Arriba">▲</button>
+      <button class="btn" id="peND" type="button" aria-label="Abajo">▼</button>
+      <button class="btn" id="peNR" type="button" aria-label="Derecha">▶</button>
+      <select id="peStep" aria-label="Paso"><option value="1">1 px</option><option value="2" selected>2 px</option><option value="5">5 px</option><option value="10">10 px</option><option value="25">25 px</option></select>
+    </div>
     <div class="dk-row" id="peTools">
       <button class="dk" id="pePrev" type="button"><b>‹</b><span>Anterior</span></button>
       <button class="dk" id="pePg" type="button" disabled><b id="pePgN">1/1</b><span>Hoja</span></button>
       <button class="dk" id="peNext" type="button"><b>›</b><span>Siguiente</span></button>
       <button class="dk" id="peAddT" type="button"><b>Aa</b><span>+ Texto</span></button>
+      <button class="dk" id="peMov" type="button" aria-pressed="false"><b>✥</b><span>Mover</span></button>
+      <button class="dk" id="peLn" type="button"><b>┈</b><span>+ Línea</span></button>
+      <button class="dk" id="peRc" type="button"><b>▭</b><span>+ Cuadro</span></button>
       <label class="dk" for="peImgFile"><b>🖼</b><span>+ Imagen</span></label><input id="peImgFile" type="file" accept="image/*" hidden>
       <button class="dk" id="peCut" type="button" aria-pressed="false"><b>▭</b><span>Cortar cuadro</span></button>
       <button class="dk" id="peEditT" type="button"><b>✎</b><span>Editar texto</span></button>
@@ -3940,7 +3999,7 @@ html.selActive main { touch-action: none; }
           const wPx = Math.max(32, Math.round(r.w / 25.4 * (pdfLow ? 200 : 300)));
           const hPx = Math.max(32, Math.round(r.h / 25.4 * (pdfLow ? 200 : 300)));
           const v = viewOf(r);
-          const key = r.f.id + '|' + ((r.f.stk || 0) + (r.f.stkC || '') + (r.f.stkG === false ? 'n' : 'g')) + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
+          const key = r.f.id + '.' + (r.f.rev || 0) + '|' + ((r.f.stk || 0) + (r.f.stkC || '') + (r.f.stkG === false ? 'n' : 'g')) + '|' + wPx + '|' + hPx + '|' + (r.rot ? 1 : 0) + '|' + tileMode + '|' + viewKey(v);
           let data = cache.get(key);
           if (!data) { data = await tileJpeg(r.f, wPx, hPx, tileMode, r.rot, v, pdfLow ? 2e6 : undefined, pdfLow ? 2000 : undefined); cache.set(key, data); }
           const op = opacityOf(r);
@@ -4349,6 +4408,7 @@ html.selActive main { touch-action: none; }
     $('selEdit').textContent = isTxt ? 'Editar texto' : 'Editar foto';
     if (isTxt) sh.frame = false;
     if (r && isTxt && sh.loaded !== r.id) { sh.loaded = r.id; loadTextControls(r); }
+    if (r && !isTxt && r.f && r.f.shape && sh.loadedShape !== r.id) { sh.loadedShape = r.id; obLoad(r.f.shape); }
     if (!isTxt) sh.loaded = null;
     let hint = '';
     if (!r) hint = pageRects().length ? (isFree ? 'Toca una foto para elegirla y moverla.' : 'Toca una foto para encuadrarla dentro de su cuadro.') : '';
@@ -5352,7 +5412,7 @@ html.selActive main { touch-action: none; }
     });
     $('selEdit').addEventListener('click', function () {
       const r = selRect(); if (!r) return;
-      if (r.type === 'text') { closePanel(); openSheet($('textGroup')); } else { closePanel(); openEditor(r.f, false); }
+      if (r.type === 'text') { closePanel(); openSheet($('textGroup')); } else if (r.f && r.f.shape) { closePanel(); openSheet($('objGroup')); } else { closePanel(); openEditor(r.f, false); }
     });
     $('selAlpha').addEventListener('input', function () {
       const r = selRect(); if (!r) return;
@@ -7846,7 +7906,7 @@ html.selActive main { touch-action: none; }
     const files = state.files.map(function (f) {
       const t = tokOf(f.file); blobs.set(t, f.file);
       let ot = null; if (f.origFile) { ot = tokOf(f.origFile); blobs.set(ot, f.origFile); }
-      return { id: f.id, key: f.key, name: f.name, tok: t, otok: ot, sw: f.sw, sh: f.sh, osw: f.origSw, osh: f.origSh, edit: pjClone(f.edit), view: f.view ? pjClone(f.view) : null, cut: !!f.cut, stk: f.stk || 0, stkC: f.stkC, stkG: f.stkG };
+      return { id: f.id, key: f.key, name: f.name, tok: t, otok: ot, sw: f.sw, sh: f.sh, osw: f.origSw, osh: f.origSh, edit: pjClone(f.edit), view: f.view ? pjClone(f.view) : null, cut: !!f.cut, stk: f.stk || 0, stkC: f.stkC, stkG: f.stkG, shape: f.shape ? pjClone(f.shape) : null, rev: f.rev || 0 };
     });
     const fills = fillImgs.filter(function (e) { return e.blob; }).map(function (e) { const t = tokOf(e.blob); blobs.set(t, e.blob); return { id: e.id, name: e.name, tok: t, edit: e.edit ? pjClone(e.edit) : null }; });
     const pages = free.pages.map(function (p) { return p.map(function (o) { return pjClone(Object.assign({}, o, { f: o.f ? o.f.id : 0 })); }); });
@@ -7906,7 +7966,7 @@ html.selActive main { touch-action: none; }
     PJ.busy = false;
   }
   function pjSnapSig() {
-    return [state.files.map(function (f) { return [f.id, f.edit, f.view, f.cut, f.stk, f.stkC, f.stkG, f.origFile ? 1 : 0, f.file && f.file.size]; }),
+    return [state.files.map(function (f) { return [f.id, f.edit, f.view, f.cut, f.stk, f.stkC, f.stkG, f.origFile ? 1 : 0, f.file && f.file.size, f.rev || 0]; }),
       free.pages.map(function (p) { return p.map(function (o) { return Object.assign({}, o, { f: o.f ? o.f.id : 0 }); }); }),
       state.comb, state.copies, state.page, state.dniLay, state.mode, state.paper, state.land, Array.from(state.dniSlot.entries()), $('pdfName').value,
       (function () { try { return localStorage.getItem(PREF); } catch (e) { return ''; } })(), fillImgs.map(function (e) { return e.id; })];
@@ -7935,7 +7995,7 @@ html.selActive main { touch-action: none; }
       for (let i = 0; i < rec.files.length; i++) {
         const q = rec.files[i]; setNote('Recuperando tu proyecto… ' + (i + 1) + ' de ' + rec.files.length);
         const b = await pjGetBlob(q.tok); if (!b) continue;
-        const e = { id: q.id, key: q.key, name: q.name, file: b, small: await pjSmall(b), sw: q.sw, sh: q.sh, edit: q.edit, view: q.view, cut: q.cut || canvasHasAlpha(await pjSmall(b)), stk: q.stk, stkC: q.stkC, stkG: q.stkG, thumb: null, ar: 1 };
+        const e = { id: q.id, key: q.key, name: q.name, file: b, small: await pjSmall(b), sw: q.sw, sh: q.sh, edit: q.edit, view: q.view, cut: q.cut || canvasHasAlpha(await pjSmall(b)), shape: q.shape || null, rev: q.rev || 0, stk: q.stk, stkC: q.stkC, stkG: q.stkG, thumb: null, ar: 1 };
         if (q.otok) { const ob = await pjGetBlob(q.otok); if (ob) { e.origFile = ob; e.origSmall = await pjSmall(ob); e.origSw = q.osw; e.origSh = q.osh; } }
         refreshThumb(e); state.files.push(e); if (q.id > maxId) maxId = q.id;
         await yieldUI();
@@ -8054,6 +8114,208 @@ html.selActive main { touch-action: none; }
     PJ.ready = true; pjRender();
   }
 
+  // ===== Objetos: líneas, cuadros y tablas (se guardan como imágenes transparentes editables) =====
+  const OB = { busy: false, tm: 0, pending: null };
+  function obNum(id, d, lo, hi) { const v = parseFloat(String($(id).value).replace(',', '.')); return cl(isFinite(v) ? v : d, lo, hi); }
+  function obRead(kind) {
+    if (kind === 'line') return { kind: 'line', type: $('obLnType').value, len: obNum('obLnLen', 80, 5, 600), th: obNum('obLnTh', 0.6, 0.2, 20), gap: obNum('obLnGap', 1.6, 0.5, 20), color: $('obLnColor').value };
+    if (kind === 'rect') return { kind: 'rect', w: obNum('obRcW', 60, 3, 600), h: obNum('obRcH', 30, 3, 800), b: obNum('obRcB', 0.6, 0, 20), bc: $('obRcBC').value, dash: $('obRcDash').checked, fillOn: $('obRcFillOn').checked, fill: $('obRcFill').value, r: obNum('obRcR', 0, 0, 40) };
+    const data = tbParse($('obTbData').value);
+    let rows = Math.round(obNum('obTbR', 3, 1, 60)), cols = Math.round(obNum('obTbC', 3, 1, 20));
+    if ($('obTbFit').checked && data.length) { rows = Math.min(60, data.length); cols = Math.min(20, Math.max.apply(null, data.map(function (r) { return r.length; }))); }
+    return { kind: 'table', rows: rows, cols: cols, w: obNum('obTbW', 150, 20, 600), rh: obNum('obTbH', 10, 4, 100), fs: obNum('obTbFs', 12, 5, 60), b: obNum('obTbB', 0.4, 0, 5), bc: $('obTbBC').value, align: $('obTbAlign').value, head: $('obTbHead').checked, headC: $('obTbHeadC').value, data: data };
+  }
+  function tbParse(txt) {
+    const t = String(txt || '').replace(/\r/g, '');
+    const lines = t.split('\n'); while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+    const sep = /\t/.test(t) ? '\t' : /;/.test(t) ? ';' : null;
+    return lines.map(function (l) { return sep ? l.split(sep).map(function (s) { return s.trim(); }) : [l.trim()]; });
+  }
+  function obLoad(sp) {
+    if (sp.kind === 'line') { $('obLnType').value = sp.type; $('obLnLen').value = sp.len; $('obLnTh').value = sp.th; $('obLnGap').value = sp.gap; $('obLnColor').value = sp.color; }
+    else if (sp.kind === 'rect') { $('obRcW').value = sp.w; $('obRcH').value = sp.h; $('obRcB').value = sp.b; $('obRcBC').value = sp.bc; $('obRcDash').checked = !!sp.dash; $('obRcFillOn').checked = !!sp.fillOn; $('obRcFill').value = sp.fill; $('obRcR').value = sp.r; }
+    else { $('obTbR').value = sp.rows; $('obTbC').value = sp.cols; $('obTbW').value = sp.w; $('obTbH').value = sp.rh; $('obTbFs').value = sp.fs; $('obTbB').value = sp.b; $('obTbBC').value = sp.bc; $('obTbAlign').value = sp.align; $('obTbHead').checked = !!sp.head; $('obTbHeadC').value = sp.headC; $('obTbData').value = (sp.data || []).map(function (r) { return r.join('\t'); }).join('\n'); $('obTbFit').checked = false; }
+    $('obRcFillRow').hidden = !$('obRcFillOn').checked; $('obTbHeadRow').hidden = !$('obTbHead').checked;
+  }
+  function obWrap(c, text, maxW) {
+    const out = [];
+    String(text).split('\n').forEach(function (para) {
+      let line = '';
+      para.split(' ').forEach(function (w) {
+        const test = line ? line + ' ' + w : w;
+        if (!line || c.measureText(test).width <= maxW) line = test; else { out.push(line); line = w; }
+        while (c.measureText(line).width > maxW && line.length > 1) { let k = line.length - 1; while (k > 1 && c.measureText(line.slice(0, k)).width > maxW) k--; out.push(line.slice(0, k)); line = line.slice(k); }
+      });
+      out.push(line);
+    });
+    return out;
+  }
+  function obRound(c, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h / 2));
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+  // Dibuja el objeto a ~300 ppp. Devuelve { cv, wMM, hMM }.
+  function obCanvas(sp) {
+    let wMM, hMM, tb = null;
+    if (sp.kind === 'line') { wMM = sp.len; hMM = Math.max(8, sp.th + 2); }
+    else if (sp.kind === 'rect') { wMM = sp.w; hMM = sp.h; }
+    else {
+      wMM = sp.w;
+      const R = 10, m = document.createElement('canvas').getContext('2d'), fsMM = sp.fs * 0.352778, colW = wMM / sp.cols, padMM = 1.4, lhMM = fsMM * 1.25;
+      const rowH = [], cells = [];
+      for (let r = 0; r < sp.rows; r++) {
+        let mx = 1; const rc = [];
+        for (let c = 0; c < sp.cols; c++) {
+          m.font = ((sp.head && r === 0) ? 'bold ' : '') + (fsMM * R) + 'px Arial, Helvetica, sans-serif';
+          const ln = obWrap(m, (sp.data[r] && sp.data[r][c]) || '', Math.max(5, (colW - 2 * padMM) * R)); rc.push(ln); mx = Math.max(mx, ln.length);
+        }
+        cells.push(rc); rowH.push(Math.max(sp.rh, mx * lhMM + 2 * padMM));
+      }
+      hMM = rowH.reduce(function (a, b) { return a + b; }, 0); tb = { rowH: rowH, cells: cells, fsMM: fsMM, colW: colW, padMM: padMM, lhMM: lhMM };
+    }
+    const dpmm = Math.min(300 / 25.4, 4000 / Math.max(wMM, hMM));
+    const cv = document.createElement('canvas'); cv.width = Math.max(2, Math.round(wMM * dpmm)); cv.height = Math.max(2, Math.round(hMM * dpmm));
+    const c = cv.getContext('2d'), K = dpmm;
+    if (sp.kind === 'line') {
+      c.strokeStyle = sp.color; c.lineWidth = sp.th * K; c.lineCap = sp.type === 'dots' ? 'round' : 'butt';
+      c.setLineDash(sp.type === 'dots' ? [0.001, (sp.gap + sp.th) * K] : sp.type === 'dashes' ? [sp.gap * 2 * K, sp.gap * K] : []);
+      c.beginPath(); c.moveTo(sp.th / 2 * K, cv.height / 2); c.lineTo(cv.width - sp.th / 2 * K, cv.height / 2); c.stroke();
+    } else if (sp.kind === 'rect') {
+      const b = sp.b * K; obRound(c, b / 2, b / 2, cv.width - b, cv.height - b, sp.r * K);
+      if (sp.fillOn) { c.fillStyle = sp.fill; c.fill(); }
+      if (sp.b > 0) { c.strokeStyle = sp.bc; c.lineWidth = b; c.setLineDash(sp.dash ? [Math.max(2, sp.b * 3) * K, Math.max(1.5, sp.b * 2) * K] : []); c.stroke(); }
+    } else {
+      let y = 0;
+      const bw = sp.b * K;
+      if (sp.head) { c.fillStyle = sp.headC; c.fillRect(0, 0, cv.width, tb.rowH[0] * K); }
+      for (let r = 0; r < sp.rows; r++) {
+        for (let cc = 0; cc < sp.cols; cc++) {
+          c.fillStyle = '#000'; c.font = ((sp.head && r === 0) ? 'bold ' : '') + (tb.fsMM * K) + 'px Arial, Helvetica, sans-serif'; c.textBaseline = 'alphabetic';
+          const ln = tb.cells[r][cc], x0 = cc * tb.colW;
+          ln.forEach(function (t, i) {
+            const tw = c.measureText(t).width, tx = sp.align === 'center' ? x0 * K + (tb.colW * K - tw) / 2 : (x0 + tb.padMM) * K;
+            c.fillText(t, tx, (y + tb.padMM + i * tb.lhMM) * K + tb.fsMM * K * 0.95);
+          });
+        }
+        y += tb.rowH[r];
+      }
+      if (sp.b > 0) {
+        c.strokeStyle = sp.bc; c.lineWidth = bw; c.setLineDash([]); c.lineCap = 'square';
+        let yy = 0; c.beginPath();
+        for (let r = 0; r <= sp.rows; r++) { const py = Math.min(cv.height - bw / 2, Math.max(bw / 2, yy * K)); c.moveTo(0, py); c.lineTo(cv.width, py); if (r < sp.rows) yy += tb.rowH[r]; }
+        for (let cc = 0; cc <= sp.cols; cc++) { const px = Math.min(cv.width - bw / 2, Math.max(bw / 2, cc * tb.colW * K)); c.moveTo(px, 0); c.lineTo(px, cv.height); }
+        c.stroke();
+      }
+    }
+    return { cv: cv, wMM: wMM, hMM: hMM };
+  }
+  const OB_NAMES = { line: 'Línea', rect: 'Cuadro', table: 'Tabla' };
+  async function obBuild(sp, e) {
+    const r = obCanvas(sp), blob = await canvasBlob(r.cv, 'png');
+    const name = OB_NAMES[sp.kind] + '.png', file = new File([blob], name, { type: 'image/png' });
+    const k = Math.min(1, 800 / Math.max(r.cv.width, r.cv.height)), sm = document.createElement('canvas');
+    sm.width = Math.max(1, Math.round(r.cv.width * k)); sm.height = Math.max(1, Math.round(r.cv.height * k));
+    const sx = sm.getContext('2d'); sx.imageSmoothingQuality = 'high'; sx.drawImage(r.cv, 0, 0, sm.width, sm.height);
+    const sw = r.cv.width, sh2 = r.cv.height; r.cv.width = 1; r.cv.height = 1;
+    if (!e) e = { id: nextId++, key: 'obj|' + Date.now() + '|' + nextId, edit: newEdit(), thumb: null, cut: true, rev: 0 };
+    e.name = name; e.file = file; e.small = sm; e.sw = sw; e.sh = sh2; e.ar = sw / sh2; e.shape = JSON.parse(JSON.stringify(sp)); e.rev = (e.rev || 0) + 1; e.wMM = r.wMM; e.hMM = r.hMM;
+    refreshThumb(e);
+    return e;
+  }
+  async function obAdd(kind) {
+    if (OB.busy) return; OB.busy = true;
+    try {
+      const sp = obRead(kind);
+      state.mode = 'free'; sh.mode = 'free';
+      const c = cfg(); syncFree(c);
+      const e = await obBuild(sp);
+      const before = free.pages.length, tpg = before ? Math.min(state.page, before - 1) : 0;
+      state.files.push(e);
+      update();
+      let found = null, pg = -1;
+      free.pages.forEach(function (p, pi) { p.forEach(function (o) { if (o.f === e && !found) { found = o; pg = pi; } }); });
+      if (found && before > 0 && pg >= before) {
+        free.pages[pg].splice(free.pages[pg].indexOf(found), 1);
+        free.pages[tpg].push(found);
+        free.pages = free.pages.filter(function (q) { return q.length > 0; });
+        pg = tpg;
+      }
+      if (found) {
+        const page = free.pages[pg];
+        let y = (c.ph - e.hMM) / 2;
+        const others = page.filter(function (q) { return q !== found; });
+        if (others.length) { y = Math.max.apply(null, others.map(function (q) { return q.y + q.h; })) + 5; if (y + e.hMM > c.ph - 5) y = (c.ph - e.hMM) / 2; }
+        found.w = e.wMM; found.h = e.hMM; found.ar0 = e.wMM / e.hMM; found.x = (c.pw - e.wMM) / 2; found.y = y;
+        clampObj(found, c.pw, c.ph, MIN_OBJ, true);
+        state.page = pg; sh.sel = { page: pg, idx: page.indexOf(found) }; sh.frame = false; sh.loadedShape = found.id;
+      }
+      renderThumbs(); update(); hideResult();
+      setNote(OB_NAMES[kind] + ' agregada. Muévela y cambia su tamaño en la hoja; para cambiarla toca aquí «' + (kind === 'line' ? 'Línea' : kind === 'rect' ? 'Cuadro' : 'Tabla') + '» con ella elegida.');
+    } catch (err) { setNote('No se pudo crear el objeto (' + (err && err.message ? err.message : 'error') + ').', true); }
+    OB.busy = false;
+  }
+  function obSel() { const r = selRect(); return r && r.type !== 'text' && r.f && r.f.shape ? r.f : null; }
+  async function obApply(kind) {
+    const e = obSel(); if (!e || e.shape.kind !== kind) return;
+    if (OB.busy) { OB.pending = kind; return; }
+    OB.busy = true;
+    try {
+      await obBuild(obRead(kind), e);
+      free.pages.forEach(function (p) { p.forEach(function (o) {
+        if (o.f !== e) return;
+        const cx = o.x + o.w / 2, cy = o.y + o.h / 2; o.w = e.wMM; o.h = e.hMM; o.ar0 = o.w / o.h; o.x = cx - o.w / 2; o.y = cy - o.h / 2;
+        clampObj(o, cur.c.pw, cur.c.ph, MIN_OBJ, true);
+      }); });
+      hideResult(); renderThumbs(); update();
+    } catch (err) { setNote('No se pudo cambiar el objeto.', true); }
+    OB.busy = false;
+    if (OB.pending) { const k = OB.pending; OB.pending = null; obApply(k); }
+  }
+  function bindPeObj() {
+    $('peMov').addEventListener('click', function () {
+      const on = $('pePad').hidden; $('pePad').hidden = !on; $('peMov').setAttribute('aria-pressed', String(on));
+      if (on && !pe.sel.length) peNote('Toca un cuadro del PDF y mueve con las flechas.');
+    });
+    let tmr = null, iv = null;
+    function stop() { clearTimeout(tmr); clearInterval(iv); tmr = iv = null; }
+    function nudge(dx, dy) {
+      if (!pe.sel.length) { peNote('Primero toca el cuadro que quieres mover.', true); return; }
+      const st = parseFloat($('peStep').value) || 2;
+      pe.sel.forEach(function (id) { const o = peObj(id); if (o) { o.x += dx * st; o.y += dy * st; } });
+      peRender();
+    }
+    [['peNL', -1, 0], ['peNR', 1, 0], ['peNU', 0, -1], ['peND', 0, 1]].forEach(function (d) {
+      const b = $(d[0]);
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); stop(); nudge(d[1], d[2]); tmr = setTimeout(function () { iv = setInterval(function () { nudge(d[1], d[2]); }, 70); }, 380); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { b.addEventListener(ev, stop); });
+      b.addEventListener('click', function (e) { e.preventDefault(); });
+    });
+    function addShape(sp) {
+      const pg = pe.pages[pe.cur]; if (!pg) { peNote('Abre un PDF primero.', true); return; }
+      const r = obCanvas(sp), k = pg.W / (pg.ptW * 25.4 / 72), w = r.wMM * k, h = r.hMM * k;
+      const o = { id: pe.seq++, type: 'i', x: (pg.W - w) / 2, y: (pg.H - h) / 3, w: w, h: h, cv: r.cv };
+      pg.objs.push(o); peRender(); pe.sel = [o.id]; peMarkSel(); peNote('Agregado. Arrástralo, cambia su tamaño con el círculo o muévelo con ✥ Mover.');
+    }
+    $('peLn').addEventListener('click', function () { addShape({ kind: 'line', type: 'dots', len: 80, th: 0.6, gap: 1.6, color: '#000000' }); });
+    $('peRc').addEventListener('click', function () { addShape({ kind: 'rect', w: 60, h: 30, b: 0.6, bc: '#000000', dash: false, fillOn: false, fill: '#fff2a8', r: 0 }); });
+  }
+  function bindObj() {
+    $('obLnAdd').addEventListener('click', function () { obAdd('line'); });
+    $('obRcAdd').addEventListener('click', function () { obAdd('rect'); });
+    $('obTbAdd').addEventListener('click', function () { obAdd('table'); });
+    const map = { line: ['obLnType', 'obLnLen', 'obLnTh', 'obLnGap', 'obLnColor'], rect: ['obRcW', 'obRcH', 'obRcB', 'obRcBC', 'obRcDash', 'obRcFillOn', 'obRcFill', 'obRcR'], table: ['obTbData', 'obTbFit', 'obTbR', 'obTbC', 'obTbW', 'obTbH', 'obTbFs', 'obTbB', 'obTbBC', 'obTbAlign', 'obTbHead', 'obTbHeadC'] };
+    Object.keys(map).forEach(function (kind) {
+      map[kind].forEach(function (id) {
+        function go() {
+          $('obRcFillRow').hidden = !$('obRcFillOn').checked; $('obTbHeadRow').hidden = !$('obTbHead').checked;
+          if (id === 'obTbData' && $('obTbFit').checked) { const sp = obRead('table'); $('obTbR').value = sp.rows; $('obTbC').value = sp.cols; }
+          clearTimeout(OB.tm); OB.tm = setTimeout(function () { obApply(kind); }, 160);
+        }
+        $(id).addEventListener('input', go); $(id).addEventListener('change', go);
+      });
+    });
+  }
+
   bindEditor();
   bindSheet();
   bindText();
@@ -8065,6 +8327,8 @@ html.selActive main { touch-action: none; }
   bindPx();
   bindSp();
   bindPe();
+  bindObj();
+  bindPeObj();
   bindCut();
   bindFbar();
   bindDocClean();
