@@ -711,10 +711,8 @@ html.selActive main { touch-action: none; }
           <span class="muted">pt · usa − y + o escribe el número</span>
         </div>
         <input type="range" id="txSizeR" min="6" max="400" value="90" aria-label="Tamaño de letra" style="width:100%;margin-top:10px;accent-color:var(--accent)">
-        <div class="fields tx-gap">
-          <div class="field"><label for="txSpacing">Interletrado (%)</label><input type="number" id="txSpacing" min="-20" max="100" step="1" value="0" inputmode="numeric"></div>
-          <div class="field"><label for="txLH">Interlineado</label><input type="number" id="txLH" min="0.6" max="3" step="0.05" value="1.2" inputmode="decimal"></div>
-        </div>
+        <div class="field tx-gap"><label for="txCm">Alto de las letras mayúsculas (cm)</label><input type="number" id="txCm" min="0.2" max="200" step="0.1" value="3" inputmode="decimal">
+          <p class="hint">Es la altura real de una letra mayúscula impresa. Al cambiarla se ajusta el tamaño en pt, y al revés.</p></div>
         <div class="seg tx-gap" id="txAlign" role="group" aria-label="Alineación">
           <button type="button" data-v="left" aria-pressed="false">Izquierda</button>
           <button type="button" data-v="center" aria-pressed="true">Centro</button>
@@ -724,6 +722,14 @@ html.selActive main { touch-action: none; }
           <label class="check"><input type="checkbox" id="txBold"> Negrita</label>
           <label class="check"><input type="checkbox" id="txItalic"> Cursiva</label>
         </div>
+        </div>
+        <div class="sec" data-sec="↔|Espaciado">
+        <div class="field tx-gap"><label for="txSpacing">Interletrado (separación entre letras, %)</label>
+          <div class="row"><span class="stepper"><button type="button" id="txSpM" aria-label="Menos espacio entre letras">−</button><input type="number" id="txSpacing" min="-20" max="100" step="1" value="0" inputmode="numeric" style="width:70px;text-align:center"><button type="button" id="txSpP" aria-label="Más espacio entre letras">+</button></span></div>
+          <input type="range" id="txSpacingR" min="-20" max="100" step="1" value="0" aria-label="Interletrado" style="width:100%;margin-top:8px;accent-color:var(--accent)"></div>
+        <div class="field tx-gap"><label for="txLH">Interlineado (separación entre líneas)</label>
+          <div class="row"><span class="stepper"><button type="button" id="txLhM" aria-label="Menos espacio entre líneas">−</button><input type="number" id="txLH" min="0.6" max="3" step="0.05" value="1.2" inputmode="decimal" style="width:70px;text-align:center"><button type="button" id="txLhP" aria-label="Más espacio entre líneas">+</button></span></div>
+          <input type="range" id="txLHR" min="0.6" max="3" step="0.05" value="1.2" aria-label="Interlineado" style="width:100%;margin-top:8px;accent-color:var(--accent)"></div>
         </div>
         <div class="sec" data-sec="🎨|Relleno">
         <h2 class="tx-gap">Relleno de las letras</h2>
@@ -5601,7 +5607,7 @@ html.selActive main { touch-action: none; }
       const ck = spec.caps && spec.caps[objs.length] != null ? spec.caps[objs.length] : cap;
       const part = L.slice(i, i + ck);
       const o = Object.assign({}, styleOf(spec), {
-        type: 'text', id: objs.length === 0 && firstId ? firstId : freeSeq++, grp: spec.grp, gtext: spec.gtext,
+        type: 'text', id: objs.length === 0 && firstId ? firstId : freeSeq++, grp: spec.grp, gtext: spec.gtext, ci: objs.length,
         x: spec.x, y: objs.length === 0 ? y : mg, w: spec.w, view: null, rot: false, fit: false,
         lines: part.map(function (l) { return l.t; }), raw: rawOf(part)
       });
@@ -5640,6 +5646,7 @@ html.selActive main { touch-action: none; }
   function groupMembers(grp) {
     const out = [];
     free.pages.forEach(function (p, pi) { p.forEach(function (o) { if (o.type === 'text' && o.grp === grp) out.push({ o: o, pi: pi }); }); });
+    if (out.every(function (m) { return m.o.ci != null; })) out.sort(function (a, b) { return a.o.ci - b.o.ci; });
     return out;
   }
   function locate(o) {
@@ -6095,7 +6102,16 @@ html.selActive main { touch-action: none; }
     $('txStkRow').hidden = !$('txStk').checked;
     $('txPosterRow').hidden = !$('txPoster').checked;
     $('txSizeO').textContent = String(Math.round(parseFloat($('txSize').value) || 0));
+    $('txSpacingR').value = $('txSpacing').value; $('txLHR').value = $('txLH').value;
+    if (document.activeElement !== $('txCm')) { const cm = capCm(); if (cm) $('txCm').value = String(Math.round(cm * 100) / 100); }
   }
+  function capRatio() {
+    const key = fontStr({ font: $('txFont').value, bold: $('txBold').checked, italic: $('txItalic').checked }, 100);
+    scratch2.font = key; scratch2.textAlign = 'left';
+    const a = scratch2.measureText('H').actualBoundingBoxAscent / 100;
+    return a > 0.3 && a < 1.2 ? a : 0.72;
+  }
+  function capCm() { const pt = parseFloat($('txSize').value); return pt > 0 ? pt * MM_PT * capRatio() / 10 : 0; }
 
   function loadTextControls(o) {
     $('txt').value = o.fit ? o.text : o.gtext;
@@ -6112,12 +6128,26 @@ html.selActive main { touch-action: none; }
     syncTextUi();
   }
 
-  function addTextObj() {
+  function askWhere() {
+    return new Promise(function (res) {
+      const ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+      const bx = document.createElement('div'); bx.style.cssText = 'background:var(--surface,#fff);color:var(--ink,#111);border-radius:14px;padding:16px;max-width:340px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px';
+      const p = document.createElement('p'); p.style.cssText = 'margin:0 0 4px;font-weight:600'; p.textContent = 'Ya hay cosas en esta hoja. ¿Dónde agrego el texto?'; bx.appendChild(p);
+      function mk(label, v, cls) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (cls ? ' ' + cls : ''); b.textContent = label; b.addEventListener('click', function () { ov.remove(); res(v); }); bx.appendChild(b); }
+      mk('En esta hoja', 'same', 'primary'); mk('En una hoja nueva', 'new'); mk('Cancelar', null);
+      ov.appendChild(bx); document.body.appendChild(ov);
+    });
+  }
+  async function addTextObj() {
     const text = $('txt').value.replace(/\s+$/g, '');
     if (!text.trim()) { setNote('Escribe el texto primero.', true); return; }
     const st = readStyle();
     if (st.fillMode === 'image' && !st.fillImg) { setNote('Elige primero la imagen de relleno, o cambia a «Color».', true); return; }
     const posterOn = $('txPoster').checked, posterW = cl(parseFloat($('txPosterW').value) || 60, 10, 600) * 10;
+    let where = 'same';
+    if (!posterOn && state.mode === 'free' && free.pages[Math.min(state.page, free.pages.length - 1)] && free.pages[Math.min(state.page, free.pages.length - 1)].length) {
+      where = await askWhere(); if (!where) return;
+    }
     setNote('');
     state.mode = 'free'; sh.mode = 'free';
     const c = cfg();
@@ -6133,10 +6163,11 @@ html.selActive main { touch-action: none; }
       let y0 = null;
       if ($('txTop').checked || text.length > 200) y0 = Math.max(refMargin(), c.margin);
       const pgObjs = free.pages[Math.min(state.page, free.pages.length - 1)] || [];
-      if (pgObjs.length && !$('txTop').checked) { y0 = Math.max.apply(null, pgObjs.map(function (q) { return q.y + q.h; })) + 4; if (y0 > c.ph - c.margin - 20) y0 = null; }
+      if (where === 'same' && pgObjs.length && !$('txTop').checked) { y0 = Math.max.apply(null, pgObjs.map(function (q) { return q.y + q.h; })) + 4; if (y0 > c.ph - c.margin - 20) y0 = null; }
       objs = flowText(spec, y0, c, 0);
       if (!free.pages.length) free.pages.push([]);
       p0 = Math.min(state.page, free.pages.length - 1);
+      if (where === 'new') { p0 = free.pages.length; }
     }
     placeObjs(objs, p0);
     state.page = p0;
@@ -6242,6 +6273,18 @@ html.selActive main { touch-action: none; }
       if (v >= 6) live();
     });
     $('txSizeR').addEventListener('input', function () { $('txSize').value = $('txSizeR').value; live(); });
+    $('txCm').addEventListener('input', function () {
+      const cm = parseFloat(String($('txCm').value).replace(',', '.')); if (!(cm > 0)) return;
+      const pt = cl(Math.round(cm * 10 / (MM_PT * capRatio()) * 10) / 10, 6, 600);
+      $('txSize').value = String(pt); $('txSizeR').value = String(Math.min(400, pt)); $('txSizeO').textContent = String(Math.round(pt)); live();
+    });
+    function stepNum(id, d, lo, hi, dec) { const v = cl((parseFloat($(id).value) || 0) + d, lo, hi); $(id).value = String(Math.round(v * 100) / 100); $(id).dispatchEvent(new Event('input', { bubbles: true })); }
+    $('txSpM').addEventListener('click', function () { stepNum('txSpacing', -1, -20, 100); });
+    $('txSpP').addEventListener('click', function () { stepNum('txSpacing', 1, -20, 100); });
+    $('txLhM').addEventListener('click', function () { stepNum('txLH', -0.05, 0.6, 3); });
+    $('txLhP').addEventListener('click', function () { stepNum('txLH', 0.05, 0.6, 3); });
+    $('txSpacingR').addEventListener('input', function () { $('txSpacing').value = $('txSpacingR').value; $('txSpacing').dispatchEvent(new Event('input', { bubbles: true })); });
+    $('txLHR').addEventListener('input', function () { $('txLH').value = $('txLHR').value; $('txLH').dispatchEvent(new Event('input', { bubbles: true })); });
     function bump(d) { const v = cl(Math.round((parseFloat($('txSize').value) || 90) + d), 6, 600); $('txSize').value = String(v); $('txSizeR').value = String(Math.min(400, v)); live(); }
     $('txSizeM').addEventListener('click', function () { bump(-1); });
     $('txSizeP').addEventListener('click', function () { bump(1); });
