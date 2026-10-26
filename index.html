@@ -723,6 +723,24 @@ html.selActive main { touch-action: none; }
           <label class="check"><input type="checkbox" id="txItalic"> Cursiva</label>
         </div>
         </div>
+        <div class="sec" data-sec="⤧|Forma">
+        <p class="hint">Cambia la forma de las letras sin cambiar de fuente: más anchas o angostas, más altas o bajas, y más gruesas.</p>
+        <div class="field tx-gap"><label for="txSx">Ancho de las letras: <output id="txSxO">100</output> %</label>
+          <div class="row"><button type="button" class="btn" data-st="txSx" data-d="-5" aria-label="Más angostas">−</button><input type="range" id="txSx" min="50" max="200" step="1" value="100" style="flex:1;accent-color:var(--accent)"><button type="button" class="btn" data-st="txSx" data-d="5" aria-label="Más anchas">+</button></div></div>
+        <div class="field tx-gap"><label for="txSy">Alto de las letras: <output id="txSyO">100</output> %</label>
+          <div class="row"><button type="button" class="btn" data-st="txSy" data-d="-5" aria-label="Más bajas">−</button><input type="range" id="txSy" min="50" max="200" step="1" value="100" style="flex:1;accent-color:var(--accent)"><button type="button" class="btn" data-st="txSy" data-d="5" aria-label="Más altas">+</button></div></div>
+        <div class="field tx-gap"><label for="txWt">Grosor extra: <output id="txWtO">0</output></label>
+          <div class="row"><button type="button" class="btn" data-st="txWt" data-d="-1" aria-label="Menos grosor">−</button><input type="range" id="txWt" min="0" max="30" step="1" value="0" style="flex:1;accent-color:var(--accent)"><button type="button" class="btn" data-st="txWt" data-d="1" aria-label="Más grosor">+</button></div></div>
+        <div id="txVarRow" hidden>
+          <h2 class="tx-gap">Esta fuente tiene grosor y ancho propios</h2>
+          <div class="field tx-gap"><label for="txFw">Grosor de la fuente: <output id="txFwO">400</output></label>
+            <div class="row"><button type="button" class="btn" data-st="txFw" data-d="-50" aria-label="Más delgada">−</button><input type="range" id="txFw" min="100" max="1000" step="10" value="400" style="flex:1;accent-color:var(--accent)"><button type="button" class="btn" data-st="txFw" data-d="50" aria-label="Más gruesa">+</button></div></div>
+          <div class="field tx-gap"><label for="txFx">Ancho de la fuente</label>
+            <select id="txFx"><option value="xc">Muy angosta</option><option value="c">Angosta</option><option value="sc">Algo angosta</option><option value="" selected>Normal</option><option value="se">Algo ancha</option><option value="e">Ancha</option></select></div>
+          <p class="hint">Necesita internet la primera vez para bajar la fuente.</p>
+        </div>
+        <div class="row tx-gap"><button type="button" class="btn" id="txShapeReset">↺ Letras normales</button></div>
+        </div>
         <div class="sec" data-sec="↔|Espaciado">
         <div class="field tx-gap"><label for="txSpacing">Interletrado (separación entre letras, %)</label>
           <div class="row"><span class="stepper"><button type="button" id="txSpM" aria-label="Menos espacio entre letras">−</button><input type="number" id="txSpacing" min="-20" max="100" step="1" value="0" inputmode="numeric" style="width:70px;text-align:center"><button type="button" id="txSpP" aria-label="Más espacio entre letras">+</button></span></div>
@@ -806,8 +824,9 @@ html.selActive main { touch-action: none; }
           </div>
           <div class="row tx-gap"><button class="btn primary" id="obLnAdd" type="button">Agregar línea a la hoja</button></div>
         </div>
-        <div class="sec" data-sec="▭|Cuadro">
-          <p class="hint">Rectángulo o cuadrado, con borde visible y esquinas que puedes redondear. Sin color de fondo queda transparente.</p>
+        <div class="sec" data-sec="▭|Figura">
+          <p class="hint">Cuadro, círculo, triángulo, estrella y más, con borde visible. Sin color de fondo queda transparente. Para cambiar su tamaño, arrástrala desde los círculos de la hoja.</p>
+          <div class="field"><label for="obRcForm">Figura</label><select id="obRcForm"><option value="rect">Rectángulo / cuadrado</option><option value="ellipse">Círculo / óvalo</option><option value="triangle">Triángulo</option><option value="diamond">Rombo</option><option value="pentagon">Pentágono</option><option value="hexagon">Hexágono</option><option value="star">Estrella</option><option value="arrow">Flecha</option><option value="heart">Corazón</option><option value="cross">Cruz</option><option value="para">Paralelogramo</option><option value="trap">Trapecio</option></select></div>
           <div class="fields">
             <div class="field"><label for="obRcW">Ancho (mm)</label><input type="number" id="obRcW" min="3" max="600" step="1" value="60" inputmode="decimal"></div>
             <div class="field"><label for="obRcH">Alto (mm)</label><input type="number" id="obRcH" min="3" max="800" step="1" value="30" inputmode="decimal"></div>
@@ -818,10 +837,10 @@ html.selActive main { touch-action: none; }
           <label class="check"><input type="checkbox" id="obRcFillOn"> Con color de fondo</label>
           <div class="field" id="obRcFillRow" hidden><label for="obRcFill">Color de fondo</label><input type="color" id="obRcFill" value="#fff2a8"></div>
           <div class="field"><label for="obRcR">Esquinas redondeadas (mm)</label><input type="range" id="obRcR" min="0" max="40" step="1" value="0"></div>
-          <div class="row tx-gap"><button class="btn primary" id="obRcAdd" type="button">Agregar cuadro a la hoja</button></div>
+          <div class="row tx-gap"><button class="btn primary" id="obRcAdd" type="button">Agregar figura a la hoja</button></div>
         </div>
         <div class="sec" data-sec="▦|Tabla">
-          <p class="hint">Pega aquí el contenido copiado (de Excel, Sheets o Word) y la tabla se llena sola. Si escribes a mano, separa las columnas con «;» y las filas con Enter.</p>
+          <p class="hint">Pega aquí el contenido copiado (de Excel, Sheets, Word o de un chat). Las columnas se detectan solas si están separadas por tabulación, por barras « | » o por «;». Cada línea es una fila.</p>
           <div class="field"><label for="obTbData">Contenido de la tabla</label><textarea id="obTbData" rows="4" placeholder="Pega aquí el texto copiado"></textarea></div>
           <label class="check"><input type="checkbox" id="obTbFit" checked> Ajustar filas y columnas a lo que pegue</label>
           <div class="fields">
@@ -832,8 +851,10 @@ html.selActive main { touch-action: none; }
             <div class="field"><label for="obTbFs">Tamaño de letra (pt)</label><input type="number" id="obTbFs" min="5" max="60" step="1" value="12" inputmode="numeric"></div>
             <div class="field"><label for="obTbB">Grosor de líneas (mm)</label><input type="number" id="obTbB" min="0" max="5" step="0.1" value="0.4" inputmode="decimal"></div>
             <div class="field"><label for="obTbBC">Color de líneas</label><input type="color" id="obTbBC" value="#000000"></div>
-            <div class="field"><label for="obTbAlign">Alineación del texto</label><select id="obTbAlign"><option value="left">Izquierda</option><option value="center">Centro</option></select></div>
+            <div class="field"><label for="obTbAlign">Alineación del texto</label><select id="obTbAlign"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></div>
+            <div class="field"><label for="obTbCw">Ancho de las columnas</label><select id="obTbCw"><option value="auto">Según el contenido</option><option value="eq">Todas iguales</option></select></div>
           </div>
+          <details class="tx-gap" id="obTbAlD"><summary>Alineación por columna y por fila</summary><div id="obTbAl"></div></details>
           <label class="check"><input type="checkbox" id="obTbHead"> Primera fila como encabezado (negrita y color)</label>
           <div class="field" id="obTbHeadRow" hidden><label for="obTbHeadC">Color del encabezado</label><input type="color" id="obTbHeadC" value="#dfe7ee"></div>
           <div class="row tx-gap"><button class="btn primary" id="obTbAdd" type="button">Agregar tabla a la hoja</button></div>
@@ -922,6 +943,7 @@ html.selActive main { touch-action: none; }
         <div class="sec" data-sec="📐|Guías y reglas">
         <label class="check"><input type="checkbox" id="guides" checked> Líneas guía para cortar</label>
         <label class="check"><input type="checkbox" id="rulerOn"> Reglas en los costados (cm)</label>
+        <label class="check"><input type="checkbox" id="gSnap" checked> Líneas guía e imán al mover (como Canva): centro de la hoja, márgenes y otros objetos</label>
         <label class="check"><input type="checkbox" id="gC"> Guía de centro (cruz rosa, solo para ver)</label>
         <label class="check"><input type="checkbox" id="gM"> Guía de margen (marco azul, solo para ver)</label>
         <div class="field"><label for="gMmm">Margen de referencia (mm)</label><input type="number" id="gMmm" min="0" max="80" step="1" value="20" inputmode="numeric"></div>
@@ -1908,7 +1930,7 @@ html.selActive main { touch-action: none; }
   let freeSeq = 1;
 
   function viewOf(r) { return r.view !== undefined ? r.view : (r.f.view || null); }
-  function viewKey(v) { return v ? v.z.toFixed(3) + ',' + v.px.toFixed(3) + ',' + v.py.toFixed(3) + ',' + (v.a || 0).toFixed(2) : ''; }
+  function viewKey(v) { return v ? (v.st ? 'S' : '') + v.z.toFixed(3) + ',' + v.px.toFixed(3) + ',' + v.py.toFixed(3) + ',' + (v.a || 0).toFixed(2) : ''; }
 
   function makeObj(f, x, y, w, h) {
     return { id: freeSeq++, f: f, x: x, y: y, w: w, h: h, rot: false, view: newView(), ar0: w / h };
@@ -2161,6 +2183,12 @@ html.selActive main { touch-action: none; }
         ctx.strokeStyle = ac; ctx.lineWidth = 3 * dpr; ctx.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k);
       });
     }
+    if (sh.snap && sh.g && sh.g.t === 'move') {
+      ctx.save(); ctx.lineWidth = Math.max(1, dpr * 1.2); ctx.setLineDash([]); ctx.strokeStyle = '#e91e63'; ctx.beginPath();
+      sh.snap.v.forEach(function (x) { ctx.moveTo(x * k, 0); ctx.lineTo(x * k, cv.height); });
+      sh.snap.h.forEach(function (y) { ctx.moveTo(0, y * k); ctx.lineTo(cv.width, y * k); });
+      ctx.stroke(); ctx.restore();
+    }
     if ($('gC') && $('gC').checked) {
       ctx.save(); ctx.lineWidth = Math.max(1, dpr); ctx.setLineDash([7 * dpr, 5 * dpr]);
       ctx.strokeStyle = '#d81b60'; ctx.beginPath(); ctx.moveTo(cv.width / 2, 0); ctx.lineTo(cv.width / 2, cv.height); ctx.moveTo(0, cv.height / 2); ctx.lineTo(cv.width, cv.height / 2); ctx.stroke();
@@ -2260,7 +2288,7 @@ html.selActive main { touch-action: none; }
       localStorage.setItem(PREF, JSON.stringify({
         paper: state.paper, land: state.land, mode: state.mode, fit: state.fit, by: state.by, copies: state.copies,
         w: $('w').value, h: $('h').value, as: $('as').value, rot: $('rot').checked,
-        margin: $('margin').value, gap: $('gap').value, guides: $('guides').checked, gC: $('gC').checked, gM: $('gM').checked, gMmm: $('gMmm').value,
+        margin: $('margin').value, gap: $('gap').value, guides: $('guides').checked, gC: $('gC').checked, gM: $('gM').checked, gSnap: $('gSnap').checked, gMmm: $('gMmm').value,
         dni: state.dni, dniTop: $('dniTop').value, dniGap: $('dniGap').value,
         dniLay: state.dniLay, dniN: $('dniN').value, dniMT: $('dniMT').value, dniCG: $('dniCG').value, dniRG: $('dniRG').value
       }));
@@ -2293,7 +2321,7 @@ html.selActive main { touch-action: none; }
       if (p.gap != null) $('gap').value = p.gap;
       $('rot').checked = p.rot !== false;
       $('guides').checked = p.guides !== false;
-      $('gC').checked = !!p.gC; $('gM').checked = !!p.gM; if (p.gMmm != null) $('gMmm').value = p.gMmm;
+      $('gSnap').checked = p.gSnap !== false; $('gC').checked = !!p.gC; $('gM').checked = !!p.gM; if (p.gMmm != null) $('gMmm').value = p.gMmm;
     } catch (e) { /* ignorar */ }
   }
 
@@ -4486,11 +4514,12 @@ html.selActive main { touch-action: none; }
     holder(r).view = zoomView(d.w, d.h, fd.w, fd.h, base, factor);
   }
   function endGesture() {
-    autosaveSoon();
+    autosaveSoon(); if (sh.snap) { sh.snap = null; drawSheet(); }
     const g0 = sh.g, ch = g0 && g0.changed;
     if (ch) hideResult();
     sh.g = null;
     if (g0 && g0.reflow) { update(); syncSel(); return; }
+    if (g0 && ch && g0.t === 'resize') { const rr = selRect(); if (rr && rr.type !== 'text' && rr.f && rr.f.shape) obResizeEnd(rr); }
     if (g0 && !ch && g0.wasSel && state.mode === 'free' && !sh.frame && sh.sel) {
       const rs = pageRects();
       for (let q = sh.sel.idx - 1; q >= 0; q--) {
@@ -5198,6 +5227,27 @@ html.selActive main { touch-action: none; }
       syncSel(); drawSheet();
     });
 
+    function snapMove(r, g) {
+      sh.snap = null;
+      if (!$('gSnap').checked || r.fa || !cur) return;
+      const pw = cur.c.pw, ph = cur.c.ph, T = 1.8, gm = refMargin();
+      const tx = [pw / 2, gm, pw - gm, 0, pw], ty = [ph / 2, gm, ph - gm, 0, ph];
+      pageRects().forEach(function (o) {
+        if (o === r || o.fa || (g.mem && g.mem.some(function (m) { return m.o === o; }))) return;
+        tx.push(o.x, o.x + o.w / 2, o.x + o.w); ty.push(o.y, o.y + o.h / 2, o.y + o.h);
+      });
+      function best(cands, targets) {
+        let bd = T, bt = null, bc = null;
+        cands.forEach(function (c) { targets.forEach(function (t) { const d = Math.abs(t - c); if (d < bd) { bd = d; bt = t; bc = c; } }); });
+        return bt == null ? 0 : bt - bc;
+      }
+      const dx = best([r.x, r.x + r.w / 2, r.x + r.w], tx), dy = best([r.y, r.y + r.h / 2, r.y + r.h], ty);
+      r.x += dx; r.y += dy;
+      const v = [], h = [];
+      [r.x, r.x + r.w / 2, r.x + r.w].forEach(function (c) { tx.forEach(function (t) { if (Math.abs(t - c) < 0.05 && v.indexOf(t) < 0) v.push(t); }); });
+      [r.y, r.y + r.h / 2, r.y + r.h].forEach(function (c) { ty.forEach(function (t) { if (Math.abs(t - c) < 0.05 && h.indexOf(t) < 0) h.push(t); }); });
+      sh.snap = (v.length || h.length) ? { v: v, h: h } : null;
+    }
     function onMove(e) {
       if (!sh.ptrs.has(e.pointerId)) return;
       sh.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -5241,6 +5291,7 @@ html.selActive main { touch-action: none; }
       if (g.t === 'move') {
         r.x = g.s.x + p.x - g.p0.x; r.y = g.s.y + p.y - g.p0.y;
         clampObj(r, pw, ph, MIN_OBJ, true);
+        snapMove(r, g);
         if (g.mem && g.mem.length > 1) { const ddx = r.x - g.s.x, ddy = r.y - g.s.y; g.mem.forEach(function (m) { if (m.o !== r) { m.o.x = m.s.x + ddx; m.o.y = m.s.y + ddy; } }); }
       } else if (g.t === 'rotate') {
         const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
@@ -5467,6 +5518,8 @@ html.selActive main { touch-action: none; }
     { k: 'dancing', n: 'Dancing Script (manuscrita)', st: '"Dancing Script", "Segoe Script", cursive', g: 1 },
     { k: 'marker', n: 'Permanent Marker (marcador)', st: '"Permanent Marker", "Comic Sans MS", cursive', g: 1 },
     { k: 'bangers', n: 'Bangers (cómic)', st: '"Bangers", Impact, sans-serif', g: 1 },
+    { k: 'robotoflex', n: 'Roboto Flex (grosor y ancho ajustables)', st: '"Roboto Flex", Arial, sans-serif', g: 1, v: 1 },
+    { k: 'archivo', n: 'Archivo (grosor y ancho ajustables)', st: '"Archivo", Arial, sans-serif', g: 1, v: 1 },
     { k: 'sans', n: 'Arial', st: 'Arial, Helvetica, "Segoe UI", Roboto, sans-serif', g: 0 },
     { k: 'impact', n: 'Impact', st: 'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif', g: 0 },
     { k: 'serif', n: 'Georgia', st: 'Georgia, "Times New Roman", Times, serif', g: 0 },
@@ -5474,7 +5527,7 @@ html.selActive main { touch-action: none; }
   ];
   const FONTS = {};
   FONT_LIST.forEach(function (f) { FONTS[f.k] = f; });
-  const GF_URL = 'https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@400;700&family=Montserrat:wght@400;700&family=Poppins:wght@400;700&family=Roboto+Slab:wght@400;700&family=Playfair+Display:wght@400;700&family=Lobster&family=Pacifico&family=Dancing+Script:wght@400;700&family=Permanent+Marker&family=Bangers&display=swap';
+  const GF_URL = 'https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Oswald:wght@400;700&family=Montserrat:wght@400;700&family=Poppins:wght@400;700&family=Roboto+Slab:wght@400;700&family=Playfair+Display:wght@400;700&family=Lobster&family=Pacifico&family=Dancing+Script:wght@400;700&family=Permanent+Marker&family=Bangers&family=Roboto+Flex:wdth,wght@25..151,100..1000&family=Archivo:wdth,wght@62..125,100..900&display=swap';
   try {
     const gl = document.createElement('link');
     gl.rel = 'stylesheet'; gl.href = GF_URL;
@@ -5489,7 +5542,7 @@ html.selActive main { touch-action: none; }
   const MM_PT = 0.352778, LH = 1.18, REF = 10;
 
   // Con «cada letra su sticker» se deja un hueco extra entre letras para que los bordes no se encimen.
-  function stlRel(o) { return o.stkl && o.stk > 0 && !o.fit && !o.poster ? 2 * (o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012) + (strokeOn(o) ? o.strokeW / 100 : 0)) + (o.stks || 0) / 100 * 0.3 : 0; }
+  function stlRel(o) { return o.stkl && o.stk > 0 && !o.fit && !o.poster ? 2 * (o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012) + (strokeOn(o) ? o.strokeW / 100 : 0) + (o.wt || 0) / 200) + (o.stks || 0) / 100 * 0.3 : 0; }
   function stlExtra(o, fpx) { return stlRel(o) * fpx; }
   function setSpacing(c, o, fpx) {
     if ('letterSpacing' in c) c.letterSpacing = ((o.spacing || 0) / 100 * fpx + stlExtra(o, fpx)).toFixed(2) + 'px';
@@ -5499,8 +5552,12 @@ html.selActive main { touch-action: none; }
   function boxSticker(o) { return !!(o.stk > 0 && !o.fit && !o.poster && (o.lines || []).length > 0 && (o.lbox || (o.jb && o.jb.some(Boolean)))); }
   function stkRel(o) { return o.stk / 100 * 0.22; }
   function lhOf(o) { return (o.lhm || LH) + (boxSticker(o) && o.lbox ? 2 * (stkRel(o) + (o.stkg === false ? 0 : 0.012)) + 0.1 : 0) + (stlRel(o) ? 0.9 - (o.lhm || LH) + stlRel(o) - (o.stks || 0) / 100 * 0.3 + (o.stkr == null ? 30 : o.stkr) / 100 * 0.4 : 0); }
+  const FXW = { xc: 'extra-condensed', c: 'condensed', sc: 'semi-condensed', se: 'semi-expanded', e: 'expanded' };
+  function sclX(o) { return o.fit || o.poster ? 1 : Math.max(0.3, (o.sx || 100) / 100); }
+  function sclY(o) { return o.fit || o.poster ? 1 : Math.max(0.3, (o.sy || 100) / 100); }
   function fontStr(o, size) {
     const f = FONTS[o.font] || FONTS.sans;
+    if (f.v) return (o.italic ? 'italic ' : '') + (o.fw || (o.bold ? 700 : 400)) + ' ' + (FXW[o.fx] ? FXW[o.fx] + ' ' : '') + size + 'px ' + f.st;
     return (o.italic ? 'italic ' : '') + (o.bold ? 'bold ' : '') + size + 'px ' + f.st;
   }
   function strokeOn(o) { return !!o.stroke || o.fillMode === 'none'; }
@@ -5519,7 +5576,8 @@ html.selActive main { touch-action: none; }
   function wrapLines(o, raw, wMM) {
     const fpx = o.size * MM_PT * REF;
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
-    const pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
+    const pad = (strokeOn(o) ? o.strokeW / 100 * fpx : 0) + (o.wt || 0) / 200 * fpx;
+    wMM = wMM / sclX(o);
     const maxW = Math.max(fpx, stlExtra(o, fpx) ? wMM * REF - 0.6 * pad : wMM * REF - 2 * pad);
     const out = [];
     String(raw).split('\n').forEach(function (para) {
@@ -5570,14 +5628,14 @@ html.selActive main { touch-action: none; }
     return { A: r.A * fpx, D: r.D * fpx, a: r.A, d: r.D };
   }
   function hxRel(o) { const e = fontExt(o, 1); return Math.max(0.1, (e.a + e.d - (o.lhm || LH)) / 2 + 0.08); }
-  function padMM(o) { return strokeOn(o) ? o.strokeW / 100 * o.size * MM_PT : 0; }
+  function padMM(o) { return (strokeOn(o) ? o.strokeW / 100 * o.size * MM_PT : 0) + (o.wt || 0) / 200 * o.size * MM_PT; }
   function stlOverMM(o) {
     if (!o.fit && !o.poster && o.stk > 0 && !stlRel(o) && !boxSticker(o)) return Math.max(0.1, (fontExt(o, 1).a + fontExt(o, 1).d - lhOf(o)) / 2 + 0.08) * o.size * MM_PT;
     if (!stlRel(o) && !boxSticker(o)) return 0;
-    const tot = o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012), padr = strokeOn(o) ? o.strokeW / 100 : 0, HP = (o.lhm || LH) + 2 * padr + 2 * hxRel(o);
+    const tot = o.stk / 100 * 0.22 + (o.stkg === false ? 0 : 0.012), padr = (strokeOn(o) ? o.strokeW / 100 : 0) + (o.wt || 0) / 200, HP = (o.lhm || LH) + 2 * padr + 2 * hxRel(o);
     return Math.max(0, tot + HP / 2 - padr - lhOf(o) / 2) * o.size * MM_PT;
   }
-  function blockH(o, n) { return n * o.size * MM_PT * lhOf(o) + 2 * padMM(o) + 2 * stlOverMM(o); }
+  function blockH(o, n) { return (n * o.size * MM_PT * lhOf(o) + 2 * padMM(o) + 2 * stlOverMM(o)) * sclY(o); }
 
   // Recalcula renglones y alto de un cuadro de texto después de cambiar su ancho o tamaño.
   function layoutOne(o) {
@@ -5588,14 +5646,14 @@ html.selActive main { touch-action: none; }
     return o;
   }
 
-  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg', 'stkl', 'stks', 'stkr', 'full', 'lbox'];
+  const STYLE_KEYS = ['font', 'size', 'align', 'bold', 'italic', 'fillMode', 'fillFit', 'color', 'fillImg', 'stroke', 'strokeColor', 'strokeW', 'spacing', 'lhm', 'd3', 'd3dir', 'd3color', 'stk', 'stkc', 'stkg', 'stkl', 'stks', 'stkr', 'full', 'lbox', 'sx', 'sy', 'wt', 'fw', 'fx'];
   function styleOf(o) { const r = {}; STYLE_KEYS.forEach(function (k) { r[k] = o[k]; }); return r; }
 
   // Reparte un texto largo en cuadros: si no cabe en la hoja sigue en la siguiente.
   function flowText(spec, y0, c, firstId) {
     const L = wrapLines(spec, spec.gtext, spec.w);
     const mg = spec.full ? 0 : c.margin;
-    const lhMM = spec.size * MM_PT * lhOf(spec), pad = padMM(spec);
+    const lhMM = spec.size * MM_PT * lhOf(spec) * sclY(spec), pad = padMM(spec) * sclY(spec);
     const capFull = Math.max(1, Math.floor((c.ph - 2 * mg - 2 * pad) / lhMM));
     let y = y0;
     if (y == null) y = L.length <= capFull ? Math.max(0, (c.ph - blockH(spec, L.length)) / 2) : mg;
@@ -5626,7 +5684,7 @@ html.selActive main { touch-action: none; }
     const mem = groupMembers(r.grp); if (!mem.length || r.poster || r.fit) return null;
     const first = mem[0].o, p0 = mem[0].pi, myIdx = Math.max(0, mem.findIndex(function (m) { return m.o === r; })), c = cur.c;
     const spec = Object.assign(styleOf(first), o.size != null ? { size: cl(o.size, 6, 600) } : {}, { gtext: first.gtext, grp: r.grp, x: o.x != null ? o.x : first.x, w: o.w != null ? cl(o.w, 10, 3 * c.pw) : first.w, caps: {} });
-    if (o.capH != null) spec.caps[myIdx] = Math.max(1, Math.min(400, Math.floor((o.capH - 2 * padMM(spec)) / (spec.size * MM_PT * lhOf(spec)) + 1e-6)));
+    if (o.capH != null) spec.caps[myIdx] = Math.max(1, Math.min(400, Math.floor((o.capH - 2 * padMM(spec) * sclY(spec)) / (spec.size * MM_PT * lhOf(spec) * sclY(spec)) + 1e-6)));
     free.pages = free.pages.map(function (pg) { return pg.filter(function (q) { return !(q.type === 'text' && q.grp === r.grp); }); });
     const objs = flowText(spec, o.y != null && myIdx === 0 ? o.y : first.y, c, first.id);
     placeObjs(objs, p0);
@@ -5744,6 +5802,13 @@ html.selActive main { touch-action: none; }
 
   // Dibuja el texto en un canvas w×h (px) con fondo transparente.
   function renderText(o, w, h, fill) {
+    if (!o.fit && !o.poster && (sclX(o) !== 1 || sclY(o) !== 1)) {
+      const sx = sclX(o), sy = sclY(o), o2 = Object.assign({}, o, { sx: 100, sy: 100, w: o.w / sx, h: o.h / sy });
+      const mq = Math.max(1, sx, sy), inner = renderText(o2, Math.max(2, Math.round(w / sx * mq)), Math.max(2, Math.round(h / sy * mq)), fill);
+      const out = document.createElement('canvas'); out.width = w; out.height = h;
+      const oc = out.getContext('2d'); oc.imageSmoothingQuality = 'high'; oc.drawImage(inner, 0, 0, w, h);
+      inner.width = 1; inner.height = 1; return out;
+    }
     if (o.stkl && o.stk > 0 && !o.fit && !o.poster) return renderLetterSticker(o, w, h, fill);
     if (boxSticker(o)) return renderBoxedSticker(o, w, h, fill);
     let front = renderText0(o, w, h, fill);
@@ -5758,7 +5823,7 @@ html.selActive main { touch-action: none; }
   function renderLetterSticker(o, w, h, fill) {
     const out = document.createElement('canvas'); out.width = w; out.height = h;
     const ctx = out.getContext('2d');
-    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
+    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = (strokeOn(o) ? o.strokeW / 100 * fpx : 0) + (o.wt || 0) / 200 * fpx;
     const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
     const lh = fpx * lhOf(o), align = o.align || 'center';
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
@@ -5795,7 +5860,7 @@ html.selActive main { touch-action: none; }
     const all = o.lines || [], n = all.length;
     if (!n) return out;
     const jb = o.jb && o.jb.length === n + 1 ? o.jb : new Array(n + 1).fill(false);
-    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0;
+    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = (strokeOn(o) ? o.strokeW / 100 * fpx : 0) + (o.wt || 0) / 200 * fpx;
     const base = o.lhm || LH, r = Math.max(1, stkRel(o) * fpx), guide = o.stkg === false ? 0 : Math.max(1, 0.012 * fpx), tot = r + guide, gpx = 0.8 * ppm;
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx);
     const hp = Math.ceil(fpx * base + 2 * pad), hx = Math.ceil(hxRel(o) * fpx), HP = hp + 2 * hx, JH = Math.ceil(HP + 2 * tot), ov = stlOverMM(o) * ppm;
@@ -5842,7 +5907,7 @@ html.selActive main { touch-action: none; }
   // Marco punteado alrededor de cada línea del texto: para saber por dónde cortar y pegar.
   function drawLineBoxes(cv, o, w, h) {
     const lines = o.lines || []; if (!lines.length) return;
-    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0, lh = fpx * lhOf(o);
+    const ppm = w / o.w, fpx = o.size * MM_PT * ppm, pad = (strokeOn(o) ? o.strokeW / 100 * fpx : 0) + (o.wt || 0) / 200 * fpx, lh = fpx * lhOf(o);
     const align = o.align || 'center', x = align === 'left' ? pad : align === 'right' ? w - pad : w / 2, g = 0.8 * ppm;
     const lwid = Math.max(1, 0.15 * ppm), cx = cv.getContext('2d');
     scratch.font = fontStr(o, fpx); setSpacing(scratch, o, fpx); scratch.textAlign = align;
@@ -5898,7 +5963,7 @@ html.selActive main { touch-action: none; }
     } else {
       const ppm = w / o.w;
       fpx = o.size * MM_PT * ppm;
-      const pad = strokeOn(o) ? o.strokeW / 100 * fpx : 0, lh = fpx * lhOf(o), ovn = o.stk > 0 && !o.stkl && !boxSticker(o) ? stlOverMM(o) * ppm : 0;
+      const pad = (strokeOn(o) ? o.strokeW / 100 * fpx : 0) + (o.wt || 0) / 200 * fpx, lh = fpx * lhOf(o), ovn = o.stk > 0 && !o.stkl && !boxSticker(o) ? stlOverMM(o) * ppm : 0;
       lw = o.fillMode === 'none' ? pad : 2 * pad;
       align = o.align || 'center';
       if (o.poster) { bw = o.poster.W * ppm; bh = o.poster.H * ppm; offx = o.poster.ix * w; offy = o.poster.iy * h; }
@@ -5928,6 +5993,7 @@ html.selActive main { touch-action: none; }
       setup(lx);
       lx.fillStyle = '#000';
       items.forEach(function (it) { lx.fillText(it.t, it.x, it.y); });
+      if (!o.fit && o.wt > 0) { lx.lineWidth = o.wt / 100 * fpx; lx.lineJoin = 'round'; lx.strokeStyle = '#000'; items.forEach(function (it) { lx.strokeText(it.t, it.x, it.y); }); }
       lx.imageSmoothingQuality = 'high';
       const fd = dims(fill);
       if (o.fillFit === 'stretch') {
@@ -5957,6 +6023,7 @@ html.selActive main { touch-action: none; }
       setup(ctx);
       ctx.fillStyle = o.color;
       items.forEach(function (it) { ctx.fillText(it.t, it.x, it.y); });
+      if (!o.fit && o.wt > 0) { ctx.lineWidth = o.wt / 100 * fpx; ctx.lineJoin = 'round'; ctx.strokeStyle = o.color; items.forEach(function (it) { ctx.strokeText(it.t, it.x, it.y); }); }
       ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
     return cv;
@@ -5964,7 +6031,7 @@ html.selActive main { touch-action: none; }
 
   function textKey(o) {
     return [o.fit ? 'F' + o.text + '|' + o.capMM + '|' + o.asc0 : (o.lines || []).join('\u0001'), o.font, o.size, o.align, o.bold ? 1 : 0, o.italic ? 1 : 0,
-      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.stkl ? 1 : 0, o.stks || 0, o.stkr == null ? 30 : o.stkr, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0, (o.jb || []).map(Number).join('') + '~' + (o.ctxPrev || '') + '~' + (o.ctxNext || ''),
+      o.color, o.stroke ? 1 : 0, o.strokeColor, o.strokeW, o.d3 || 0, o.d3dir, o.d3color, o.stk || 0, o.stkc, o.stkg === false ? 0 : 1, o.stkl ? 1 : 0, o.stks || 0, o.stkr == null ? 30 : o.stkr, o.fillMode, o.fillFit, o.fillImg || 0, o.spacing || 0, o.lhm || 0, o.lbox ? 1 : 0, o.sx || 100, o.sy || 100, o.wt || 0, o.fw || 0, o.fx || '', (o.jb || []).map(Number).join('') + '~' + (o.ctxPrev || '') + '~' + (o.ctxNext || ''),
       o.poster ? [o.poster.W, o.poster.H, o.poster.ix, o.poster.iy].join(',') : ''].join('|');
   }
 
@@ -6088,7 +6155,8 @@ html.selActive main { touch-action: none; }
       pmarks: $('txPosterMarks').checked, lbox: $('txLBox').checked,
       stroke: $('txStroke').checked, strokeColor: $('txStrokeColor').value, strokeW: parseInt($('txStrokeW').value, 10) || 6,
       d3: $('tx3d').checked ? (parseInt($('tx3dD').value, 10) || 40) : 0, d3dir: $('tx3dDir').value, d3color: $('tx3dColor').value,
-      stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value, stkg: $('txStkG').checked, stkl: $('txStkL').checked, stks: parseInt($('txStkS').value, 10) || 0, stkr: parseInt($('txStkR').value, 10), full: $('txFull').checked
+      stk: $('txStk').checked ? (parseInt($('txStkW').value, 10) || 35) : 0, stkc: $('txStkC').value, stkg: $('txStkG').checked, stkl: $('txStkL').checked, stks: parseInt($('txStkS').value, 10) || 0, stkr: parseInt($('txStkR').value, 10), full: $('txFull').checked,
+      sx: parseInt($('txSx').value, 10) || 100, sy: parseInt($('txSy').value, 10) || 100, wt: parseInt($('txWt').value, 10) || 0, fw: parseInt($('txFw').value, 10) || 0, fx: $('txFx').value || ''
     };
   }
 
@@ -6103,6 +6171,8 @@ html.selActive main { touch-action: none; }
     $('txPosterRow').hidden = !$('txPoster').checked;
     $('txSizeO').textContent = String(Math.round(parseFloat($('txSize').value) || 0));
     $('txSpacingR').value = $('txSpacing').value; $('txLHR').value = $('txLH').value;
+    $('txSxO').textContent = $('txSx').value; $('txSyO').textContent = $('txSy').value; $('txWtO').textContent = $('txWt').value; $('txFwO').textContent = $('txFw').value;
+    { const fo = FONTS[$('txFont').value]; $('txVarRow').hidden = !(fo && fo.v); }
     if (document.activeElement !== $('txCm')) { const cm = capCm(); if (cm) $('txCm').value = String(Math.round(cm * 100) / 100); }
   }
   function capRatio() {
@@ -6121,7 +6191,7 @@ html.selActive main { touch-action: none; }
     segSet('txAlign', o.align || 'center'); segSet('txFillMode', o.fillMode || 'color'); segSet('txFillFit', o.fillFit || 'cover');
     $('txStroke').checked = !!o.stroke; $('txStrokeColor').value = o.strokeColor; $('txStrokeW').value = o.strokeW;
     $('tx3d').checked = !!o.d3; if (o.d3) $('tx3dD').value = o.d3; $('tx3dDir').value = o.d3dir || 'se'; $('tx3dColor').value = o.d3color || '#7a1642';
-    $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff'; $('txStkG').checked = o.stkg !== false; $('txStkL').checked = !!o.stkl; $('txStkS').value = o.stks || 0; $('txStkR').value = o.stkr == null ? 30 : o.stkr; $('txFull').checked = !!o.full;
+    $('txStk').checked = !!o.stk; if (o.stk) $('txStkW').value = o.stk; $('txStkC').value = o.stkc || '#ffffff'; $('txStkG').checked = o.stkg !== false; $('txStkL').checked = !!o.stkl; $('txStkS').value = o.stks || 0; $('txStkR').value = o.stkr == null ? 30 : o.stkr; $('txFull').checked = !!o.full; $('txSx').value = o.sx || 100; $('txSy').value = o.sy || 100; $('txWt').value = o.wt || 0; $('txFw').value = o.fw || 400; $('txFx').value = o.fx || '';
     $('txPoster').checked = !!o.poster; $('txPosterMarks').checked = o.poster ? !!o.poster.marks : !!o.pmarks; $('txLBox').checked = !!o.lbox;
     if (o.poster) $('txPosterW').value = Math.round(o.poster.W / 10);
     fillOptions(o.fillImg || '');
@@ -6256,7 +6326,7 @@ html.selActive main { touch-action: none; }
       op.value = f.k; op.textContent = f.n;
       fs.appendChild(op);
     });
-    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txStkL', 'txStkS', 'txStkR', 'txFull', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterMarks', 'txLBox', 'txPosterW'].forEach(function (id) {
+    ['txt', 'txFont', 'txBold', 'txItalic', 'txColor', 'txStroke', 'txStrokeColor', 'txStrokeW', 'tx3d', 'tx3dDir', 'tx3dD', 'tx3dColor', 'txStk', 'txStkW', 'txStkC', 'txStkG', 'txStkL', 'txStkS', 'txStkR', 'txFull', 'txSx', 'txSy', 'txWt', 'txFw', 'txFx', 'txFill', 'txSpacing', 'txLH', 'txPoster', 'txPosterMarks', 'txLBox', 'txPosterW'].forEach(function (id) {
       $(id).addEventListener('input', live);
       $(id).addEventListener('change', live);
     });
@@ -6279,6 +6349,10 @@ html.selActive main { touch-action: none; }
       $('txSize').value = String(pt); $('txSizeR').value = String(Math.min(400, pt)); $('txSizeO').textContent = String(Math.round(pt)); live();
     });
     function stepNum(id, d, lo, hi, dec) { const v = cl((parseFloat($(id).value) || 0) + d, lo, hi); $(id).value = String(Math.round(v * 100) / 100); $(id).dispatchEvent(new Event('input', { bubbles: true })); }
+    document.querySelectorAll('[data-st]').forEach(function (b) {
+      b.addEventListener('click', function () { const el = $(b.dataset.st); el.value = String(cl((parseFloat(el.value) || 0) + parseFloat(b.dataset.d), +el.min, +el.max)); el.dispatchEvent(new Event('input', { bubbles: true })); });
+    });
+    $('txShapeReset').addEventListener('click', function () { $('txSx').value = 100; $('txSy').value = 100; $('txWt').value = 0; $('txFw').value = 400; $('txFx').value = ''; $('txSx').dispatchEvent(new Event('input', { bubbles: true })); });
     $('txSpM').addEventListener('click', function () { stepNum('txSpacing', -1, -20, 100); });
     $('txSpP').addEventListener('click', function () { stepNum('txSpacing', 1, -20, 100); });
     $('txLhM').addEventListener('click', function () { stepNum('txLH', -0.05, 0.6, 3); });
@@ -7903,7 +7977,7 @@ html.selActive main { touch-action: none; }
   ['cntN', 'cntS'].forEach(function (id) { $(id).addEventListener('input', function () { hideResult(); state.page = 0; update(); }); });
   ['w', 'h', 'as', 'margin', 'gap', 'dniTop', 'dniGap'].forEach(function (id) { $(id).addEventListener('input', function () { state.page = 0; update(); }); });
   $('guides').addEventListener('change', update);
-  ['gC', 'gM', 'gMmm'].forEach(function (id) { $(id).addEventListener('input', function () { savePrefs(); drawSheet(); }); $(id).addEventListener('change', function () { savePrefs(); drawSheet(); }); });
+  ['gC', 'gM', 'gMmm', 'gSnap'].forEach(function (id) { $(id).addEventListener('input', function () { savePrefs(); drawSheet(); }); $(id).addEventListener('change', function () { savePrefs(); drawSheet(); }); });
   $('gdQuick').addEventListener('click', function () { const on = !($('gC').checked && $('gM').checked); $('gC').checked = on; $('gM').checked = on; $('gdQuick').setAttribute('aria-pressed', String(on)); savePrefs(); drawSheet(); });
   $('rot').addEventListener('change', function () { state.page = 0; update(); });
   $('less').addEventListener('click', function () { if (state.copies > 1) { state.copies--; update(); } });
@@ -8162,22 +8236,43 @@ html.selActive main { touch-action: none; }
   function obNum(id, d, lo, hi) { const v = parseFloat(String($(id).value).replace(',', '.')); return cl(isFinite(v) ? v : d, lo, hi); }
   function obRead(kind) {
     if (kind === 'line') return { kind: 'line', type: $('obLnType').value, len: obNum('obLnLen', 80, 5, 600), th: obNum('obLnTh', 0.6, 0.2, 20), gap: obNum('obLnGap', 1.6, 0.5, 20), color: $('obLnColor').value };
-    if (kind === 'rect') return { kind: 'rect', w: obNum('obRcW', 60, 3, 600), h: obNum('obRcH', 30, 3, 800), b: obNum('obRcB', 0.6, 0, 20), bc: $('obRcBC').value, dash: $('obRcDash').checked, fillOn: $('obRcFillOn').checked, fill: $('obRcFill').value, r: obNum('obRcR', 0, 0, 40) };
+    if (kind === 'rect') return { kind: 'rect', w: obNum('obRcW', 60, 3, 600), h: obNum('obRcH', 30, 3, 800), b: obNum('obRcB', 0.6, 0, 20), bc: $('obRcBC').value, dash: $('obRcDash').checked, fillOn: $('obRcFillOn').checked, fill: $('obRcFill').value, r: obNum('obRcR', 0, 0, 40), form: $('obRcForm').value };
     const data = tbParse($('obTbData').value);
     let rows = Math.round(obNum('obTbR', 3, 1, 60)), cols = Math.round(obNum('obTbC', 3, 1, 20));
     if ($('obTbFit').checked && data.length) { rows = Math.min(60, data.length); cols = Math.min(20, Math.max.apply(null, data.map(function (r) { return r.length; }))); }
-    return { kind: 'table', rows: rows, cols: cols, w: obNum('obTbW', 150, 20, 600), rh: obNum('obTbH', 10, 4, 100), fs: obNum('obTbFs', 12, 5, 60), b: obNum('obTbB', 0.4, 0, 5), bc: $('obTbBC').value, align: $('obTbAlign').value, head: $('obTbHead').checked, headC: $('obTbHeadC').value, data: data };
+    const box = $('obTbAl'), ca = [], ra = [];
+    if (box) { box.querySelectorAll('select[data-c]').forEach(function (x) { ca[+x.dataset.c] = x.value; }); box.querySelectorAll('select[data-r]').forEach(function (x) { ra[+x.dataset.r] = x.value; }); }
+    return { kind: 'table', rows: rows, cols: cols, colAlign: ca.slice(0, cols), rowAlign: ra.slice(0, rows), cw: $('obTbCw').value, w: obNum('obTbW', 150, 20, 600), rh: obNum('obTbH', 10, 4, 100), fs: obNum('obTbFs', 12, 5, 60), b: obNum('obTbB', 0.4, 0, 5), bc: $('obTbBC').value, align: $('obTbAlign').value, head: $('obTbHead').checked, headC: $('obTbHeadC').value, data: data };
   }
   function tbParse(txt) {
     const t = String(txt || '').replace(/\r/g, '');
-    const lines = t.split('\n'); while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
-    const sep = /\t/.test(t) ? '\t' : /;/.test(t) ? ';' : null;
-    return lines.map(function (l) { return sep ? l.split(sep).map(function (s) { return s.trim(); }) : [l.trim()]; });
+    let lines = t.split('\n').map(function (l) { return l.replace(/\s+$/, ''); }).filter(function (l) { return l.trim() !== ''; });
+    lines = lines.filter(function (l) { return !(/^[\s|:\-+]+$/.test(l) && /-/.test(l) && /\|/.test(l)); });
+    let sep = /\t/.test(t) ? '\t' : /\|/.test(t) ? '|' : /;/.test(t) ? ';' : null;
+    if (!sep && lines.length) { const cnt = lines.map(function (l) { return (l.match(/,/g) || []).length; }); if (cnt[0] > 0 && cnt.every(function (n) { return n === cnt[0]; })) sep = ','; }
+    return lines.map(function (l) {
+      if (!sep) return [l.trim()];
+      if (sep === '|') l = l.trim().replace(/^\|/, '').replace(/\|$/, '');
+      return l.split(sep).map(function (x) { return x.trim(); });
+    });
+  }
+  const OB_AL = '<option value="">Como arriba</option><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option>';
+  function obTbAlUi(rows, cols, ca, ra) {
+    const box = $('obTbAl'); if (!box) return;
+    if (!ca) ca = Array.from(box.querySelectorAll('select[data-c]')).map(function (x) { return x.value; });
+    if (!ra) ra = Array.from(box.querySelectorAll('select[data-r]')).map(function (x) { return x.value; });
+    let h = '<p class="hint">Elige cómo se alinea el texto de cada columna. La alineación de una fila manda sobre la de la columna.</p>';
+    for (let c = 0; c < cols; c++) h += '<label class="check" style="gap:8px">Columna ' + (c + 1) + ' <select data-c="' + c + '">' + OB_AL + '</select></label>';
+    h += '<hr style="border:none;border-top:1px solid var(--line);margin:8px 0">';
+    for (let r = 0; r < rows; r++) h += '<label class="check" style="gap:8px">Fila ' + (r + 1) + ' <select data-r="' + r + '">' + OB_AL + '</select></label>';
+    box.innerHTML = h;
+    box.querySelectorAll('select[data-c]').forEach(function (x) { x.value = (ca && ca[+x.dataset.c]) || ''; });
+    box.querySelectorAll('select[data-r]').forEach(function (x) { x.value = (ra && ra[+x.dataset.r]) || ''; });
   }
   function obLoad(sp) {
     if (sp.kind === 'line') { $('obLnType').value = sp.type; $('obLnLen').value = sp.len; $('obLnTh').value = sp.th; $('obLnGap').value = sp.gap; $('obLnColor').value = sp.color; }
-    else if (sp.kind === 'rect') { $('obRcW').value = sp.w; $('obRcH').value = sp.h; $('obRcB').value = sp.b; $('obRcBC').value = sp.bc; $('obRcDash').checked = !!sp.dash; $('obRcFillOn').checked = !!sp.fillOn; $('obRcFill').value = sp.fill; $('obRcR').value = sp.r; }
-    else { $('obTbR').value = sp.rows; $('obTbC').value = sp.cols; $('obTbW').value = sp.w; $('obTbH').value = sp.rh; $('obTbFs').value = sp.fs; $('obTbB').value = sp.b; $('obTbBC').value = sp.bc; $('obTbAlign').value = sp.align; $('obTbHead').checked = !!sp.head; $('obTbHeadC').value = sp.headC; $('obTbData').value = (sp.data || []).map(function (r) { return r.join('\t'); }).join('\n'); $('obTbFit').checked = false; }
+    else if (sp.kind === 'rect') { $('obRcW').value = sp.w; $('obRcH').value = sp.h; $('obRcB').value = sp.b; $('obRcBC').value = sp.bc; $('obRcForm').value = sp.form || 'rect'; $('obRcDash').checked = !!sp.dash; $('obRcFillOn').checked = !!sp.fillOn; $('obRcFill').value = sp.fill; $('obRcR').value = sp.r; }
+    else { $('obTbR').value = sp.rows; $('obTbC').value = sp.cols; $('obTbW').value = sp.w; $('obTbH').value = sp.rh; $('obTbFs').value = sp.fs; $('obTbB').value = sp.b; $('obTbBC').value = sp.bc; $('obTbAlign').value = sp.align; $('obTbHead').checked = !!sp.head; $('obTbHeadC').value = sp.headC; $('obTbData').value = (sp.data || []).map(function (r) { return r.join('\t'); }).join('\n'); $('obTbFit').checked = false; $('obTbCw').value = sp.cw || 'eq'; obTbAlUi(sp.rows, sp.cols, sp.colAlign || [], sp.rowAlign || []); }
     $('obRcFillRow').hidden = !$('obRcFillOn').checked; $('obTbHeadRow').hidden = !$('obTbHead').checked;
   }
   function obWrap(c, text, maxW) {
@@ -8193,6 +8288,29 @@ html.selActive main { touch-action: none; }
     });
     return out;
   }
+  const OB_PTS = {
+    triangle: [[.5, 0], [1, 1], [0, 1]], diamond: [[.5, 0], [1, .5], [.5, 1], [0, .5]], hexagon: [[.25, 0], [.75, 0], [1, .5], [.75, 1], [.25, 1], [0, .5]],
+    arrow: [[0, .3], [.6, .3], [.6, 0], [1, .5], [.6, 1], [.6, .7], [0, .7]], cross: [[.33, 0], [.67, 0], [.67, .33], [1, .33], [1, .67], [.67, .67], [.67, 1], [.33, 1], [.33, .67], [0, .67], [0, .33], [.33, .33]],
+    para: [[.2, 0], [1, 0], [.8, 1], [0, 1]], trap: [[.2, 0], [.8, 0], [1, 1], [0, 1]]
+  };
+  function obShape(c, form, x, y, w, h, r) {
+    if (form === 'rect') { obRound(c, x, y, w, h, r); return; }
+    if (form === 'ellipse') { c.beginPath(); c.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); c.closePath(); return; }
+    let pts = OB_PTS[form];
+    if (form === 'pentagon') { pts = []; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / 5; pts.push([.5 + .5 * Math.cos(a), .5 + .5 * Math.sin(a)]); } const ys = pts.map(function (q) { return q[1]; }), mn = Math.min.apply(null, ys), mx = Math.max.apply(null, ys); pts = pts.map(function (q) { return [q[0], (q[1] - mn) / (mx - mn)]; }); }
+    if (form === 'star') { pts = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? .2 : .5; pts.push([.5 + rr * Math.cos(a), .5 + rr * Math.sin(a)]); } const ys = pts.map(function (q) { return q[1]; }), mn = Math.min.apply(null, ys), mx = Math.max.apply(null, ys); pts = pts.map(function (q) { return [q[0], (q[1] - mn) / (mx - mn)]; }); }
+    c.beginPath();
+    if (form === 'heart') {
+      const P = function (u, v) { return [x + u * w, y + v * h]; };
+      c.moveTo.apply(c, P(.5, 1));
+      [[.1, .7, 0, .45, 0, .28], [0, .1, .15, 0, .3, 0], [.4, 0, .47, .06, .5, .15], [.53, .06, .6, 0, .7, 0], [.85, 0, 1, .1, 1, .28], [1, .45, .9, .7, .5, 1]].forEach(function (q) {
+        const a = P(q[0], q[1]), b = P(q[2], q[3]), d = P(q[4], q[5]); c.bezierCurveTo(a[0], a[1], b[0], b[1], d[0], d[1]);
+      });
+    } else if (pts) {
+      pts.forEach(function (q, i) { if (i) c.lineTo(x + q[0] * w, y + q[1] * h); else c.moveTo(x + q[0] * w, y + q[1] * h); });
+    } else { obRound(c, x, y, w, h, r); return; }
+    c.closePath();
+  }
   function obRound(c, x, y, w, h, r) {
     r = Math.max(0, Math.min(r, w / 2, h / 2));
     c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
@@ -8204,17 +8322,27 @@ html.selActive main { touch-action: none; }
     else if (sp.kind === 'rect') { wMM = sp.w; hMM = sp.h; }
     else {
       wMM = sp.w;
-      const R = 10, m = document.createElement('canvas').getContext('2d'), fsMM = sp.fs * 0.352778, colW = wMM / sp.cols, padMM = 1.4, lhMM = fsMM * 1.25;
+      const R = 10, m = document.createElement('canvas').getContext('2d'), fsMM = sp.fs * 0.352778, padMM = 1.4, lhMM = fsMM * 1.25;
+      let colWs = [];
+      if (sp.cw === 'auto') {
+        let tot = 0;
+        for (let c = 0; c < sp.cols; c++) {
+          let mw = 0;
+          for (let r = 0; r < sp.rows; r++) { m.font = ((sp.head && r === 0) ? 'bold ' : '') + (fsMM * R) + 'px Arial, Helvetica, sans-serif'; String((sp.data[r] && sp.data[r][c]) || '').split('\n').forEach(function (t) { mw = Math.max(mw, m.measureText(t).width / R); }); }
+          const wi = Math.max(9, mw + 2 * padMM + 1); colWs.push(wi); tot += wi;
+        }
+        colWs = colWs.map(function (x) { return x * wMM / tot; });
+      } else { for (let c = 0; c < sp.cols; c++) colWs.push(wMM / sp.cols); }
       const rowH = [], cells = [];
       for (let r = 0; r < sp.rows; r++) {
         let mx = 1; const rc = [];
         for (let c = 0; c < sp.cols; c++) {
           m.font = ((sp.head && r === 0) ? 'bold ' : '') + (fsMM * R) + 'px Arial, Helvetica, sans-serif';
-          const ln = obWrap(m, (sp.data[r] && sp.data[r][c]) || '', Math.max(5, (colW - 2 * padMM) * R)); rc.push(ln); mx = Math.max(mx, ln.length);
+          const ln = obWrap(m, (sp.data[r] && sp.data[r][c]) || '', Math.max(5, (colWs[c] - 2 * padMM) * R)); rc.push(ln); mx = Math.max(mx, ln.length);
         }
         cells.push(rc); rowH.push(Math.max(sp.rh, mx * lhMM + 2 * padMM));
       }
-      hMM = rowH.reduce(function (a, b) { return a + b; }, 0); tb = { rowH: rowH, cells: cells, fsMM: fsMM, colW: colW, padMM: padMM, lhMM: lhMM };
+      hMM = rowH.reduce(function (a, b) { return a + b; }, 0); tb = { rowH: rowH, cells: cells, fsMM: fsMM, colWs: colWs, padMM: padMM, lhMM: lhMM };
     }
     const dpmm = Math.min(300 / 25.4, 4000 / Math.max(wMM, hMM));
     const cv = document.createElement('canvas'); cv.width = Math.max(2, Math.round(wMM * dpmm)); cv.height = Math.max(2, Math.round(hMM * dpmm));
@@ -8224,20 +8352,24 @@ html.selActive main { touch-action: none; }
       c.setLineDash(sp.type === 'dots' ? [0.001, (sp.gap + sp.th) * K] : sp.type === 'dashes' ? [sp.gap * 2 * K, sp.gap * K] : []);
       c.beginPath(); c.moveTo(sp.th / 2 * K, cv.height / 2); c.lineTo(cv.width - sp.th / 2 * K, cv.height / 2); c.stroke();
     } else if (sp.kind === 'rect') {
-      const b = sp.b * K; obRound(c, b / 2, b / 2, cv.width - b, cv.height - b, sp.r * K);
+      const b = sp.b * K; obShape(c, sp.form || 'rect', b / 2, b / 2, cv.width - b, cv.height - b, sp.r * K);
       if (sp.fillOn) { c.fillStyle = sp.fill; c.fill(); }
-      if (sp.b > 0) { c.strokeStyle = sp.bc; c.lineWidth = b; c.setLineDash(sp.dash ? [Math.max(2, sp.b * 3) * K, Math.max(1.5, sp.b * 2) * K] : []); c.stroke(); }
+      if (sp.b > 0) { c.strokeStyle = sp.bc; c.lineWidth = b; c.lineJoin = sp.r > 0 ? 'round' : 'miter'; c.setLineDash(sp.dash ? [Math.max(2, sp.b * 3) * K, Math.max(1.5, sp.b * 2) * K] : []); c.stroke(); }
     } else {
       let y = 0;
-      const bw = sp.b * K;
+      const bw = sp.b * K, xs = [0];
+      tb.colWs.forEach(function (w0) { xs.push(xs[xs.length - 1] + w0); });
       if (sp.head) { c.fillStyle = sp.headC; c.fillRect(0, 0, cv.width, tb.rowH[0] * K); }
       for (let r = 0; r < sp.rows; r++) {
         for (let cc = 0; cc < sp.cols; cc++) {
           c.fillStyle = '#000'; c.font = ((sp.head && r === 0) ? 'bold ' : '') + (tb.fsMM * K) + 'px Arial, Helvetica, sans-serif'; c.textBaseline = 'alphabetic';
-          const ln = tb.cells[r][cc], x0 = cc * tb.colW;
+          const ln = tb.cells[r][cc], x0 = xs[cc], cw = tb.colWs[cc];
+          const al = (sp.rowAlign && sp.rowAlign[r]) || (sp.colAlign && sp.colAlign[cc]) || sp.align || 'left';
+          const vOff = Math.max(tb.padMM, (tb.rowH[r] - ln.length * tb.lhMM) / 2);
           ln.forEach(function (t, i) {
-            const tw = c.measureText(t).width, tx = sp.align === 'center' ? x0 * K + (tb.colW * K - tw) / 2 : (x0 + tb.padMM) * K;
-            c.fillText(t, tx, (y + tb.padMM + i * tb.lhMM) * K + tb.fsMM * K * 0.95);
+            const tw = c.measureText(t).width;
+            const tx = al === 'center' ? x0 * K + (cw * K - tw) / 2 : al === 'right' ? (x0 + cw - tb.padMM) * K - tw : (x0 + tb.padMM) * K;
+            c.fillText(t, tx, (y + vOff + i * tb.lhMM) * K + tb.fsMM * K * 0.95);
           });
         }
         y += tb.rowH[r];
@@ -8246,13 +8378,13 @@ html.selActive main { touch-action: none; }
         c.strokeStyle = sp.bc; c.lineWidth = bw; c.setLineDash([]); c.lineCap = 'square';
         let yy = 0; c.beginPath();
         for (let r = 0; r <= sp.rows; r++) { const py = Math.min(cv.height - bw / 2, Math.max(bw / 2, yy * K)); c.moveTo(0, py); c.lineTo(cv.width, py); if (r < sp.rows) yy += tb.rowH[r]; }
-        for (let cc = 0; cc <= sp.cols; cc++) { const px = Math.min(cv.width - bw / 2, Math.max(bw / 2, cc * tb.colW * K)); c.moveTo(px, 0); c.lineTo(px, cv.height); }
+        for (let cc = 0; cc <= sp.cols; cc++) { const px = Math.min(cv.width - bw / 2, Math.max(bw / 2, xs[cc] * K)); c.moveTo(px, 0); c.lineTo(px, cv.height); }
         c.stroke();
       }
     }
     return { cv: cv, wMM: wMM, hMM: hMM };
   }
-  const OB_NAMES = { line: 'Línea', rect: 'Cuadro', table: 'Tabla' };
+  const OB_NAMES = { line: 'Línea', rect: 'Figura', table: 'Tabla' };
   async function obBuild(sp, e) {
     const r = obCanvas(sp), blob = await canvasBlob(r.cv, 'png');
     const name = OB_NAMES[sp.kind] + '.png', file = new File([blob], name, { type: 'image/png' });
@@ -8288,13 +8420,27 @@ html.selActive main { touch-action: none; }
         let y = (c.ph - e.hMM) / 2;
         const others = page.filter(function (q) { return q !== found; });
         if (others.length) { y = Math.max.apply(null, others.map(function (q) { return q.y + q.h; })) + 5; if (y + e.hMM > c.ph - 5) y = (c.ph - e.hMM) / 2; }
-        found.w = e.wMM; found.h = e.hMM; found.ar0 = e.wMM / e.hMM; found.x = (c.pw - e.wMM) / 2; found.y = y;
+        found.view = newView(); found.view.st = true; found.w = e.wMM; found.h = e.hMM; found.ar0 = e.wMM / e.hMM; found.x = (c.pw - e.wMM) / 2; found.y = y;
         clampObj(found, c.pw, c.ph, MIN_OBJ, true);
         state.page = pg; sh.sel = { page: pg, idx: page.indexOf(found) }; sh.frame = false; sh.loadedShape = found.id;
       }
       renderThumbs(); update(); hideResult();
-      setNote(OB_NAMES[kind] + ' agregada. Muévela y cambia su tamaño en la hoja; para cambiarla toca aquí «' + (kind === 'line' ? 'Línea' : kind === 'rect' ? 'Cuadro' : 'Tabla') + '» con ella elegida.');
+      setNote(OB_NAMES[kind] + ' agregada. Muévela y cambia su tamaño en la hoja; para cambiarla toca aquí «' + (kind === 'line' ? 'Línea' : kind === 'rect' ? 'Figura' : 'Tabla') + '» con ella elegida.');
     } catch (err) { setNote('No se pudo crear el objeto (' + (err && err.message ? err.message : 'error') + ').', true); }
+    OB.busy = false;
+  }
+  async function obResizeEnd(r) {
+    const e = r.f; if (!e || !e.shape || OB.busy) return;
+    OB.busy = true;
+    try {
+      const sp = JSON.parse(JSON.stringify(e.shape));
+      if (sp.kind === 'rect') { sp.w = cl(r.w, 3, 600); sp.h = cl(r.h, 3, 800); }
+      else if (sp.kind === 'line') sp.len = cl(r.w, 5, 600);
+      else sp.w = cl(r.w, 20, 600);
+      await obBuild(sp, e);
+      free.pages.forEach(function (p) { p.forEach(function (o) { if (o !== r) return; o.w = e.wMM; o.h = e.hMM; o.ar0 = o.w / o.h; if (o.view) o.view.st = true; }); });
+      obLoad(sp); hideResult(); renderThumbs(); update();
+    } catch (err) { /* sigue estirada */ }
     OB.busy = false;
   }
   function obSel() { const r = selRect(); return r && r.type !== 'text' && r.f && r.f.shape ? r.f : null; }
@@ -8346,12 +8492,14 @@ html.selActive main { touch-action: none; }
     $('obLnAdd').addEventListener('click', function () { obAdd('line'); });
     $('obRcAdd').addEventListener('click', function () { obAdd('rect'); });
     $('obTbAdd').addEventListener('click', function () { obAdd('table'); });
-    const map = { line: ['obLnType', 'obLnLen', 'obLnTh', 'obLnGap', 'obLnColor'], rect: ['obRcW', 'obRcH', 'obRcB', 'obRcBC', 'obRcDash', 'obRcFillOn', 'obRcFill', 'obRcR'], table: ['obTbData', 'obTbFit', 'obTbR', 'obTbC', 'obTbW', 'obTbH', 'obTbFs', 'obTbB', 'obTbBC', 'obTbAlign', 'obTbHead', 'obTbHeadC'] };
+    $('obTbAl').addEventListener('change', function () { clearTimeout(OB.tm); OB.tm = setTimeout(function () { obApply('table'); }, 120); });
+    obTbAlUi(3, 3);
+    const map = { line: ['obLnType', 'obLnLen', 'obLnTh', 'obLnGap', 'obLnColor'], rect: ['obRcForm', 'obRcW', 'obRcH', 'obRcB', 'obRcBC', 'obRcDash', 'obRcFillOn', 'obRcFill', 'obRcR'], table: ['obTbCw', 'obTbData', 'obTbFit', 'obTbR', 'obTbC', 'obTbW', 'obTbH', 'obTbFs', 'obTbB', 'obTbBC', 'obTbAlign', 'obTbHead', 'obTbHeadC'] };
     Object.keys(map).forEach(function (kind) {
       map[kind].forEach(function (id) {
         function go() {
           $('obRcFillRow').hidden = !$('obRcFillOn').checked; $('obTbHeadRow').hidden = !$('obTbHead').checked;
-          if (id === 'obTbData' && $('obTbFit').checked) { const sp = obRead('table'); $('obTbR').value = sp.rows; $('obTbC').value = sp.cols; }
+          if (kind === 'table' && (id === 'obTbData' || id === 'obTbR' || id === 'obTbC' || id === 'obTbFit')) { const sp = obRead('table'); if ($('obTbFit').checked) { $('obTbR').value = sp.rows; $('obTbC').value = sp.cols; } obTbAlUi(sp.rows, sp.cols); }
           clearTimeout(OB.tm); OB.tm = setTimeout(function () { obApply(kind); }, 160);
         }
         $(id).addEventListener('input', go); $(id).addEventListener('change', go);
