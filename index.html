@@ -565,6 +565,9 @@ html.selActive main { touch-action: none; }
           <button type="button" data-v="da4" aria-pressed="false">Doble A4</button>
           <button type="button" data-v="tcarta" aria-pressed="false">Triple carta</button>
           <button type="button" data-v="ta4" aria-pressed="false">Triple A4</button>
+          <button type="button" data-v="qcarta" aria-pressed="false">Cuádruple carta</button>
+          <button type="button" data-v="qoficio" aria-pressed="false">Cuádruple oficio</button>
+          <button type="button" data-v="qa4" aria-pressed="false">Cuádruple A4</button>
           <button type="button" data-v="custom" aria-pressed="false">Otro tamaño</button>
         </div>
         <div class="row" id="customRow" hidden style="margin-top:8px;align-items:center">
@@ -1421,6 +1424,7 @@ html.selActive main { touch-action: none; }
       <div class="tools">
         <button class="btn" id="edDocClr" type="button">Aclarar (a color)</button>
         <button class="btn" id="edDocBw" type="button">Blanco y negro nítido</button>
+        <button class="btn primary" id="edDocQuad" type="button">📐 Acomodar hoja (mover esquinas)</button>
         <button class="btn" id="edDocRot" type="button">Enderezar</button>
         <button class="btn" id="edDocCrop" type="button">Recortar bordes</button>
         <button class="btn" id="edDocUndo" type="button" hidden>Volver al original</button>
@@ -1470,6 +1474,9 @@ html.selActive main { touch-action: none; }
     da4:     { label: 'Doble A4',     w: 297,   h: 420,   base: 'a4' },
     tcarta:  { label: 'Triple carta', w: 279.4, h: 647.7, base: 'carta' },
     ta4:     { label: 'Triple A4',    w: 297,   h: 630,   base: 'a4' },
+    qcarta:  { label: 'Cuádruple carta',  w: 431.8, h: 558.8, base: 'carta' },
+    qoficio: { label: 'Cuádruple oficio', w: 431.8, h: 660.4, base: 'oficio' },
+    qa4:     { label: 'Cuádruple A4',     w: 420,   h: 594,   base: 'a4' },
     custom:  { label: 'Otro tamaño',  w: 300,   h: 450 }
   };
   const EPS = 1e-6;
@@ -4877,7 +4884,7 @@ html.selActive main { touch-action: none; }
   const dcl = { busy: false };
   async function docRun(steps) {
     const f = ed.f; if (!f || dcl.busy) return;
-    dcl.busy = true; ['edDocAll', 'edDocClr', 'edDocBw', 'edDocRot', 'edDocCrop', 'edOcrGo'].forEach(function (id) { $(id).disabled = true; });
+    dcl.busy = true; ['edDocAll', 'edDocClr', 'edDocBw', 'edDocRot', 'edDocCrop', 'edDocQuad', 'edOcrGo'].forEach(function (id) { $(id).disabled = true; });
     try {
       dMsg('Procesando… (puede tardar unos segundos)'); await yieldUI();
       let c = await docSource(f);
@@ -4891,7 +4898,138 @@ html.selActive main { touch-action: none; }
       ed.tmp.crop = null; await reloadWork(f); showTab('doc');
       dMsg('Listo. Si algo no te gusta usa «Volver al original». Toca «Listo» arriba para guardar.');
     } catch (e) { dMsg('No se pudo procesar (' + (e && e.message ? e.message : 'error') + ').'); }
-    dcl.busy = false; ['edDocAll', 'edDocClr', 'edDocBw', 'edDocRot', 'edDocCrop', 'edOcrGo'].forEach(function (id) { $(id).disabled = false; });
+    dcl.busy = false; ['edDocAll', 'edDocClr', 'edDocBw', 'edDocRot', 'edDocCrop', 'edDocQuad', 'edOcrGo'].forEach(function (id) { $(id).disabled = false; });
+  }
+
+  // --- Acomodar hoja: el usuario mueve 4 esquinas y la foto se endereza en perspectiva ---
+  const dq = { el: null, cv: null, src: null, pts: [], k: 1, drag: -1, busy: false };
+  function dqHomography(src, dst) {
+    // resuelve H (3x3, h33=1) tal que H*dst = src
+    const A = [], b = [];
+    for (let i = 0; i < 4; i++) {
+      const x = dst[i][0], y = dst[i][1], u = src[i][0], v = src[i][1];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+    }
+    for (let c = 0; c < 8; c++) {
+      let m = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[m][c])) m = r;
+      const tA = A[c]; A[c] = A[m]; A[m] = tA; const tb = b[c]; b[c] = b[m]; b[m] = tb;
+      const d = A[c][c] || 1e-12;
+      for (let r = c + 1; r < 8; r++) { const f = A[r][c] / d; for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k]; b[r] -= f * b[c]; }
+    }
+    const h = new Array(8);
+    for (let r = 7; r >= 0; r--) { let t = b[r]; for (let k = r + 1; k < 8; k++) t -= A[r][k] * h[k]; h[r] = t / (A[r][r] || 1e-12); }
+    return h;
+  }
+  function dqWarp(src, q, ow, oh) {
+    const h = dqHomography(q, [[0, 0], [ow, 0], [ow, oh], [0, oh]]);
+    const out = document.createElement('canvas'); out.width = ow; out.height = oh;
+    const ox = out.getContext('2d'), od = ox.createImageData(ow, oh), o = od.data;
+    const sw = src.width, sh2 = src.height, sd = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh2).data;
+    for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) {
+      const w = h[6] * x + h[7] * y + 1, u = (h[0] * x + h[1] * y + h[2]) / w, v = (h[3] * x + h[4] * y + h[5]) / w;
+      const i = (y * ow + x) * 4;
+      if (u < 0 || v < 0 || u >= sw - 1 || v >= sh2 - 1) { o[i] = o[i + 1] = o[i + 2] = 255; o[i + 3] = 255; continue; }
+      const x0 = u | 0, y0 = v | 0, fx = u - x0, fy = v - y0, a = (y0 * sw + x0) * 4, b2 = a + 4, c = a + sw * 4, d = c + 4;
+      for (let k = 0; k < 3; k++) o[i + k] = (sd[a + k] * (1 - fx) + sd[b2 + k] * fx) * (1 - fy) + (sd[c + k] * (1 - fx) + sd[d + k] * fx) * fy;
+      o[i + 3] = 255;
+    }
+    ox.putImageData(od, 0, 0); return out;
+  }
+  // Busca la hoja: la zona clara más grande de la foto.
+  function dqDetect(cv) {
+    const k = Math.min(1, 200 / Math.max(cv.width, cv.height)), w = Math.max(8, Math.round(cv.width * k)), h = Math.max(8, Math.round(cv.height * k));
+    const t = document.createElement('canvas'); t.width = w; t.height = h; const x = t.getContext('2d', { willReadFrequently: true }); x.drawImage(cv, 0, 0, w, h);
+    const g = gray1(x.getImageData(0, 0, w, h).data, w * h), bl = boxBlur(g, w, h, 2);
+    const hist = new Uint32Array(256); for (let i = 0; i < bl.length; i++) hist[Math.min(255, Math.round(bl[i]))]++;
+    let sum = 0, tot = bl.length; for (let v = 0; v < 256; v++) sum += v * hist[v];
+    let sB = 0, wB = 0, best = 0, thr = 128;
+    for (let v = 0; v < 256; v++) { wB += hist[v]; if (!wB) continue; const wF = tot - wB; if (!wF) break; sB += v * hist[v]; const mB = sB / wB, mF = (sum - sB) / wF, bt = wB * wF * (mB - mF) * (mB - mF); if (bt > best) { best = bt; thr = v; } }
+    const lab = new Int32Array(w * h), st = []; let bestN = 0, bestId = 0, id = 0;
+    for (let i = 0; i < w * h; i++) {
+      if (lab[i] || bl[i] <= thr) continue;
+      id++; let n = 0; st.length = 0; st.push(i); lab[i] = id;
+      while (st.length) { const j = st.pop(); n++; const jx = j % w, jy = (j / w) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) { const nx = jx + d[0], ny = jy + d[1]; if (nx < 0 || ny < 0 || nx >= w || ny >= h) return; const q = ny * w + nx; if (!lab[q] && bl[q] > thr) { lab[q] = id; st.push(q); } }); }
+      if (n > bestN) { bestN = n; bestId = id; }
+    }
+    t.width = 1; t.height = 1;
+    if (bestN < w * h * 0.15) return null;
+    let tl = null, tr = null, br = null, bo = null, a1 = 1e9, a2 = -1e9, b1 = 1e9, b2 = -1e9;
+    for (let i = 0; i < w * h; i++) if (lab[i] === bestId) {
+      const px = i % w, py = (i / w) | 0, s1 = px + py, s2 = px - py;
+      if (s1 < a1) { a1 = s1; tl = [px, py]; } if (s1 > a2) { a2 = s1; br = [px, py]; }
+      if (s2 > b2) { b2 = s2; tr = [px, py]; } if (s2 < b1) { b1 = s2; bo = [px, py]; }
+    }
+    return [tl, tr, br, bo].map(function (p) { return [p[0] / k, p[1] / k]; });
+  }
+  function dqDraw() {
+    const c = dq.cv, x = c.getContext('2d'), k = dq.k;
+    x.clearRect(0, 0, c.width, c.height); x.drawImage(dq.src, 0, 0, c.width, c.height);
+    const P = dq.pts.map(function (p) { return [p[0] * k, p[1] * k]; });
+    x.save(); x.fillStyle = 'rgba(0,0,0,.45)'; x.beginPath(); x.rect(0, 0, c.width, c.height);
+    x.moveTo(P[0][0], P[0][1]); for (let i = 3; i >= 0; i--) x.lineTo(P[i][0], P[i][1]); x.closePath(); x.fill('evenodd'); x.restore();
+    x.lineWidth = 2; x.strokeStyle = '#18c0d8'; x.beginPath(); P.forEach(function (p, i) { i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]); }); x.closePath(); x.stroke();
+    x.strokeStyle = 'rgba(24,192,216,.55)'; x.lineWidth = 1; x.beginPath();
+    for (let t = 1; t < 3; t++) { const f = t / 3; [[0, 3, 1, 2], [0, 1, 3, 2]].forEach(function (m) { const A = [P[m[0]][0] + (P[m[1]][0] - P[m[0]][0]) * f, P[m[0]][1] + (P[m[1]][1] - P[m[0]][1]) * f], B = [P[m[2]][0] + (P[m[3]][0] - P[m[2]][0]) * f, P[m[2]][1] + (P[m[3]][1] - P[m[2]][1]) * f]; x.moveTo(A[0], A[1]); x.lineTo(B[0], B[1]); }); }
+    // (líneas de guía interiores: cuadrícula 3x3 que sigue la perspectiva)
+    x.stroke();
+    P.forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 16, 0, 7); x.fillStyle = 'rgba(24,192,216,.25)'; x.fill(); x.lineWidth = 3; x.strokeStyle = '#fff'; x.stroke(); x.beginPath(); x.arc(p[0], p[1], 4, 0, 7); x.fillStyle = '#18c0d8'; x.fill(); });
+  }
+  function dqSetPts(pts) { dq.pts = pts.map(function (p) { return [p[0], p[1]]; }); dqDraw(); }
+  function dqInset() { const w = dq.src.width, h = dq.src.height, m = 0.06; return [[w * m, h * m], [w * (1 - m), h * m], [w * (1 - m), h * (1 - m)], [w * m, h * (1 - m)]]; }
+  function dqFit() {
+    const W = Math.max(100, window.innerWidth - 20), H = Math.max(100, window.innerHeight - 190), s = dq.src;
+    dq.k = Math.min(W / s.width, H / s.height); dq.cv.width = Math.round(s.width * dq.k); dq.cv.height = Math.round(s.height * dq.k);
+  }
+  function dqBuild() {
+    const el = document.createElement('div'); el.id = 'dqBox';
+    el.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#0d1417;color:#fff;display:flex;flex-direction:column;align-items:center;font:14px system-ui,sans-serif';
+    el.innerHTML = '<div style="padding:10px 12px;width:100%;box-sizing:border-box;display:flex;gap:8px;align-items:center;justify-content:space-between"><button type="button" class="btn" id="dqCancel">Cancelar</button><strong>Acomoda la hoja</strong><button type="button" class="btn primary" id="dqOk">Enderezar</button></div>' +
+      '<div style="flex:1;display:flex;align-items:center;justify-content:center;width:100%;overflow:hidden"><canvas id="dqCv" style="touch-action:none;max-width:100%"></canvas></div>' +
+      '<div style="padding:8px 12px 14px;width:100%;box-sizing:border-box;text-align:center"><p style="margin:0 0 8px;opacity:.8">Arrastra los 4 círculos a las esquinas de la hoja.</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button type="button" class="btn" id="dqAuto">Detectar sola</button><button type="button" class="btn" id="dqReset">Reiniciar</button><select id="dqSize" class="btn" aria-label="Forma final"><option value="auto">Forma: automática</option><option value="1.2941">Carta</option><option value="1.4142">A4</option><option value="1.5294">Oficio</option></select></div><p id="dqMsg" style="margin:8px 0 0;opacity:.8"></p></div>';
+    document.body.appendChild(el); dq.el = el; dq.cv = el.querySelector('#dqCv');
+    const cv = dq.cv;
+    function pos(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width / dq.k, (e.clientY - r.top) / r.height * cv.height / dq.k]; }
+    cv.addEventListener('pointerdown', function (e) {
+      const p = pos(e); let b = -1, bd = 1e9; dq.pts.forEach(function (q, i) { const d = Math.hypot(q[0] - p[0], q[1] - p[1]) * dq.k; if (d < bd) { bd = d; b = i; } });
+      if (bd < 48) { dq.drag = b; cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+    });
+    cv.addEventListener('pointermove', function (e) { if (dq.drag < 0) return; const p = pos(e); dq.pts[dq.drag] = [clampN(p[0], 0, dq.src.width), clampN(p[1], 0, dq.src.height)]; dqDraw(); e.preventDefault(); });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { cv.addEventListener(ev, function () { dq.drag = -1; }); });
+    el.querySelector('#dqCancel').addEventListener('click', dqClose);
+    el.querySelector('#dqReset').addEventListener('click', function () { dqSetPts(dqInset()); });
+    el.querySelector('#dqAuto').addEventListener('click', function () { const r = dqDetect(dq.src); if (r) { dqSetPts(r); el.querySelector('#dqMsg').textContent = 'Revisa que las esquinas queden bien y corrige las que no.'; } else el.querySelector('#dqMsg').textContent = 'No encontré la hoja sola. Muévelas tú.'; });
+    el.querySelector('#dqOk').addEventListener('click', dqApply);
+    window.addEventListener('resize', function () { if (dq.el && !dq.el.hidden) { dqFit(); dqDraw(); } });
+  }
+  function dqClose() { if (dq.busy) return; if (dq.el) dq.el.hidden = true; dq.src = null; }
+  async function dqOpen() {
+    const f = ed.f; if (!f || dcl.busy) return;
+    dMsg('Abriendo…'); await yieldUI();
+    dq.src = await docSource(f);
+    if (!dq.el) dqBuild();
+    dq.el.hidden = false; dq.el.querySelector('#dqMsg').textContent = ''; dq.el.querySelector('#dqSize').value = 'auto';
+    dqFit();
+    dqSetPts(dqDetect(dq.src) || dqInset()); dMsg('');
+  }
+  async function dqApply() {
+    const f = ed.f; if (!f || dq.busy || !dq.src) return;
+    dq.busy = true; const msg = dq.el.querySelector('#dqMsg'); msg.textContent = 'Enderezando…'; await yieldUI();
+    try {
+      const P = dq.pts, d = function (a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); };
+      const wd = (d(P[0], P[1]) + d(P[3], P[2])) / 2, hd = (d(P[0], P[3]) + d(P[1], P[2])) / 2, sel = dq.el.querySelector('#dqSize').value;
+      let ow, oh;
+      if (sel === 'auto') { ow = wd; oh = hd; } else { const r = parseFloat(sel); if (wd >= hd) { ow = wd; oh = wd / r; } else { oh = hd; ow = hd / r; } }
+      const sc = Math.min(1, 2400 / Math.max(ow, oh)); ow = Math.max(40, Math.round(ow * sc)); oh = Math.max(40, Math.round(oh * sc));
+      const c = dqWarp(dq.src, P, ow, oh);
+      const blob = await canvasBlob(c, 'jpg', 0.93); c.width = 1; c.height = 1;
+      const file = new File([blob], f.name.replace(/\.[^.]+$/, '').replace(/-limpio$/, '') + '-limpio.jpg', { type: 'image/jpeg' });
+      if (!f.origFile) { f.origFile = f.file; f.origSmall = f.small; f.origSw = f.sw; f.origSh = f.sh; }
+      f.file = file; f.bgTouched = true; f.cut = false;
+      ed.tmp.crop = null; await reloadWork(f);
+      dq.busy = false; dqClose(); showTab('doc');
+      dMsg('Hoja acomodada. Ahora puedes tocar «Limpiar documento» para aclarar el papel. Si no te gusta, «Volver al original».');
+    } catch (e) { msg.textContent = 'No se pudo (' + (e && e.message ? e.message : 'error') + ').'; dq.busy = false; }
   }
   // --- IA: leer el texto (Tesseract) ---
   const oc = { lines: [], w: 0, h: 0, name: 'documento', busy: false };
@@ -4957,6 +5095,7 @@ html.selActive main { touch-action: none; }
     $('edDocClr').addEventListener('click', function () { docRun({ flat: true, bw: false }); });
     $('edDocBw').addEventListener('click', function () { docRun({ flat: true, bw: true }); });
     $('edDocRot').addEventListener('click', function () { docRun({ rot: true }); });
+    $('edDocQuad').addEventListener('click', dqOpen);
     $('edDocCrop').addEventListener('click', function () { docRun({ crop: true }); });
     $('edDocUndo').addEventListener('click', bgUndo);
     $('edOcrGo').addEventListener('click', ocrRun);
@@ -8199,14 +8338,13 @@ html.selActive main { touch-action: none; }
     $('pjSave').addEventListener('click', function () { pjDoSave(false); });
     $('pjSaveNew').addEventListener('click', function () { pjDoSave(true); });
     $('pjNew').addEventListener('click', async function () {
-      if (state.busy) return;
-      if ((state.files.length || free.pages.length) && PJ.confirm !== 'new') { PJ.confirm = 'new'; $('pjNew').textContent = '¿Borrar lo actual?'; setTimeout(function () { if (PJ.confirm === 'new') { PJ.confirm = null; $('pjNew').textContent = 'Nuevo proyecto'; } }, 4000); return; }
-      PJ.confirm = null; $('pjNew').textContent = 'Nuevo proyecto';
+      if (state.busy || PJ.busy) return;
+      if ((state.files.length || free.pages.length) && PJ.db) { await pjDoSave(false); }
       state.files = []; free.pages = []; free.known = new Set(); free.dim = null; free.copiesAt = state.copies; fillImgs.length = 0; textCache.clear(); state.dniSlot = new Map();
       H.u.length = 0; H.r.length = 0; H.pend = null; hBtns(); sh.sel = null; sh.frame = false; sh.multiOn = false; sh.multi.clear(); state.page = 0;
       $('pjName').value = ''; PJ.sig = ''; PJ.cur = null;
       try { if (PJ.db) { await idb('meta', 'readwrite', function (s) { return s.delete('auto'); }); await pjGc(); } } catch (e) { /* ok */ }
-      renderThumbs(); update(); syncSel(); pjRender(); setNote('Proyecto nuevo, en blanco.');
+      renderThumbs(); update(); syncSel(); pjRender(); setNote('Proyecto nuevo, en blanco. El anterior quedó guardado en Proyectos.');
     });
     ['pointerup', 'change', 'input', 'keyup'].forEach(function (ev) { document.addEventListener(ev, autosaveSoon, true); });
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden' && PJ.ready) { clearTimeout(PJ.tm); pjAuto(); } });
@@ -8221,9 +8359,17 @@ html.selActive main { touch-action: none; }
       try {
         const rec = await idb('meta', 'readonly', function (s) { return s.get('auto'); });
         if (rec && rec.files && rec.files.length && !state.files.length) {
-          await pjApply(rec);
-          setNote('Se recuperó tu último trabajo (' + rec.n + (rec.n === 1 ? ' foto' : ' fotos') + '). Para empezar de cero: Opciones → Proyectos → Nuevo proyecto.');
-          PJ.sig = JSON.stringify([pjSnapSig()]);
+          const age = Date.now() - (rec.updated || 0);
+          if (age <= 20 * 60 * 1000) {
+            await pjApply(rec);
+            setNote('Se recuperó tu trabajo de hace ' + Math.max(1, Math.round(age / 60000)) + ' min (' + rec.n + (rec.n === 1 ? ' foto' : ' fotos') + '). Para empezar de cero: Opciones → Proyectos → Nuevo proyecto.');
+            PJ.sig = JSON.stringify([pjSnapSig()]);
+          } else {
+            // Pasaron más de 20 min: se guarda el trabajo anterior como proyecto y se empieza en blanco.
+            const nm = 'Trabajo anterior ' + fmtDate(rec.updated || Date.now());
+            try { const nid = 'p' + Date.now().toString(36); await idb('meta', 'readwrite', function (s) { return s.put(Object.assign({}, rec, { id: nid, name: nm })); }); await idb('meta', 'readwrite', function (s) { return s.delete('auto'); }); } catch (e2) { /* ok */ }
+            setNote('Empiezas con una hoja nueva. Tu trabajo anterior quedó guardado en Opciones → Proyectos.');
+          }
         }
       } catch (e) { setNote('No se pudo recuperar el trabajo anterior (' + (e && e.message ? e.message : 'error') + ').', true); }
       try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* ok */ }
